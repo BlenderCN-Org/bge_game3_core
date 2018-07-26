@@ -10,3 +10,5 @@
 - **HUD.blend:** Link scene into maps (required).
 - **Starter Game.blend:** Ready to go game setup with standard lights.
 - **XBOX.blend:** Utility for identifying controller button and axes IDs.
+
+https://github.com/DaedalusMDW/bge_game-3.0_template/wiki/Game-Data.zip
