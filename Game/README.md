@@ -11,4 +11,5 @@
 - **Starter Game.blend:** Ready to go game setup with standard lights.
 - **XBOX.blend:** Utility for identifying controller button and axes IDs.
 
+All content in **Game Data.zip** is [CC0](https://creativecommons.org/publicdomain/zero/1.0/) when applicable
 https://github.com/DaedalusMDW/bge_game-3.0_template/wiki/Game-Data.zip
