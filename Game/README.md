@@ -1,5 +1,10 @@
 ## Game Root Directory
 
+### Folders:
+- **CONTENT:** Libload Blends for reused assets.
+- **MAPS:** Blend files configured as maps are auto detected be game to be opened.
+- **PYTHON:** Currently, all scripts and code go here.
+### Files:
 - **Launcher.blend:** Run the game from here, or pack into exe.
 - **Keymap.blend:** Opens the keymap editor (game use only).
 - **HUD.blend:** Link scene into maps (required).
