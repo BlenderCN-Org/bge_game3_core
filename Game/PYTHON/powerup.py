@@ -58,9 +58,15 @@ class SimpleKey(CorePowerup):
 
 	SCALE = (0.1, 0.2, 0.05)
 	OFFSET = (0,0,0)
+	LOCK = 1
+
+	def defaultData(self):
+		LOCK = self.objects["Root"].get("LOCK", self.LOCK)
+
+		dict = {"LOCK":LOCK}
+		return dict
 
 	def ST_Startup(self):
-		self.data["LOCK"] = self.objects["Root"]["LOCK"]
 		self.box["RAYNAME"] = "Key: "+str(self.data["LOCK"])
 
 	def equipItem(self, cls):

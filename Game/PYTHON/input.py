@@ -344,8 +344,13 @@ class MouseLook:
 		self.OLD_Y = [0]*self.smoothing
 
 		logic.mouse.position = (0.5, 0.5)
+		self.skip = True
 
 	def axis(self):
+		if self.skip == True:
+			self.skip = False
+			logic.mouse.position = (0.5, 0.5)
+			return (0,0)
 
 		RAW_X, RAW_Y = logic.mouse.position
 

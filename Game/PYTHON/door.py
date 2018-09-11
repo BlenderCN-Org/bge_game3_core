@@ -86,7 +86,7 @@ class CoreDoor(base.CoreObject):
 			if cat != None:
 				if cat in self.TRIGGER:
 					child["RAYCAST"] = None
-					child["RAYNAME"] = child.get("RAYNAME", self.NAME)
+					child["RAYNAME"] = self.NAME
 					self.trigger.append(child)
 
 				if sub == None:

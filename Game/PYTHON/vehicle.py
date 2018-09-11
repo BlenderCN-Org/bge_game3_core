@@ -389,9 +389,6 @@ class CoreVehicle(base.CoreAdvanced):
 
 		if OBJ["RAYCAST"] != None:
 			if keymap.BINDS["ENTERVEH"].tap() == True or keymap.BINDS["ACTIVATE"].tap() == True:
-				if OBJ["RAYCAST"].data.get("WPDATA", None) != None:
-					if OBJ["RAYCAST"].active_weapon != None:
-						return False
 				return True
 		return False
 

@@ -28,13 +28,15 @@ import PYTHON.keymap as keymap
 import PYTHON.base as base
 import PYTHON.HUD as HUD
 
+if "CURRENT" in logic.globalDict:
+	logic.LibLoad( base.DATA["GAMEPATH"] + "CONTENT\\Game Assets.blend", "Scene", load_actions=True, verbose=False, load_scripts=True, async=False)
+	logic.LibLoad( base.DATA["GAMEPATH"] + "CONTENT\\Player.blend",      "Scene", load_actions=True, verbose=False, load_scripts=True, async=False)
+	logic.LibLoad( base.DATA["GAMEPATH"] + "CONTENT\\Stargate.blend",    "Scene", load_actions=True, verbose=False, load_scripts=True, async=False)
+	logic.LibLoad( base.DATA["GAMEPATH"] + "CONTENT\\Cinematics.blend",  "Scene", load_actions=True, verbose=False, load_scripts=True, async=False)
 
-logic.LibLoad( base.DATA["GAMEPATH"] + "CONTENT\\Game Assets.blend", "Scene", load_actions=True, verbose=False, load_scripts=True, async=False)
-#logic.LibLoad( base.DATA["GAMEPATH"] + "CONTENT\\Player.blend",      "Scene", load_actions=True, verbose=False, load_scripts=True, async=False)
-
-BLACK = base.SC_SCN.addObject("GFX_Black", base.SC_CAM, 0)
-BLACK.setParent(base.SC_CAM)
-BLACK.color = (0, 0, 0, 1)
+	BLACK = base.SC_SCN.addObject("GFX_Black", base.SC_CAM, 0)
+	BLACK.setParent(base.SC_CAM)
+	BLACK.color = (0, 0, 0, 1)
 
 logic.PLAYERCLASS = None
 
@@ -43,6 +45,9 @@ def SPAWN(cont):
 	owner = cont.owner
 	scene = owner.scene
 	spawn = owner.get("SPAWN", True)
+
+	if "CURRENT" not in logic.globalDict:
+		return
 
 	if "CLIP" in owner:
 		base.LEVEL["CLIP"] = owner["CLIP"]
@@ -89,6 +94,7 @@ class CorePlayer(base.CoreAdvanced):
 	Z_OFF = 0.2
 	EYE_H = 1.6
 	FOV = 90
+	SLOPE = 60
 	STATS = {}
 
 	def __init__(self):
@@ -462,11 +468,6 @@ class CorePlayer(base.CoreAdvanced):
 		if keymap.SYSTEM["SCREENSHOT"].tap() == True:
 			self.doScreenshot()
 
-		#if keymap.SYSTEM["LAUNCHER"].tap() == True:
-		#	self.doUpdate()
-		#	PATH = base.DATA["GAMEPATH"]
-		#	logic.startGame(PATH+"Launcher.blend")
-
 	def doCameraState(self):
 		camdata = self.data["CAMERA"]
 
@@ -591,7 +592,7 @@ class CorePlayer(base.CoreAdvanced):
 			ground = [rayOBJ, rayPNT, None]
 			#guide.worldPosition = rayPNT.copy()
 
-			if angle > 60:
+			if angle > self.SLOPE:
 				ground = None
 			if self.jump_state != "NONE":
 				if owner.worldPosition[2]-rayPNT[2] > (1+((angle/90)*0.3)):
@@ -678,16 +679,16 @@ class CorePlayer(base.CoreAdvanced):
 			dist = EDGEPNT[2]-owner.worldPosition[2]
 			offset = self.EYE_H-0.67
 
-			if dist > -1 and dist < 0.3:
+			if dist > -1 and dist < 0.3: # and self.jump_state == "NONE":
 				if self.motion["Move"].length > 0.01 and keymap.BINDS["PLR_JUMP"].tap() == True:
 					if self.jump_state == "NONE" and dist < -0.5:
 						pass
-					else:
+					elif owner.localLinearVelocity.length > -0.01:
 						owner.worldPosition = [EDGEPNT[0], EDGEPNT[1], EDGEPNT[2]+1]
 						self.jump_state = "FALLING"
 
 			if owner.localLinearVelocity[2] < 0 and self.rayorder == "GRAB" and self.jump_state == "FALLING":
-				if angle > 60 or "MOVE" in EDGEOBJ or abs(dist-offset) > 0.1:
+				if angle > self.SLOPE or "MOVE" in EDGEOBJ or abs(dist-offset) > 0.1:
 					self.rayorder = "GRAB"
 				else:
 					WP = owner.worldPosition
@@ -717,39 +718,37 @@ class CorePlayer(base.CoreAdvanced):
 
 		RAYHIT = owner.rayCast(rayto, rayfrom, dist, "", 1, 0, 0)
 
-		#RAYTEXT = ""
 		RAYCOLOR = (0,0,0,0.5)
 		RAYTARGPOS = [0.5, 0.5]
 
 		self.rayhit = None
 		self.rayvec = None
 
+		if self.active_weapon != None:
+			RAYCOLOR = (0,1,0,0.5)
+			self.data["HUD"]["Text"] = self.active_weapon.NAME
+
 		if RAYHIT[0] != None:
 			self.rayhit = RAYHIT  #(RAYOBJ, RAYPNT, RAYNRM)
 			self.rayvec = rayfrom.worldPosition.copy()-RAYHIT[1]
 
-			#raydot = RAYNRM.dot(rayvec)
-
 			RAYTARGPOS = scene.active_camera.getScreenPosition(RAYHIT[1])
-
-			#if raydot > 0.5 and self.rayvec.length < 1.0 and "GROUND" in RAYHIT[0]:
-			#	RAYTEXT = "GHOST JUMP"
-			#	if keymap.BINDS["ACTIVATE"].tap() == True:
-			#		owner.applyMovement((RAYHIT[2]*2), False)
 
 			if self.rayvec.length < range:
 				RAYOBJ = RAYHIT[0]
 
 				if "RAYCAST" in RAYOBJ:
-					RAYCOLOR = (0,1,0,1)
-					RAYOBJ["RAYCAST"] = self
+					if self.active_weapon != None:
+						RAYCOLOR = (1,0,0,1)
+					else:
+						RAYCOLOR = (0,1,0,1)
+						RAYOBJ["RAYCAST"] = self
 
 				if RAYOBJ.get("RAYNAME", None) != None:
 					self.data["HUD"]["Text"] = RAYOBJ["RAYNAME"]
 
 		self.data["HUD"]["Color"] = RAYCOLOR
 		self.data["HUD"]["Target"] = RAYTARGPOS
-		#self.data["HUD"]["Text"] = RAYTEXT
 
 	def doJump(self):
 		owner = self.objects["Root"]
@@ -794,6 +793,10 @@ class CorePlayer(base.CoreAdvanced):
 				owner.worldPosition[2] = ground[1][2]+(1+((angle/90)*0.3))
 
 				still = keymap.SYSTEM["ALT"].checkModifiers()
+				invck = 0
+				for slot in self.cls_dict:
+					if slot in ["Hip_L", "Hip_R"]:
+						invck = -5
 
 				if still == True:
 					vref = self.objects["VertRef"].getAxisVect((0,1,0))
@@ -819,13 +822,13 @@ class CorePlayer(base.CoreAdvanced):
 						if wall < 150:
 							self.doAnim(NAME="Walking", FRAME=(0,59), PRIORITY=3, MODE="LOOP", BLEND=10)
 						else:
-							self.doAnim(NAME="Jumping", FRAME=(0,0), PRIORITY=3, MODE="LOOP", BLEND=10)
+							self.doAnim(NAME="Jumping", FRAME=(0+invck,0+invck), PRIORITY=3, MODE="LOOP", BLEND=10)
 					else:
 						mx = self.data["SPEED"]*slope
 						if wall < 160:
 							self.doAnim(NAME="Running", FRAME=(0,39), PRIORITY=3, MODE="LOOP", BLEND=10)
 						else:
-							self.doAnim(NAME="Jumping", FRAME=(0,0), PRIORITY=3, MODE="LOOP", BLEND=10)
+							self.doAnim(NAME="Jumping", FRAME=(0+invck,0+invck), PRIORITY=3, MODE="LOOP", BLEND=10)
 
 					if self.ACCEL > 1:
 						mx = mx*(self.motion["Accel"]/self.ACCEL)
@@ -842,7 +845,7 @@ class CorePlayer(base.CoreAdvanced):
 				else:
 					self.motion["Accel"] = 0
 					self.motion["OldRot"] = None
-					self.doAnim(NAME="Jumping", FRAME=(0,0), PRIORITY=3, MODE="LOOP", BLEND=10)
+					self.doAnim(NAME="Jumping", FRAME=(0+invck,0+invck), PRIORITY=3, MODE="LOOP", BLEND=10)
 
 				#if ground[2] != None:
 				lgndpos = self.groundobj.worldOrientation*self.groundpos
@@ -934,7 +937,7 @@ class CorePlayer(base.CoreAdvanced):
 	def ST_Hanging(self):
 		owner = self.objects["Root"]
 
-		self.doAnim(NAME="Hanging", FRAME=(0,0), MODE="LOOP", BLEND=5)
+		self.doAnim(NAME="EdgeClimb", FRAME=(0,0), MODE="LOOP", BLEND=5)
 
 		owner.applyForce((0,0,-1*owner.scene.gravity[2]), False)
 		owner.worldPosition = self.rayorder[0]

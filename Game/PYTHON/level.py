@@ -79,7 +79,7 @@ def TELEPORT(cont):
 
 	for cls in owner["COLLIDE"]:
 		if cls == logic.PLAYERCLASS:
-			cls.data["HUD"]["Text"] = owner["RAYNAME"]
+			cls.data["HUD"]["Text"] = owner.get("RAYNAME", "TeleSphere")
 		if keymap.BINDS["ACTIVATE"].tap() == True:
 			if name in scene.objects:
 				target = scene.objects[name]
@@ -261,11 +261,30 @@ def SCALE_RAND(cont):
 
 	R = logic.getRandomFloat()
 
-	SIZE = owner.get("SIZE", 1.0)
-
 	X = owner.get("Xfac", None)
 	Y = owner.get("Yfac", None)
 	Z = owner.get("Zfac", None)
+	E = owner.get("Efac", None)
+
+	SIZE = owner.get("SIZE", None)
+
+	if SIZE == None:
+		if E == None:
+			owner["SIZE"] = 1.0
+		else:
+			owner["SIZE"] = owner.energy
+		return
+
+	SPD = owner.get("SPEED", 1)
+
+	owner["RAND_LIST"] = owner.get("RAND_LIST", [1.0]*SPD)
+	owner["RAND_LIST"].insert(0, R)
+	owner["RAND_LIST"].pop()
+
+	R = 0
+	for i in owner["RAND_LIST"]:
+		R += i
+	R = R/SPD
 
 	if X != None:
 		owner.localScale[0] = ((R*X) + (1-X))*SIZE
@@ -273,6 +292,9 @@ def SCALE_RAND(cont):
 		owner.localScale[1] = ((R*Y) + (1-Y))*SIZE
 	if Z != None:
 		owner.localScale[2] = ((R*Z) + (1-Z))*SIZE
+	if E != None:
+		R = R+(R/2)
+		owner.energy = ((R*E) + (1-E))*SIZE
 
 
 # Define Sky Tracking Functions
@@ -309,15 +331,19 @@ def SUN(cont):
 # Define Texture UV Panning Functions
 def UVT(cont):
 
-	if getattr(render, "HDR_FULL_FLOAT", "pass") != "pass":
-		return
-
 	owner = cont.owner
 	scene = owner.scene
 
+	mesh = owner.meshes[0]
+
+	if owner.get("MATID", None) == None:
+		owner["MATID"] = 0
+		for id in range(len(mesh.materials)):
+			if mesh.getMaterialName(id) == "MAWater":
+				owner["MATID"] = id
+
 	TX = owner["TX"]*0.001
 	TY = owner["TY"]*0.001
-	TZ = 0.0
 
 	owner["UVX"] += abs(TX)
 	owner["UVY"] += abs(TY)
@@ -329,7 +355,14 @@ def UVT(cont):
 		TY = -1
 		owner["UVY"] = 0.0
 
-	OBJMAT = ((1, 0, 0, TX), (0, 1, 0, TY), (0, 0, 1, TZ), (0, 0, 0, 0))
+	for v_id in range(mesh.getVertexArrayLength(owner["MATID"])):
+		vertex = mesh.getVertex(owner["MATID"], v_id)
 
-	owner.meshes[0].transformUV(0, OBJMAT, -1, -1)
+		vertex.u  += TX
+		vertex.u2 += TX
+		vertex.v  += TY
+		vertex.v2 += TY
+
+
+
 

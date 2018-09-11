@@ -96,8 +96,7 @@ class LAUNCHER:
 
 		self.STATS()
 		self.NEWLINE("Type 'help' for list of commands.  Use '-?' argument for info about a command.", 2, 1, (0.7,0.5,0.7,1))
-		self.NEWLINE("WARNING: State System Being Revised, Expect Oddities...", 2, 1, (1.0,0.5,0.0,1))
-		self.NEWLINE("NOTICE: Experimental Movement Controller, glitching or jittering may occur...", 2, 1, (1.0,0.5,0.0,1))
+		#self.NEWLINE("WARNING: State System Being Revised, Expect Oddities...", 2, 1, (1.0,0.5,0.0,1))
 
 	def STATS(self):
 		gfx = logic.globalDict["GRAPHICS"]
@@ -591,7 +590,7 @@ def PLAYER(args=[], kwa=None):
 
 	"""Change Player Class"""
 
-	PL = ["Actor"]
+	PL = ["Actor", "Raptor", "Sandstorm", "Wave"]
 
 	if kwa != None:
 		if logic.CLASS.que[0] == "CLASS":

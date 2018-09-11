@@ -27,12 +27,20 @@ from bge import logic
 import PYTHON.keymap as keymap
 import PYTHON.base as base
 
+#subt = [{"NAME":"Name A", "TIME":100, "COLOR":(0,1,1),
+#		"LINE":""},
+#]
+
 SPAWN = None
 CONTROL = None
+SUBTITLE = [None, 0, 0, []]
+COMPASS = None
+CINEMA = None
 
 logic.HUDCLASS = None
 
-logic.addScene("HUD", 1)
+if "CURRENT" in logic.globalDict:
+	logic.addScene("HUD", 1)
 
 
 def START(cont):
@@ -50,8 +58,14 @@ def START(cont):
 	black = scene.addObject(scene.objectsInactive["HUD.Black"], scene.active_camera, 0)
 	black.applyMovement((0,0,-4), False)
 
+	RES = logic.globalDict["GRAPHICS"]["Resolution"]
+	scene.objects["HUD.Cam.Compass"].setViewport(0, 0, RES[0], RES[1])
+	scene.objects["HUD.Cam.Compass"].useViewport = True
+
+
 def RUN(cont):
-	global SPAWN, CONTROL
+	scene = cont.owner.scene
+	global SPAWN, CONTROL, SUBTITLE, COMPASS, CINEMA
 
 	if SPAWN != None:
 		logic.HUDCLASS = SPAWN(CONTROL)
@@ -65,6 +79,93 @@ def RUN(cont):
 		#	print("FATAL RUNTIME ERROR: HUD")
 		#	print("	", ex)
 		#	cont.owner.endObject()
+
+	if CINEMA == False:
+		base.SC_HUD.active_camera = base.SC_HUD.objects["HUD.Main.Cam"]
+		base.SC_HUD.objects["HUD.Cam.Compass"].useViewport = True
+		CINEMA = None
+	elif CINEMA == True:
+		base.SC_HUD.active_camera = base.SC_HUD.objects["HUD.Cinema.Cam"]
+		base.SC_HUD.objects["HUD.Cam.Compass"].useViewport = False
+		CINEMA = None
+
+	if base.SC_SCN.suspended == True:
+		return
+
+	## COMPASS ##
+	cp_comp = scene.objects["HUD.Compass.Direction"]
+	cp_dist = scene.objects["HUD.Compass.Distance"]
+
+	if COMPASS == None:
+		target = [0, 10000, 0]
+	else:
+		target = COMPASS
+
+	if base.SC_SCN.active_camera.parent != None:
+		origin = base.SC_SCN.active_camera.parent
+		vd, vg, vl = origin.getVectTo(target)
+		vl = [vl[0], vl[1], vl[2]]
+	else:
+		origin = base.SC_SCN.active_camera
+		vd, vg, vl = origin.getVectTo(target)
+		vl = [vl[0], vl[2]*-1, vl[1]]
+
+	cp_comp.alignAxisToVect(vl, 1, 0.3)
+	cp_comp.alignAxisToVect((0,0,1), 2, 1.0)
+
+	if vd < 800:
+		cp_dist.color[1] = 1-(((vd*0.00125)*0.8)+0.2)
+	else:
+		cp_dist.color[1] = 0
+
+	## MANAGE SUBTITLES ##
+	fade = False
+	if SUBTITLE[0] != None:
+		OBJ = scene.objects["HUD.Main.Subtitles"]
+		CUR = SUBTITLE[0][SUBTITLE[2]]
+		if SUBTITLE[1] == 0:
+			name = scene.addObject("Subtitle", OBJ, 0)
+			name.color = (0, 0, 0, 0.5)
+			name.children["Subtitle.NameText"].color = (CUR["COLOR"][0], CUR["COLOR"][1], CUR["COLOR"][2], 0)
+			name.children["Subtitle.NameText"].text = CUR["NAME"]
+			name.children["Subtitle.LineText"].color = (0.8, 0.8, 0.8, 0)
+			name.children["Subtitle.LineText"].text = CUR["LINE"]
+			name.children["Subtitle.Line"].localScale[1] = len(CUR["LINE"].split("\n"))
+			SUBTITLE[3].append(name)
+		if len(SUBTITLE[3]) >= 2:
+			fade = True
+		SUBTITLE[1] += 1
+		if SUBTITLE[1] > abs(CUR["TIME"])+30:
+			SUBTITLE[1] = 0
+			SUBTITLE[2] += 1
+			if SUBTITLE[2] >= len(SUBTITLE[0]):
+				SUBTITLE[0] = None
+				SUBTITLE[2] = 0
+		elif SUBTITLE[1] <= 30:
+			alpha = SUBTITLE[1]/30
+			SUBTITLE[3][-1].color[3] = alpha*0.5
+			SUBTITLE[3][-1].children["Subtitle.Line"].color[3] = alpha*0.5
+			SUBTITLE[3][-1].children["Subtitle.NameText"].color[3] = alpha
+			SUBTITLE[3][-1].children["Subtitle.LineText"].color[3] = alpha
+			for box in SUBTITLE[3]:
+				hgt = 1.5+(SUBTITLE[3][-1].children["Subtitle.Line"].localScale[1])
+				box.localPosition[1] += hgt*(1/30)
+
+	elif len(SUBTITLE[3]) >= 1:
+		SUBTITLE[1] += 1
+		fade = True
+		if SUBTITLE[1] > 30:
+			SUBTITLE[1] = 0
+
+	if fade == True:
+		if SUBTITLE[1] == 30:
+			SUBTITLE[3].pop(0).endObject()
+		elif SUBTITLE[1] < 30:
+			alpha = 1-(SUBTITLE[1]/30)
+			SUBTITLE[3][0].color[3] = alpha*0.5
+			SUBTITLE[3][0].children["Subtitle.Line"].color[3] = alpha*0.5
+			SUBTITLE[3][0].children["Subtitle.NameText"].color[3] = alpha
+			SUBTITLE[3][0].children["Subtitle.LineText"].color[3] = alpha
 
 
 class CoreHUD(base.CoreObject):
@@ -127,6 +228,15 @@ class CoreHUD(base.CoreObject):
 				obj["Slot"].endObject()
 
 		self.itemdict = {}
+
+	def setSubtitle(self, subt):
+		for obj in SUBTITLE[3]:
+			obj.endObject()
+
+		SUBTITLE[0] = subt
+		SUBTITLE[1] = 0
+		SUBTITLE[2] = 0
+		SUBTITLE[3] = []
 
 	def setTargetPos(self, pos, color):
 		if pos == None:
@@ -346,6 +456,10 @@ class CoreHUD(base.CoreObject):
 		self.setStat("Energy", plr.data["ENERGY"], 14.1)
 
 		self.refreshItems()
+
+		if logic.globalDict["SCREENSHOT"]["Trigger"] == True:
+			frameobj = base.SC_HUD.addObject("HUD.FreezeFrame", base.SC_HUD.active_camera, 0)
+			frameobj.applyMovement((0,0,-8), True)
 
 		if keymap.SYSTEM["ESCAPE"].tap() == True:
 			self.doSceneSuspend()

@@ -39,31 +39,33 @@ SC_HUD = None
 SC_CAM = SC_SCN.active_camera
 
 if "CURRENT" not in logic.globalDict:
+	print("""\nPARTIALISM ERROR:\n\tIm going stop you right there...\n""")
 	SC_CAM.near = 0.1
 	SC_CAM.far = 0.2
 	settings.render.setBackgroundColor((0,0,0,1))
 	PATH = logic.expandPath("//../")
 	logic.startGame(PATH+"Launcher.blend")
 
-CURRENT = logic.globalDict["CURRENT"]
+else:
+	CURRENT = logic.globalDict["CURRENT"]
 
-CUR_LVL = CURRENT["Level"]+SC_SCN.name
-CUR_PRF = CURRENT["Profile"]
-CUR_PLR = CURRENT["Player"]
+	CUR_LVL = CURRENT["Level"]+SC_SCN.name
+	CUR_PRF = CURRENT["Profile"]
+	CUR_PLR = CURRENT["Player"]
 
-PROFILE = logic.globalDict["PROFILES"][CUR_PRF]
+	PROFILE = logic.globalDict["PROFILES"][CUR_PRF]
 
-if CUR_LVL not in PROFILE["LVLData"]:
-	print("Initializing Level Data...")
-	PROFILE["LVLData"][CUR_LVL] = {"SPAWN":[], "DROP":[], "CLIP":-100, "PLAYER":{}}
+	if CUR_LVL not in PROFILE["LVLData"]:
+		print("Initializing Level Data...")
+		PROFILE["LVLData"][CUR_LVL] = {"SPAWN":[], "DROP":[], "CLIP":-100, "PLAYER":{}}
 
-LEVEL = PROFILE["LVLData"][CUR_LVL]
+	LEVEL = PROFILE["LVLData"][CUR_LVL]
 
-DATA = logic.globalDict["DATA"]
+	DATA = logic.globalDict["DATA"]
 
-logic.UPDATELIST = []
+	logic.UPDATELIST = []
 
-settings.SETGFX(logic.globalDict["GRAPHICS"])
+	settings.SETGFX(logic.globalDict["GRAPHICS"])
 
 
 def LOAD(owner):
@@ -494,9 +496,9 @@ class CoreAdvanced(CoreObject):
 		char["WP_ACTIVE"] = ""
 		char["WP_TIMER"] = ""
 		char["WP_CLASS"] = ""
-		char.addDebugProperty("WP_ACTIVE", True)
-		char.addDebugProperty("WP_TIMER", True)
-		char.addDebugProperty("WP_CLASS", True)
+		#char.addDebugProperty("WP_ACTIVE", True)
+		#char.addDebugProperty("WP_TIMER", True)
+		#char.addDebugProperty("WP_CLASS", True)
 
 	def buildInventory(self):
 		if "INVENTORY" in self.data:
@@ -628,7 +630,7 @@ class CoreAdvanced(CoreObject):
 			char["WP_CLASS"] = "None"+str(dict["ID"])
 
 	class WeaponFallback:
-		NAME = "Fallback_WP"
+		NAME = ""
 
 		def __init__(self, plr):
 			self.owning_player = plr

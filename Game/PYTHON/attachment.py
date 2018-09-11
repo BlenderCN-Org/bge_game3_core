@@ -112,6 +112,7 @@ class CoreAttachment(base.CoreObject):
 		box["RAYNAME"] = self.NAME
 
 		self.box = box
+		self.box_timer = 1
 		return box
 
 	def assignToPlayer(self):
@@ -150,8 +151,9 @@ class CoreAttachment(base.CoreObject):
 			obj = self.objects["Root"]
 
 		obj.setParent(socket)
-		obj.localPosition = offset
-		obj.localOrientation = self.createMatrix()
+		if offset != None:
+			obj.localPosition = offset
+			obj.localOrientation = self.createMatrix()
 		obj.worldScale = (1,1,1)
 
 	def equipItem(self, cls):
@@ -201,7 +203,7 @@ class CoreAttachment(base.CoreObject):
 		self.box.worldPosition[1] = self.data["POS"][1]
 		self.box.worldPosition[2] = self.data["POS"][2]
 
-		self.checkStability(offset=self.SCALE[2])
+		#self.checkStability(offset=self.SCALE[2])
 
 		self.active_state = self.ST_Box
 		self.owning_slot = None
@@ -234,15 +236,19 @@ class CoreAttachment(base.CoreObject):
 		obj, pnt, nrm = box.rayCast(rayto, None, 10000, "", 1, 1, 0)
 
 		if obj != None:
-			box.worldPosition[2] = pnt[2]+(offset*0.375)
+			box.worldPosition[2] = pnt[2]+(offset*0.5)
 		else:
 			obj, pnt, nrm = box.rayCast(rayto, None, 10000, "", 1, 1, 0)
 			if obj != None:
-				box.worldPosition[2] = pnt[2]+(offset*0.375)
+				box.worldPosition[2] = pnt[2]+(offset*0.5)
 
 	## STATE BOX ##
 	def ST_Box(self):
-		self.checkStability(offset=self.SCALE[2])
+		if self.box_timer == 0:
+			self.checkStability(offset=self.SCALE[2])
+		else:
+			self.box_timer -= 1
+			return
 
 		if self.checkClicked(self.box) == True:
 			self.equipItem(self.box["RAYCAST"])
@@ -258,6 +264,16 @@ class CoreAttachment(base.CoreObject):
 	def ST_Idle(self):
 		pass
 
+	def RUN(self):
+		if self.owning_player != None and self.box == None:
+			if self.owning_player.objects["Root"] == None:
+				return
+		self.runPre()
+		self.runStates()
+		self.runPost()
+		self.clearRayProps()
+		self.stateSwitcher()
+
 	def stateSwitcher(self):
 		owner = self.objects["Root"]
 		state = owner["DICT"]["Equiped"]
@@ -272,14 +288,14 @@ class CoreAttachment(base.CoreObject):
 		if self.box != None:
 			self.box["RAYCAST"] = None
 
-		self.stateSwitcher()
 
 
 class JetPack(CoreAttachment):
 
-	NAME = "JetPack"
+	NAME = "Raptor's JetPack"
 	SLOTS = ["Back"]
-	OFFSET = (0, 0, 0)
+	SCALE = 0.74
+	OFFSET = (0, 0.03, 0.1)
 	ENABLE = True
 	POWER = 16
 	FUEL = 10000
@@ -381,9 +397,9 @@ class Firefly(CoreAttachment):
 	NAME = "Firefly JetPack"
 	SLOTS = ["Back"]
 	ENABLE = False
+	SCALE = 1.2
 	OFFSET = (0, -0.05, 0.1)
-	SCALE = 1.6
-	POWER = 10
+	POWER = 9.8
 	FUEL = 100000
 
 	def defaultData(self):
@@ -490,5 +506,15 @@ class Firefly(CoreAttachment):
 
 			self.objects["Fire_L"].localScale = (1,1,fire)
 			self.objects["Fire_R"].localScale = (1,1,fire)
+
+
+
+class BackPack(CoreAttachment):
+
+	NAME = "School BackPack"
+	SLOTS = ["Back"]
+	ENABLE = False
+	SCALE = 0.4
+	OFFSET = (0, 0.05, 0.1)
 
 
