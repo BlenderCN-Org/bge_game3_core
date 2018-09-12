@@ -110,7 +110,7 @@ class CorePlayer(base.CoreAdvanced):
 
 		self.active_pre = []
 		self.active_state = self.ST_Walking
-		self.active_post = []
+		self.active_post = [self.PS_Recharge]
 
 		self.jump_state = "NONE"
 		self.jump_timer = 0
@@ -123,7 +123,7 @@ class CorePlayer(base.CoreAdvanced):
 
 		self.motion = {"Move":self.createVector(2), "Rotate":self.createVector(3), "Climb":0, "Accel":0}
 
-		self.data = {"HEALTH":100, "ENERGY":100, "SPEED":0.1, "JUMP":6, "RUN":True}
+		self.data = {"HEALTH":100, "ENERGY":100, "SPEED":0.1, "JUMP":6, "RUN":True, "RECHARGE":0.1}
 		self.data["CAMERA"] = {"State":3, "Orbit":True, "Zoom":4, "Dist":4, "Range":(1,6), "FOV":[self.FOV, 90], "ZR":[0,1,0], "XR":0}
 		self.data["HUD"] = {"Text":"", "Color":(0,0,0,0.5), "Target":None, "Locked":None}
 
@@ -771,15 +771,53 @@ class CorePlayer(base.CoreAdvanced):
 
 		self.doAnim(NAME="Jumping", FRAME=(0,20), PRIORITY=2, MODE="PLAY", BLEND=10)
 
+	def doCrouch(self, state):
+		if state == True:
+			self.objects["Root"].localScale[2] = 0.25
+			self.objects["Character"].localScale[2] = 4
+			self.active_state = self.ST_Crouch
+		elif state == False:
+			self.objects["Root"].localScale[2] = 1
+			self.objects["Character"].localScale[2] = 1
+			self.active_state = self.ST_Walking
+
 	## INIT STATE ##
 	def ST_Startup(self):
 		if self.jump_state == "FLYING" and self.objects["Root"] != None:
 			self.ST_Advanced_Set()
 
+	## POST ##
+	def PS_Recharge(self):
+		self.data["ENERGY"] += self.data["RECHARGE"]
+		if self.data["ENERGY"] > 100:
+			self.data["ENERGY"] = 100
+
 	## WALKING STATE ##
+	def ST_Crouch(self):
+		scene = base.SC_SCN
+		owner = self.objects["Root"]
+		char = self.objects["Character"]
+
+		ground, angle, slope = self.checkGround()
+
+		owner.applyForce((0,0,-1*scene.gravity[2]), False)
+		owner.worldPosition[2] = ground[1][2]+0.6
+
+		self.doAnim(NAME="Crouch", FRAME=(0,0), PRIORITY=3, MODE="LOOP", BLEND=10)
+
+		owner.alignAxisToVect((0,0,1), 2, 1.0)
+
+		self.doInteract()
+		self.checkStability()
+		self.weaponManager()
+
+		if keymap.BINDS["PLR_DUCK"].active() != True:
+			self.doCrouch(False)
+
 	def ST_Walking(self):
 		scene = base.SC_SCN
 		owner = self.objects["Root"]
+		char = self.objects["Character"]
 
 		move = self.motion["Move"].normalized()
 
@@ -805,7 +843,10 @@ class CorePlayer(base.CoreAdvanced):
 					dot = 0.2+((dot**2)*0.3)
 					owner.alignAxisToVect(vref, 1, dot)
 
-				if keymap.BINDS["PLR_JUMP"].tap() == True:
+				if keymap.BINDS["PLR_DUCK"].active() == True:
+					self.doCrouch(True)
+
+				elif keymap.BINDS["PLR_JUMP"].tap() == True:
 					self.jump_state = "JUMP"
 					self.jump_timer = 0
 					self.doJump()
@@ -910,10 +951,6 @@ class CorePlayer(base.CoreAdvanced):
 		self.doInteract()
 		self.checkStability()
 		self.weaponManager()
-
-		self.data["ENERGY"] += 0.1
-		if self.data["ENERGY"] > 100:
-			self.data["ENERGY"] = 100
 
 		if keymap.BINDS["TOGGLEMODE"].tap() == True:
 			self.ST_Advanced_Set()
