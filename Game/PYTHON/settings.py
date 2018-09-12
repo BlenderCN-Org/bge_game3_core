@@ -159,7 +159,7 @@ def triggerPrintScreen(mode=True):
 
 
 def SCREENSHOT():
-	path = ospath.normpath(logic.globalDict["DATA"]["GAMEPATH"]+"../../../Shared Pictures/Rendered Scenes/Screenshots")+"\\"
+	path = ospath.normpath(logic.globalDict["DATA"]["GAMEPATH"]+"SCREENSHOTS")+"\\"
 
 	if "SCREENSHOT" not in logic.globalDict:
 		dict = LoadJSON(path+"marker.json")
