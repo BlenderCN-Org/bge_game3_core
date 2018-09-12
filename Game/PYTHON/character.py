@@ -7,10 +7,10 @@ import PYTHON.player as player
 import PYTHON.HUD as HUD
 
 
-class Raptor(player.CorePlayer):
+class RedPlayer(player.CorePlayer):
 
-	NAME = "Raptor"
-	MESH = "Raptor"
+	NAME = "Red"
+	MESH = "Red"
 	CLASS = "Standard"
 	WP_TYPE = "MELEE"
 	STATS = {"SPEED":0.1, "JUMP":6}
@@ -119,10 +119,10 @@ class Raptor(player.CorePlayer):
 		self.objects["VertRef"].worldOrientation = slowQ.to_matrix()
 
 
-class Sandstorm(player.CorePlayer):
+class BluePlayer(player.CorePlayer):
 
-	NAME = "Sandstorm"
-	MESH = "Sandstorm"
+	NAME = "Blue"
+	MESH = "Blue"
 	CLASS = "Standard"
 	WP_TYPE = "MELEE"
 	STATS = {"SPEED":0.12, "JUMP":8}
@@ -234,10 +234,10 @@ class Sandstorm(player.CorePlayer):
 				self.ST_Advanced_Set(wall)
 
 
-class WaveBender(player.CorePlayer):
+class PurplePlayer(player.CorePlayer):
 
-	NAME = "Wave Bender"
-	MESH = "Wave"
+	NAME = "Purple"
+	MESH = "Purple"
 	CLASS = "Standard"
 	WP_TYPE = "MELEE"
 	STATS = {"SPEED":0.09, "JUMP":5}
