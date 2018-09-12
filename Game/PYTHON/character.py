@@ -255,9 +255,12 @@ class WaveBender(player.CorePlayer):
 
 	def ST_Advanced_Set(self):
 		scene = player.base.SC_SCN
+
 		mesh = self.objects["Mesh"]
-		mesh_aoe = scene.objectsInactive["Wave.Mesh.aoe"].meshes[0]
-		mesh_vis = scene.objectsInactive["Wave.Mesh"].meshes[0]
+		name = self.objects["Character"].name
+
+		mesh_aoe = scene.objectsInactive[name+".Mesh.aoe"].meshes[0]
+		mesh_vis = scene.objectsInactive[name+".Mesh"].meshes[0]
 
 		if self.wave_vis == True:
 			mesh.replaceMesh(mesh_aoe)
