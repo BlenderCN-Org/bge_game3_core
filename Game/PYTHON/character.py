@@ -311,8 +311,8 @@ class PurplePlayer(player.CorePlayer):
 			owner.worldPosition = point
 
 		else:
-			self.doCrouch( keymap.BINDS["PLR_DUCK"].active() )
 			self.ST_Walking_Set()
+			self.doCrouch( keymap.BINDS["PLR_DUCK"].active() )
 
 	def ST_Walking_Set(self):
 		self.objects["Character"].setVisible(True, True)
