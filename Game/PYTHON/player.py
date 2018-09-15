@@ -816,11 +816,8 @@ class CorePlayer(base.CoreAdvanced):
 		local = posOLD-posNEW
 		offset = self.groundori[0]*local
 
-		#owner.applyMovement((pos[0], pos[1], 0), False)
 		owner.worldPosition[0] += offset[0]
 		owner.worldPosition[1] += offset[1]
-
-		#self.groundpos[0] = self.groundpos[0].copy()
 
 	## POST ##
 	def PS_Recharge(self):
@@ -921,12 +918,7 @@ class CorePlayer(base.CoreAdvanced):
 						if self.motion["Accel"] < self.ACCEL:
 							self.motion["Accel"] += 1
 
-					#if ground[2] != None:
 					mref = dref.copy()*mx
-					#T = self.groundobj.worldOrientation.inverted()*mref
-					#self.groundpos[0] += T
-					#else:
-					#owner.applyMovement((0, mx, 0), True)
 					owner.worldPosition[0] += mref[0]
 					owner.worldPosition[1] += mref[1]
 
@@ -934,16 +926,6 @@ class CorePlayer(base.CoreAdvanced):
 					self.motion["Accel"] = 0
 					self.motion["OldRot"] = None
 					self.doAnim(NAME="Jumping", FRAME=(0+invck,0+invck), PRIORITY=3, MODE="LOOP", BLEND=10)
-
-				#if ground[2] != None:
-				#lgndpos = self.groundobj.worldOrientation*self.groundpos
-				#wgndpos = lgndpos + self.groundobj.worldPosition.copy()
-				#gndoffset = wgndpos-ground[1]
-				#gndoffset[2] = 0
-				#if gndoffset.length > 0.2:
-				#	self.groundobj = None
-				#else:
-				#	owner.applyMovement((gndoffset[0], gndoffset[1], 0), False)
 
 			elif self.jump_state == "JUMP":
 				self.jump_timer += 1
