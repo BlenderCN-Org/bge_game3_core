@@ -27,16 +27,6 @@ from bge import logic
 import PYTHON.keymap as keymap
 import PYTHON.base as base
 
-#subt = [{"NAME":"Name A", "TIME":100, "COLOR":(0,1,1),
-#		"LINE":""},
-#]
-
-SPAWN = None
-CONTROL = None
-SUBTITLE = [None, 0, 0, []]
-COMPASS = None
-CINEMA = None
-
 logic.HUDCLASS = None
 
 if "CURRENT" in logic.globalDict:
@@ -55,201 +45,255 @@ def START(cont):
 
 	logic.LibLoad( base.DATA["GAMEPATH"]+"CONTENT\\Game Assets HUD.blend", "Scene", load_actions=True, verbose=False, load_scripts=True, async=False)
 
-	black = scene.addObject(scene.objectsInactive["HUD.Black"], scene.active_camera, 0)
-	black.applyMovement((0,0,-4), False)
-
-	RES = logic.globalDict["GRAPHICS"]["Resolution"]
-	scene.objects["HUD.Cam.Compass"].setViewport(0, 0, RES[0], RES[1])
-	scene.objects["HUD.Cam.Compass"].useViewport = True
+	logic.HUDCLASS.doBlackOut()
 
 
 def RUN(cont):
 	scene = cont.owner.scene
-	global SPAWN, CONTROL, SUBTITLE, COMPASS, CINEMA
-
-	if SPAWN != None:
-		logic.HUDCLASS = SPAWN(CONTROL)
-		SPAWN = None
-		return
 
 	if logic.HUDCLASS != None and logic.PLAYERCLASS != None:
-		#try:
 		logic.HUDCLASS.RUN()
-		#except Exception as ex:
-		#	print("FATAL RUNTIME ERROR: HUD")
-		#	print("	", ex)
-		#	cont.owner.endObject()
 
-	if CINEMA == False:
-		base.SC_HUD.active_camera = base.SC_HUD.objects["HUD.Main.Cam"]
-		base.SC_HUD.objects["HUD.Cam.Compass"].useViewport = True
-		CINEMA = None
-	elif CINEMA == True:
-		base.SC_HUD.active_camera = base.SC_HUD.objects["HUD.Cinema.Cam"]
-		base.SC_HUD.objects["HUD.Cam.Compass"].useViewport = False
-		CINEMA = None
+	#if CINEMA == False:
+	#	base.SC_HUD.active_camera = base.SC_HUD.objects["HUD.Main.Cam"]
+	#	base.SC_HUD.objects["HUD.Cam.Compass"].useViewport = True
+	#	CINEMA = None
+	#elif CINEMA == True:
+	#	base.SC_HUD.active_camera = base.SC_HUD.objects["HUD.Cinema.Cam"]
+	#	base.SC_HUD.objects["HUD.Cam.Compass"].useViewport = False
+	#	CINEMA = None
 
 	if base.SC_SCN.suspended == True:
 		return
 
-	## COMPASS ##
-	cp_comp = scene.objects["HUD.Compass.Direction"]
-	cp_dist = scene.objects["HUD.Compass.Distance"]
-
-	if COMPASS == None:
-		target = [0, 10000, 0]
-	else:
-		target = COMPASS
-
-	if base.SC_SCN.active_camera.parent != None:
-		origin = base.SC_SCN.active_camera.parent
-		vd, vg, vl = origin.getVectTo(target)
-		vl = [vl[0], vl[1], vl[2]]
-	else:
-		origin = base.SC_SCN.active_camera
-		vd, vg, vl = origin.getVectTo(target)
-		vl = [vl[0], vl[2]*-1, vl[1]]
-
-	cp_comp.alignAxisToVect(vl, 1, 0.3)
-	cp_comp.alignAxisToVect((0,0,1), 2, 1.0)
-
-	if vd < 800:
-		cp_dist.color[1] = 1-(((vd*0.00125)*0.8)+0.2)
-	else:
-		cp_dist.color[1] = 0
-
-	## MANAGE SUBTITLES ##
-	fade = False
-	if SUBTITLE[0] != None:
-		OBJ = scene.objects["HUD.Main.Subtitles"]
-		CUR = SUBTITLE[0][SUBTITLE[2]]
-		if SUBTITLE[1] == 0:
-			name = scene.addObject("Subtitle", OBJ, 0)
-			name.color = (0, 0, 0, 0.5)
-			name.children["Subtitle.NameText"].color = (CUR["COLOR"][0], CUR["COLOR"][1], CUR["COLOR"][2], 0)
-			name.children["Subtitle.NameText"].text = CUR["NAME"]
-			name.children["Subtitle.LineText"].color = (0.8, 0.8, 0.8, 0)
-			name.children["Subtitle.LineText"].text = CUR["LINE"]
-			name.children["Subtitle.Line"].localScale[1] = len(CUR["LINE"].split("\n"))
-			SUBTITLE[3].append(name)
-		if len(SUBTITLE[3]) >= 2:
-			fade = True
-		SUBTITLE[1] += 1
-		if SUBTITLE[1] > abs(CUR["TIME"])+30:
-			SUBTITLE[1] = 0
-			SUBTITLE[2] += 1
-			if SUBTITLE[2] >= len(SUBTITLE[0]):
-				SUBTITLE[0] = None
-				SUBTITLE[2] = 0
-		elif SUBTITLE[1] <= 30:
-			alpha = SUBTITLE[1]/30
-			SUBTITLE[3][-1].color[3] = alpha*0.5
-			SUBTITLE[3][-1].children["Subtitle.Line"].color[3] = alpha*0.5
-			SUBTITLE[3][-1].children["Subtitle.NameText"].color[3] = alpha
-			SUBTITLE[3][-1].children["Subtitle.LineText"].color[3] = alpha
-			for box in SUBTITLE[3]:
-				hgt = 1.5+(SUBTITLE[3][-1].children["Subtitle.Line"].localScale[1])
-				box.localPosition[1] += hgt*(1/30)
-
-	elif len(SUBTITLE[3]) >= 1:
-		SUBTITLE[1] += 1
-		fade = True
-		if SUBTITLE[1] > 30:
-			SUBTITLE[1] = 0
-
-	if fade == True:
-		if SUBTITLE[1] == 30:
-			SUBTITLE[3].pop(0).endObject()
-		elif SUBTITLE[1] < 30:
-			alpha = 1-(SUBTITLE[1]/30)
-			SUBTITLE[3][0].color[3] = alpha*0.5
-			SUBTITLE[3][0].children["Subtitle.Line"].color[3] = alpha*0.5
-			SUBTITLE[3][0].children["Subtitle.NameText"].color[3] = alpha
-			SUBTITLE[3][0].children["Subtitle.LineText"].color[3] = alpha
-
-
 class CoreHUD(base.CoreObject):
 
-	MESH = "CoreHUD"
+	UPDATE = False
 
-	def __init__(self, control):
-		scene = base.SC_HUD
+	def __init__(self):
+		owner = logic.getCurrentController().owner
 
-		self.addobj = scene.objects["HUD.START"]
+		owner["Class"] = self
 
-		obj = scene.addObject(scene.objectsInactive[self.MESH], self.addobj, 0)
+		self.objects = {"Root":owner}
 
-		self.objects = {"Root":obj}
+		self.data = self.defaultData()
 
-		self.itemdict = {}
-		self.weaptype = ""
+		self.active_pre = []
+		self.active_state = self.ST_Active
+		self.active_post = []
 
-		self.active_state = self.ST_HUD
+		self.findObjects(owner)
 
-		self.findObjects(obj)
-		self.doLoad()
 		self.ST_Startup()
 
-		self.setControl(control)
+	def findObjects(self, obj):
+		dict = self.objects
+		group = []
+		list = []
 
-	def ST_Startup(self):
-		self.boot_timer = 0
-		prf = logic.globalDict["CURRENT"]["Profile"]
-		if "_" in prf:
-			prf = "None"
-		self.objects["Profile"].text = prf
-		self.objects["RayText"].text = "."
-		self.objects["Target"].localPosition = (0, 0, 64)
-		self.objects["Items"].localPosition = (-31, 8, 0)
+		for child in obj.childrenRecursive:
+			split = child.name.split(".")
+			name = None
 
-	def doLoad(self):
-		if self not in logic.UPDATELIST:
-			logic.UPDATELIST.append(self)
+			if len(split) > 1:
+				name = split[1]
 
-	def doUpdate(self):
-		scene = base.SC_HUD
-		obj = scene.addObject(scene.objectsInactive["HUD.Loading"], scene.active_camera, 0)
-		obj.applyMovement((0,0,-3), False)
+			if name != None and name in list:
+				if name not in group:
+					group.append(name)
+
+			if len(split) > 2:
+				dict[split[1]] = {}
+				if split[1] not in group:
+					group.append(split[1])
+
+			if name != None:
+				list.append(name)
+
+		for child in obj.childrenRecursive:
+			split = child.name.split(".")
+			if len(split) > 1:
+				if split[1] in group:
+					if len(split) <= 2:
+						dict[split[1]][""] = child
+					elif split[2] != "":
+						dict[split[1]][split[2]] = child
+				else:
+					dict[split[1]] = child
 
 	def destroy(self):
 		self.objects["Root"].endObject()
 		self.objects["Root"] = None
 
-	def setControl(self, control):
-		self.control = control
-		self.objects["Object"].text = control.NAME
-		self.objects["Object"].worldPosition[0] = 32-((len(control.NAME)*0.42)+1)
 
-		for slot in self.itemdict:
-			obj = self.itemdict[slot]
+class CoreCompass(CoreHUD):
 
-			obj["Icon"].endObject()
-			if obj["Slot"] != None:
-				obj["Slot"].endObject()
+	def ST_Startup(self):
+		RES = logic.globalDict["GRAPHICS"]["Resolution"]
+		self.objects["Cam"].setViewport(0, 0, RES[0], RES[1])
+		self.compass = None
 
-		self.itemdict = {}
+	def ST_Active(self):
+		cp_comp = self.objects["Direction"]
+		cp_dist = self.objects["Distance"]
 
-	def setSubtitle(self, subt):
-		for obj in SUBTITLE[3]:
+		if self.compass == None:
+			target = [0, 10000, 0]
+		else:
+			target = self.compass
+
+		if base.SC_SCN.active_camera.parent != None:
+			origin = base.SC_SCN.active_camera.parent
+			vd, vg, vl = origin.getVectTo(target)
+			vl = [vl[0], vl[1], vl[2]]
+		else:
+			origin = base.SC_SCN.active_camera
+			vd, vg, vl = origin.getVectTo(target)
+			vl = [vl[0], vl[2]*-1, vl[1]]
+
+		cp_comp.alignAxisToVect(vl, 1, 0.3)
+		cp_comp.alignAxisToVect((0,0,1), 2, 1.0)
+
+		if vd < 800:
+			cp_dist.color[1] = 1-(((vd*0.00125)*0.8)+0.2)
+		else:
+			cp_dist.color[1] = 0
+
+
+class CoreAnnotation(CoreHUD):
+
+	def ST_Startup(self):
+		self.textlist = None
+		self.objlist = []
+		self.timer = 0
+		self.current = 0
+
+		RES = logic.globalDict["GRAPHICS"]["Resolution"]
+		self.objects["Cam"].setViewport(0, 0, RES[0], RES[1])
+		self.objects["Cam"].useViewport = True
+
+	def destroy(self):
+		self.objects["Cam"].useViewport = False
+
+		for obj in self.objlist:
 			obj.endObject()
 
-		SUBTITLE[0] = subt
-		SUBTITLE[1] = 0
-		SUBTITLE[2] = 0
-		SUBTITLE[3] = []
+		self.objects["Root"].endObject()
+		self.objects["Root"] = None
 
-	def setTargetPos(self, pos, color):
+	def setSubtitle(self, subt):
+		for obj in self.objlist:
+			obj.endObject()
+
+		self.textlist = subt
+		self.timer = 0
+		self.current = 0
+		self.objlist = []
+
+	def getChild(self, obj, name):
+		child = obj.children["UI_Annotation"+name]
+		return child
+
+	def ST_Active(self):
+		fade = False
+		if self.textlist != None:
+			OBJ = self.objects["Root"]
+			CUR = self.textlist[self.current]
+
+			if self.timer == 0:
+				root = scene.addObject("UI_Annotation", OBJ, 0)
+				self.getChild(root, "NameText").color = (CUR["COLOR"][0], CUR["COLOR"][1], CUR["COLOR"][2], 0)
+				self.getChild(root, "NameText").text = CUR["NAME"]
+				self.getChild(root, "NameMesh").color = (0, 0, 0, 0.5)
+				self.getChild(root, "LineText").color = (0.8, 0.8, 0.8, 0)
+				self.getChild(root, "LineText").text = CUR["LINE"]
+				self.getChild(root, "LineMesh").localScale[1] = len(CUR["LINE"].split("\n"))
+
+				self.objlist.append(root)
+
+			if len(self.objlist) >= 2:
+				fade = True
+
+			self.timer += 1
+
+			if self.timer > abs(CUR["TIME"])+30:
+				self.timer = 0
+				self.current += 1
+				if self.current >= len(self.textlist):
+					self.textlist = None
+					self.current = 0
+
+			elif self.timer <= 30:
+				alpha = self.timer/30
+				root = self.objlist[-1]
+				self.getChild(root, "NameMesh").color[3] = alpha*0.5
+				self.getChild(root, "NameText").color[3] = alpha
+				self.getChild(root, "LineMesh").color[3] = alpha*0.5
+				self.getChild(root, "LineText").color[3] = alpha
+
+				for box in self.objlist:
+					hgt = 1.5+(self.getChild(root, "LineMesh").localScale[1])
+					box.localPosition[1] += hgt*(1/30)
+
+		elif len(self.objlist) >= 1:
+			self.timer += 1
+			fade = True
+			if self.timer > 30:
+				self.timer = 0
+
+		if fade == True:
+			if self.timer == 30:
+				self.objlist.pop(0).endObject()
+			elif self.timer < 30:
+				alpha = 1-(self.timer/30)
+				root = self.objlist[0]
+				self.getChild(root, "NameMesh").color[3] = alpha*0.5
+				self.getChild(root, "NameText").color[3] = alpha
+				self.getChild(root, "LineMesh").color[3] = alpha*0.5
+				self.getChild(root, "LineText").color[3] = alpha
+
+
+class CoreInteract(CoreHUD):
+
+	def ST_Startup(self):
+		self.boot_timer = 0
+
+	def ST_Active(self, plr):
+
+		text = plr.data["HUD"]["Text"]
+		color = plr.data["HUD"]["Color"]
+		pos = plr.data["HUD"]["Target"]
+		lock = plr.data["HUD"].get("Locked", None)
+
+		if lock != None:
+			text = "Locked!"
+			color = (1,0,0,1)
+			plr.data["HUD"]["Locked"] = None
+
+		if self.boot_timer < 30:
+			list = [". "]*int(self.boot_timer/3)
+			text = "".join(list)
+			self.boot_timer += 1
+
+		self.objects["Text"].text = text
+
+		plr.data["HUD"]["Text"] = ""
+
 		if pos == None:
-			x = 0
-			y = 0
-			z = 64
+			self.objects["Target"].localPosition = (0, 0, 64)
 		else:
-			x = (pos[0]-0.5)*2
-			y = (0.5-pos[1])*2
-			z = 0
+			self.objects["Target"].localPosition = ((pos[0]-0.5)*64, (0.5-pos[1])*36, 0)
 
-		self.objects["Target"].localPosition = (x*32, y*18, z)
 		self.objects["Target"].color = color
+
+
+class CoreStats(CoreHUD):
+
+	def ST_Active(self, plr):
+
+		self.setStat("Health", plr.data["HEALTH"], 15)
+		self.setStat("Energy", plr.data["ENERGY"], 14.1)
 
 	def setStat(self, key, value, offset):
 		bar = self.objects[key]
@@ -269,10 +313,18 @@ class CoreHUD(base.CoreObject):
 		txt.localPosition[0] = offset*stat
 		txt.text = str(int(round(value, 0)))
 
-	def setWeaponType(self, weap):
-		mode = self.objects["WeapMode"]
-		wpid = self.objects["WeapID"]
-		stat = self.objects["WeapStat"]
+
+class CoreWeapons(CoreHUD):
+
+	def ST_Startup(self):
+		self.weaptype = ""
+
+	def ST_Active(self, plr):
+		weap = plr.data["WPDATA"]
+
+		mode = self.objects["Mode"]
+		wpid = self.objects["ID"]
+		stat = self.objects["Stat"]
 
 		type = weap["CURRENT"]+str(weap["ACTIVE"]!="NONE")
 		wheel = weap["WHEEL"][weap["CURRENT"]]
@@ -303,11 +355,29 @@ class CoreHUD(base.CoreObject):
 			wpid.text = str(ID)
 			SLOT = wheel["LIST"][ID]
 
-		stat.text = str(self.control.cls_dict[SLOT].data["HUD"]["Stat"])
+		stat.text = str(plr.cls_dict[SLOT].data["HUD"]["Stat"])
 		stat.worldPosition[0] = (len(stat.text)*-0.59)-2
 
-	def refreshItems(self):
-		plr = self.control
+
+class CoreInventory(CoreHUD):
+
+	def ST_Startup(self):
+		self.itemdict = {}
+
+	def destroy(self):
+		for slot in self.itemdict:
+			obj = self.itemdict[slot]
+
+			obj["Icon"].endObject()
+			if obj["Slot"] != None:
+				obj["Slot"].endObject()
+
+		self.itemdict = {}
+
+		self.objects["Root"].endObject()
+		self.objects["Root"] = None
+
+	def ST_Active(self, plr):
 		gc = []
 
 		for slot in plr.data["INVSLOT"]:
@@ -414,6 +484,33 @@ class CoreHUD(base.CoreObject):
 
 		return iconobj, borderobj
 
+
+class SceneManager:
+
+	def __init__(self, plr):
+		self.active_state = self.ST_Wait
+		self.active_hud = []
+		self.blackobj = None
+
+		self.setControl(plr)
+
+	def doLoad(self):
+		if self not in logic.UPDATELIST:
+			logic.UPDATELIST.append(self)
+
+	def doUpdate(self):
+		scene = base.SC_HUD
+		obj = scene.addObject(scene.objectsInactive["HUD.Loading"], scene.active_camera, 0)
+		obj.applyMovement((0,0,-3), False)
+
+	def setControl(self, plr):
+		self.control = plr
+		self.active_state = self.ST_Wait
+
+	def doBlackOut(self):
+		self.blackobj = base.SC_HUD.addObject("HUD.Black", base.SC_HUD.active_camera, 0)
+		self.blackobj.applyMovement((0,0,-4), False)
+
 	def doSceneSuspend(self):
 		self.MENU = MenuPause()
 		keymap.MOUSELOOK.center()
@@ -427,35 +524,14 @@ class CoreHUD(base.CoreObject):
 		base.SC_SCN.resume()
 		self.active_state = self.ST_HUD
 
+	def ST_Wait(self):
+		if self.control != None:
+			if self.blackobj != None:
+				self.blackobj.endObject()
+				self.blackobj = None
+			self.active_state = self.ST_HUD
+
 	def ST_HUD(self):
-		plr = self.control
-
-		text = plr.data["HUD"]["Text"]
-		color = plr.data["HUD"]["Color"]
-		pos = plr.data["HUD"]["Target"]
-		lock = plr.data["HUD"].get("Locked", None)
-
-		if lock != None:
-			text = "Locked!"
-			color = (1,0,0,1)
-			plr.data["HUD"]["Locked"] = None
-
-		if self.boot_timer < 30:
-			list = [". "]*int(self.boot_timer/3)
-			text = "".join(list)
-			self.boot_timer += 1
-
-		self.objects["RayText"].text = text
-
-		plr.data["HUD"]["Text"] = ""
-
-		self.setTargetPos(pos, color)
-		self.setWeaponType(plr.data["WPDATA"])
-
-		self.setStat("Health", plr.data["HEALTH"], 15)
-		self.setStat("Energy", plr.data["ENERGY"], 14.1)
-
-		self.refreshItems()
 
 		if logic.globalDict["SCREENSHOT"]["Trigger"] == True:
 			frameobj = base.SC_HUD.addObject("HUD.FreezeFrame", base.SC_HUD.active_camera, 0)
@@ -474,9 +550,7 @@ class CoreHUD(base.CoreObject):
 			self.control.doUpdate()
 			PATH = base.DATA["GAMEPATH"]
 			logic.startGame(PATH+"Launcher.blend")
-			black = base.SC_HUD.addObject(base.SC_HUD.objectsInactive["HUD.Black"], base.SC_HUD.active_camera, 0)
-			black.applyMovement((0,0,-2), False)
-
+			self.doBlackOut()
 			self.doSceneResume()
 
 		if status == "Resume" or keymap.SYSTEM["ESCAPE"].tap() == True:
@@ -574,9 +648,8 @@ class MenuPause:
 			elif VALY <= -ZONE:
 				Y += ABSY*-0.01
 
-		logic.mouse.position = (X, Y)
-
-		X, Y = logic.mouse.position
+			logic.mouse.position[0] += X
+			logic.mouse.position[1] += Y
 
 		ray = self.objects["Ray"]
 
