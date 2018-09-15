@@ -618,7 +618,6 @@ class CorePlayer(base.CoreAdvanced):
 			self.groundori.pop()
 
 			if self.groundobj != rayOBJ:
-				print("reset")
 				self.groundobj = rayOBJ
 				self.groundpos[1] = self.groundpos[0].copy()
 				self.groundori[1] = self.groundori[0].copy()
@@ -798,6 +797,11 @@ class CorePlayer(base.CoreAdvanced):
 			self.ST_Advanced_Set()
 
 	## POST ##
+	def PS_Recharge(self):
+		self.data["ENERGY"] += self.data["RECHARGE"]
+		if self.data["ENERGY"] > 100:
+			self.data["ENERGY"] = 100
+
 	def PS_GroundTrack(self):
 		owner = self.objects["Root"]
 
@@ -807,22 +811,25 @@ class CorePlayer(base.CoreAdvanced):
 
 		rayOBJ = self.groundobj
 
-		locOLD = owner.worldPosition-self.groundpos[1]
+		locOLD = owner.worldPosition - self.groundpos[1]
 		posOLD = self.groundori[1].inverted()*locOLD
 
-		locNEW = owner.worldPosition-self.groundpos[0]
+		locNEW = owner.worldPosition - self.groundpos[0]
 		posNEW = self.groundori[0].inverted()*locNEW
 
-		local = posOLD-posNEW
+		local = posOLD - posNEW
 		offset = self.groundori[0]*local
 
 		owner.worldPosition[0] += offset[0]
 		owner.worldPosition[1] += offset[1]
 
-	def PS_Recharge(self):
-		self.data["ENERGY"] += self.data["RECHARGE"]
-		if self.data["ENERGY"] > 100:
-			self.data["ENERGY"] = 100
+		eulerOLD = self.groundori[1].to_euler()
+		eulerNEW = self.groundori[0].to_euler()
+
+		RZ = eulerOLD[2] - eulerNEW[2]
+
+		owner.applyRotation((0, 0, -RZ), False)
+		#self.objects["VertRef"].applyRotation((0, 0, -RZ), False)
 
 	## WALKING STATE ##
 	def ST_Crouch(self):
@@ -835,6 +842,29 @@ class CorePlayer(base.CoreAdvanced):
 		if ground != None:
 			owner.applyForce((0,0,-1*scene.gravity[2]), False)
 			owner.worldPosition[2] = ground[1][2]+(1-(self.crouch*0.04))
+
+			move = self.motion["Move"].normalized()
+
+			if self.motion["Move"].length > 0.01:
+				vref = self.objects["VertRef"].getAxisVect((move[0], move[1], 0))
+				dref = self.objects["Root"].getAxisVect((0,1,0))
+				dot = 1-((vref.dot(dref)*0.5)+0.5)
+				dot = 0.2+((dot**2)*0.5)
+				owner.alignAxisToVect(vref, 1, dot)
+
+				mx = 0.015
+
+				if self.ACCEL > 1:
+					mx = mx*(self.motion["Accel"]/self.ACCEL)
+					if self.motion["Accel"] < self.ACCEL:
+						self.motion["Accel"] += 1
+
+				mref = dref.copy()*mx
+				owner.worldPosition[0] += mref[0]
+				owner.worldPosition[1] += mref[1]
+
+			else:
+				self.motion["Accel"] = 0
 
 		owner.alignAxisToVect((0,0,1), 2, 1.0)
 
@@ -851,7 +881,11 @@ class CorePlayer(base.CoreAdvanced):
 				self.crouch -= 1
 
 		else:
-			self.doAnim(NAME="Crouch", FRAME=(0,0), PRIORITY=3, MODE="LOOP", BLEND=10)
+			if self.motion["Move"].length > 0.01:
+				self.doAnim(NAME="Crouching", FRAME=(0,80), PRIORITY=3, MODE="LOOP", BLEND=10)
+			else:
+				self.doAnim(NAME="Crouching", FRAME=(0,0), PRIORITY=3, MODE="LOOP", BLEND=10)
+
 			if self.crouch < 10:
 				self.crouch += 1
 
@@ -923,7 +957,6 @@ class CorePlayer(base.CoreAdvanced):
 
 				else:
 					self.motion["Accel"] = 0
-					self.motion["OldRot"] = None
 					self.doAnim(NAME="Jumping", FRAME=(0+invck,0+invck), PRIORITY=3, MODE="LOOP", BLEND=10)
 
 			elif self.jump_state == "JUMP":
