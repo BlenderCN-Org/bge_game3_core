@@ -110,16 +110,20 @@ class CorePlayer(base.CoreAdvanced):
 
 		self.active_pre = []
 		self.active_state = self.ST_Walking
-		self.active_post = [self.PS_Recharge]
+		self.active_post = [self.PS_Recharge,self.PR_GroundTrack]
 
 		self.jump_state = "NONE"
 		self.jump_timer = 0
+		self.crouch = 0
 		self.rayorder = "NONE"
 
 		self.rayhit = None
 		self.rayvec = None
+
+		self.groundhit = None
 		self.groundobj = None
-		self.groundpos = None
+		self.groundpos = [self.createVector(), self.createVector()]
+		self.groundori = [self.createMatrix(), self.createMatrix()]
 
 		self.motion = {"Move":self.createVector(2), "Rotate":self.createVector(3), "Climb":0, "Accel":0}
 
@@ -172,8 +176,7 @@ class CorePlayer(base.CoreAdvanced):
 
 			self.doPortal()
 
-			HUD.SPAWN = HUD.CoreHUD
-			HUD.CONTROL = self
+			logic.HUDCLASS = HUD.SceneManager(self)
 
 			keymap.MOUSELOOK.center()
 			self.doCameraCollision()
@@ -265,6 +268,8 @@ class CorePlayer(base.CoreAdvanced):
 	def enterVehicle(self, seat, action="Jumping"):
 		self.jump_state = "NONE"
 		self.jump_timer = 0
+		self.crouch = 0
+		self.doCrouch(False)
 		self.rayorder = "NONE"
 		self.data["HUD"]["Target"] = None
 		self.data["HUD"]["Text"] = ""
@@ -306,6 +311,8 @@ class CorePlayer(base.CoreAdvanced):
 	def switchPlayerPassive(self, owner):
 		self.jump_state = "NONE"
 		self.jump_timer = 0
+		self.crouch = 0
+		self.doCrouch(False)
 		self.rayorder = "NONE"
 		self.data["HUD"]["Target"] = None
 		self.data["HUD"]["Text"] = ""
@@ -605,23 +612,27 @@ class CorePlayer(base.CoreAdvanced):
 					dot = owner.getAxisVect((0,1,0)).angle(rayNRM, 0)/1.571
 					slope = 1-(abs(dot-1)*((angle/90)))
 
-				if self.groundobj != rayOBJ:
-					V = rayPNT-rayOBJ.worldPosition.copy()
-					self.groundpos = rayOBJ.worldOrientation.inverted()*V
-					self.groundobj = rayOBJ
+			self.groundpos.insert(0, rayOBJ.worldPosition.copy())
+			self.groundpos.pop()
+			self.groundori.insert(0, rayOBJ.worldOrientation.copy())
+			self.groundori.pop()
+
+			if self.groundobj != rayOBJ:
+				print("reset")
+				self.groundobj = rayOBJ
+				self.groundpos[1] = self.groundpos[0].copy()
+				self.groundori[1] = self.groundori[0].copy()
 
 			self.rayorder = "NONE"
 
 		else:
-			self.groundpos = None
-			self.groundobj = None
-
 			if self.rayorder == "NONE":
 				self.rayorder = "START"
 
+		self.groundhit = ground
 		return ground, angle, slope
 
-	def checkWall(self, z=True, axis=(0,1,0), simple=None):
+	def checkWall(self, z=True, axis=(0,1,0), simple=None, prop="GROUND"):
 		owner = self.objects["Root"]
 		#rayto = self.objects["WallRayTo"]
 
@@ -637,7 +648,7 @@ class CorePlayer(base.CoreAdvanced):
 		if simple != None:
 			dist = simple
 
-		WALLOBJ, WALLPNT, WALLNRM = owner.rayCast(owner.worldPosition.copy()+ref, None, dist, "GROUND", 1, 0, 0)
+		WALLOBJ, WALLPNT, WALLNRM = owner.rayCast(owner.worldPosition.copy()+ref, None, dist, prop, 1, 0, 0)
 
 		if WALLOBJ != None:
 			#guide.worldPosition = WALLPNT
@@ -772,7 +783,7 @@ class CorePlayer(base.CoreAdvanced):
 		self.doAnim(NAME="Jumping", FRAME=(0,20), PRIORITY=2, MODE="PLAY", BLEND=10)
 
 	def doCrouch(self, state):
-		if state == True:
+		if state == True or self.crouch != 0:
 			self.objects["Root"].localScale[2] = 0.25
 			self.objects["Character"].localScale[2] = 4
 			self.active_state = self.ST_Crouch
@@ -785,6 +796,31 @@ class CorePlayer(base.CoreAdvanced):
 	def ST_Startup(self):
 		if self.jump_state == "FLYING" and self.objects["Root"] != None:
 			self.ST_Advanced_Set()
+
+	## PRE ##
+	def PR_GroundTrack(self):
+		owner = self.objects["Root"]
+
+		if self.groundhit == None or self.jump_state != "NONE":
+			self.groundobj = None
+			return
+
+		rayOBJ = self.groundobj
+
+		locOLD = owner.worldPosition-self.groundpos[1]
+		posOLD = self.groundori[1].inverted()*locOLD
+
+		locNEW = owner.worldPosition-self.groundpos[0]
+		posNEW = self.groundori[0].inverted()*locNEW
+
+		local = posOLD-posNEW
+		offset = self.groundori[0]*local
+
+		#owner.applyMovement((pos[0], pos[1], 0), False)
+		owner.worldPosition[0] += offset[0]
+		owner.worldPosition[1] += offset[1]
+
+		#self.groundpos[0] = self.groundpos[0].copy()
 
 	## POST ##
 	def PS_Recharge(self):
@@ -800,10 +836,9 @@ class CorePlayer(base.CoreAdvanced):
 
 		ground, angle, slope = self.checkGround()
 
-		owner.applyForce((0,0,-1*scene.gravity[2]), False)
-		owner.worldPosition[2] = ground[1][2]+0.6
-
-		self.doAnim(NAME="Crouch", FRAME=(0,0), PRIORITY=3, MODE="LOOP", BLEND=10)
+		if ground != None:
+			owner.applyForce((0,0,-1*scene.gravity[2]), False)
+			owner.worldPosition[2] = ground[1][2]+(1-(self.crouch*0.04))
 
 		owner.alignAxisToVect((0,0,1), 2, 1.0)
 
@@ -811,8 +846,18 @@ class CorePlayer(base.CoreAdvanced):
 		self.checkStability()
 		self.weaponManager()
 
-		if keymap.BINDS["PLR_DUCK"].active() != True:
-			self.doCrouch(False)
+		if keymap.BINDS["PLR_DUCK"].active() != True and self.checkWall(axis=(0,0,1), simple=1.4, prop="") == None:
+			self.doAnim(NAME="Jumping", FRAME=(-5,-5), PRIORITY=3, MODE="LOOP", BLEND=10)
+			if self.crouch <= 0:
+				self.crouch = 0
+				self.doCrouch(False)
+			else:
+				self.crouch -= 1
+
+		else:
+			self.doAnim(NAME="Crouch", FRAME=(0,0), PRIORITY=3, MODE="LOOP", BLEND=10)
+			if self.crouch < 10:
+				self.crouch += 1
 
 	def ST_Walking(self):
 		scene = base.SC_SCN
@@ -878,10 +923,12 @@ class CorePlayer(base.CoreAdvanced):
 
 					#if ground[2] != None:
 					mref = dref.copy()*mx
-					T = self.groundobj.worldOrientation.inverted()*mref
-					self.groundpos += T
+					#T = self.groundobj.worldOrientation.inverted()*mref
+					#self.groundpos[0] += T
 					#else:
-					#	owner.applyMovement((0, mx, 0), True)
+					#owner.applyMovement((0, mx, 0), True)
+					owner.worldPosition[0] += mref[0]
+					owner.worldPosition[1] += mref[1]
 
 				else:
 					self.motion["Accel"] = 0
@@ -889,14 +936,14 @@ class CorePlayer(base.CoreAdvanced):
 					self.doAnim(NAME="Jumping", FRAME=(0+invck,0+invck), PRIORITY=3, MODE="LOOP", BLEND=10)
 
 				#if ground[2] != None:
-				lgndpos = self.groundobj.worldOrientation*self.groundpos
-				wgndpos = lgndpos + self.groundobj.worldPosition.copy()
-				gndoffset = wgndpos-ground[1]
-				gndoffset[2] = 0
-				if gndoffset.length > 0.2:
-					self.groundobj = None
-				else:
-					owner.applyMovement((gndoffset[0], gndoffset[1], 0), False)
+				#lgndpos = self.groundobj.worldOrientation*self.groundpos
+				#wgndpos = lgndpos + self.groundobj.worldPosition.copy()
+				#gndoffset = wgndpos-ground[1]
+				#gndoffset[2] = 0
+				#if gndoffset.length > 0.2:
+				#	self.groundobj = None
+				#else:
+				#	owner.applyMovement((gndoffset[0], gndoffset[1], 0), False)
 
 			elif self.jump_state == "JUMP":
 				self.jump_timer += 1
