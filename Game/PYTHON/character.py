@@ -277,7 +277,10 @@ class PurplePlayer(player.CorePlayer):
 			#self.objects["Root"].setLinearVelocity((0,0,0), True)
 			self.data["HUD"]["Target"] = None
 
-			self.wave_to[2] += 1
+			if keymap.BINDS["PLR_DUCK"].active() == True:
+				self.wave_to[2] += 0.6
+			else:
+				self.wave_to[2] += 1
 
 			V = owner.getVectTo(self.wave_to)
 			self.alignPlayer(axis=V[1])
@@ -308,6 +311,7 @@ class PurplePlayer(player.CorePlayer):
 			owner.worldPosition = point
 
 		else:
+			self.doCrouch( keymap.BINDS["PLR_DUCK"].active() )
 			self.ST_Walking_Set()
 
 	def ST_Walking_Set(self):
