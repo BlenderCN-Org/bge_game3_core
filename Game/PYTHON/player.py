@@ -110,7 +110,7 @@ class CorePlayer(base.CoreAdvanced):
 
 		self.active_pre = []
 		self.active_state = self.ST_Walking
-		self.active_post = [self.PS_Recharge,self.PR_GroundTrack]
+		self.active_post = [self.PS_Recharge, self.PS_GroundTrack]
 
 		self.jump_state = "NONE"
 		self.jump_timer = 0
@@ -797,8 +797,8 @@ class CorePlayer(base.CoreAdvanced):
 		if self.jump_state == "FLYING" and self.objects["Root"] != None:
 			self.ST_Advanced_Set()
 
-	## PRE ##
-	def PR_GroundTrack(self):
+	## POST ##
+	def PS_GroundTrack(self):
 		owner = self.objects["Root"]
 
 		if self.groundhit == None or self.jump_state != "NONE":
@@ -819,7 +819,6 @@ class CorePlayer(base.CoreAdvanced):
 		owner.worldPosition[0] += offset[0]
 		owner.worldPosition[1] += offset[1]
 
-	## POST ##
 	def PS_Recharge(self):
 		self.data["ENERGY"] += self.data["RECHARGE"]
 		if self.data["ENERGY"] > 100:
