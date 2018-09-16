@@ -69,11 +69,11 @@ def RUN(cont):
 class CoreHUD(base.CoreObject):
 
 	UPDATE = False
+	OBJECT = "None"
 
-	def __init__(self):
-		owner = logic.getCurrentController().owner
-
-		owner["Class"] = self
+	def __init__(self, prefix):
+		scene = base.SC_HUD
+		owner = scene.addObject(prefix+self.OBJECT, scene.objects["HUD.START"], 0)
 
 		self.objects = {"Root":owner}
 
@@ -83,11 +83,12 @@ class CoreHUD(base.CoreObject):
 		self.active_state = self.ST_Active
 		self.active_post = []
 
-		self.findObjects(owner)
+		self.findObjects()
 
 		self.ST_Startup()
 
-	def findObjects(self, obj):
+	def findObjects(self):
+		obj = self.objects["Root"]
 		dict = self.objects
 		group = []
 		list = []
@@ -127,7 +128,9 @@ class CoreHUD(base.CoreObject):
 		self.objects["Root"] = None
 
 
-class CoreCompass(CoreHUD):
+class Compass(CoreHUD):
+
+	OBJECT = "Compass"
 
 	def ST_Startup(self):
 		RES = logic.globalDict["GRAPHICS"]["Resolution"]
@@ -161,7 +164,9 @@ class CoreCompass(CoreHUD):
 			cp_dist.color[1] = 0
 
 
-class CoreAnnotation(CoreHUD):
+class Annotation(CoreHUD):
+
+	OBJECT = "Annotation"
 
 	def ST_Startup(self):
 		self.textlist = None
@@ -198,7 +203,7 @@ class CoreAnnotation(CoreHUD):
 	def ST_Active(self):
 		fade = False
 		if self.textlist != None:
-			OBJ = self.objects["Root"]
+			OBJ = self.objects["List"]
 			CUR = self.textlist[self.current]
 
 			if self.timer == 0:
@@ -254,7 +259,9 @@ class CoreAnnotation(CoreHUD):
 				self.getChild(root, "LineText").color[3] = alpha
 
 
-class CoreInteract(CoreHUD):
+class Interact(CoreHUD):
+
+	OBJECT = "Interact"
 
 	def ST_Startup(self):
 		self.boot_timer = 0
@@ -288,10 +295,12 @@ class CoreInteract(CoreHUD):
 		self.objects["Target"].color = color
 
 
-class CoreStats(CoreHUD):
+class Stats(CoreHUD):
+
+	OBJECT = "Stats"
 
 	def ST_Active(self, plr):
-
+		self.objects["Name"].text = plr.NAME
 		self.setStat("Health", plr.data["HEALTH"], 15)
 		self.setStat("Energy", plr.data["ENERGY"], 14.1)
 
@@ -314,7 +323,9 @@ class CoreStats(CoreHUD):
 		txt.text = str(int(round(value, 0)))
 
 
-class CoreWeapons(CoreHUD):
+class Weapons(CoreHUD):
+
+	OBJECT = "Weapons"
 
 	def ST_Startup(self):
 		self.weaptype = ""
@@ -359,7 +370,9 @@ class CoreWeapons(CoreHUD):
 		stat.worldPosition[0] = (len(stat.text)*-0.59)-2
 
 
-class CoreInventory(CoreHUD):
+class Inventory(CoreHUD):
+
+	OBJECT = "Inventory"
 
 	def ST_Startup(self):
 		self.itemdict = {}
@@ -485,11 +498,57 @@ class CoreInventory(CoreHUD):
 		return iconobj, borderobj
 
 
+class Cinema(CoreHUD):
+
+	OBJECT = "Cinema"
+
+	def ST_Startup(self):
+		self.objects["Name"].text = ""
+		self.objects["Line"].text = ""
+		self.objects["Line"].localPosition[0] = 0
+
+	def ST_Active(self, plr):
+		subt = plr.data["HUD"]["Subtitles"]
+
+		if subt == None:
+			return
+
+		self.objects["Name"].text = subt["NAME"]+":"
+		self.objects["Name"].color = (subt["COLOR"][0], subt["COLOR"][1], subt["COLOR"][2], 1)
+		self.objects["Line"].text = subt["LINE"]
+		self.objects["Line"].localPosition[0] = (len(subt["NAME"])+2)*0.6
+
+
+class HUDLayout:
+
+	GROUP = "Core"
+	MODULES = [Stats, Interact, Inventory]
+
+	def __init__(self):
+		self.modlist = []
+		for cls in self.MODULES:
+			self.modlist.append(cls(self.GROUP))
+
+	def destroy(self):
+		for cls in self.modlist:
+			cls.destroy()
+
+	def RUN(self, plr):
+		for cls in self.modlist:
+			cls.ST_Active(plr)
+
+
+class LayoutCinema(HUDLayout):
+
+	GROUP = "Core"
+	MODULES = [Cinema]
+
+
 class SceneManager:
 
 	def __init__(self, plr):
 		self.active_state = self.ST_Wait
-		self.active_hud = []
+		self.active_layout = None
 		self.blackobj = None
 
 		self.setControl(plr)
@@ -505,6 +564,9 @@ class SceneManager:
 
 	def setControl(self, plr):
 		self.control = plr
+		if self.active_layout != None:
+			self.active_layout.destroy()
+			self.active_layout = None
 		self.active_state = self.ST_Wait
 
 	def doBlackOut(self):
@@ -526,12 +588,18 @@ class SceneManager:
 
 	def ST_Wait(self):
 		if self.control != None:
+			plr = self.control
+			if plr.HUDLAYOUT != None:
+				self.active_layout = plr.HUDLAYOUT()
+				self.active_layout.RUN(plr)
 			if self.blackobj != None:
 				self.blackobj.endObject()
 				self.blackobj = None
 			self.active_state = self.ST_HUD
 
 	def ST_HUD(self):
+		if self.active_layout != None:
+			self.active_layout.RUN(self.control)
 
 		if logic.globalDict["SCREENSHOT"]["Trigger"] == True:
 			frameobj = base.SC_HUD.addObject("HUD.FreezeFrame", base.SC_HUD.active_camera, 0)
