@@ -166,6 +166,7 @@ class CoreObject:
 	LOCK = ""
 	PORTAL = False
 	ANIMOBJ = None
+	HUDLAYOUT = None
 
 	def __init__(self):
 		owner = logic.getCurrentController().owner
