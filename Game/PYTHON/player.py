@@ -96,6 +96,7 @@ class CorePlayer(base.CoreAdvanced):
 	FOV = 90
 	SLOPE = 60
 	STATS = {}
+	HUDLAYOUT = HUD.HUDLayout
 
 	def __init__(self):
 		scene = base.SC_SCN
@@ -790,6 +791,7 @@ class CorePlayer(base.CoreAdvanced):
 			self.objects["Root"].localScale[2] = 1
 			self.objects["Character"].localScale[2] = 1
 			self.active_state = self.ST_Walking
+			self.setCameraEye()
 
 	## INIT STATE ##
 	def ST_Startup(self):
@@ -888,6 +890,8 @@ class CorePlayer(base.CoreAdvanced):
 
 			if self.crouch < 10:
 				self.crouch += 1
+
+		self.objects["CamRot"].localPosition[2] = (self.EYE_H-1)*((20-self.crouch)*0.05)
 
 	def ST_Walking(self):
 		scene = base.SC_SCN
