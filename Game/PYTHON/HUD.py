@@ -54,17 +54,6 @@ def RUN(cont):
 	if logic.HUDCLASS != None and logic.PLAYERCLASS != None:
 		logic.HUDCLASS.RUN()
 
-	#if CINEMA == False:
-	#	base.SC_HUD.active_camera = base.SC_HUD.objects["HUD.Main.Cam"]
-	#	base.SC_HUD.objects["HUD.Cam.Compass"].useViewport = True
-	#	CINEMA = None
-	#elif CINEMA == True:
-	#	base.SC_HUD.active_camera = base.SC_HUD.objects["HUD.Cinema.Cam"]
-	#	base.SC_HUD.objects["HUD.Cam.Compass"].useViewport = False
-	#	CINEMA = None
-
-	if base.SC_SCN.suspended == True:
-		return
 
 class CoreHUD(base.CoreObject):
 
@@ -536,6 +525,32 @@ class HUDLayout:
 	def RUN(self, plr):
 		for cls in self.modlist:
 			cls.ST_Active(plr)
+
+
+class Aircraft(CoreHUD):
+
+	OBJECT = "Aircraft"
+
+	def ST_Active(self, plr):
+		root = plr.objects["Root"]
+		glbZ = self.createVector(vec=[0,0,1])
+
+		## Roll ##
+		angX = root.getAxisVect((1,0,0)).angle(glbZ)
+		angX = self.toDeg(angX)-90
+		self.objects["Roll"].localOrientation = self.createMatrix(rot=[0,0,angX], deg=True)
+
+		## Pitch ##
+		dotY = root.getAxisVect((0,1,0)).dot(glbZ)
+		self.objects["Pitch"].localScale[1] = dotY*2
+
+		## Power ##
+		power = plr.data["HUD"].get("Power", 0)*0.2
+		self.objects["Power"].localOrientation = self.createMatrix(rot=[0,0,power], deg=True)
+
+		## Lift ##
+		lift = plr.data["HUD"].get("Lift", 0)
+		self.objects["Lift"].color[0] = ((lift/100)*0.75)
 
 
 class LayoutCinema(HUDLayout):

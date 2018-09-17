@@ -26,12 +26,20 @@ from bge import logic
 
 import PYTHON.vehicle as vehicle
 import PYTHON.keymap as keymap
+import PYTHON.HUD as HUD
+
+
+class LayoutAircraft(HUD.HUDLayout):
+
+	GROUP = "Core"
+	MODULES = [HUD.Stats, HUD.Aircraft]
 
 
 ## BASE CLASS ##
 class CoreAircraft(vehicle.CoreVehicle):
 
 	AERO = {"LIFT":0.1, "DRAG":(1,0.1,1), "ALIGN":10}
+	HUDLAYOUT = LayoutAircraft
 
 	def airDrag(self):
 
@@ -90,6 +98,7 @@ class FireBird(CoreAircraft):
 		dict["POWER"] = 0
 		dict["HOVER"] = [0,0]
 		dict["GEAR"] = 0
+		dict["HUD"] = {"Power":0, "Lift":0}
 
 		return dict
 
@@ -130,7 +139,7 @@ class FireBird(CoreAircraft):
 		speed = self.linV.length
 		grav = -owner.scene.gravity[2]
 
-		self.lift = (self.linV[1]**2)*0.2
+		self.lift = (self.linV[1]**2)*0.5
 
 		if self.lift > 980:
 			self.lift = 980
@@ -180,9 +189,9 @@ class FireBird(CoreAircraft):
 		force = self.motion["Force"]
 		torque = self.motion["Torque"]
 
-		self.data["POWER"] += force[1]*20
-		if self.data["POWER"] > 10000:
-			self.data["POWER"] = 10000
+		self.data["POWER"] += force[1]*10
+		if self.data["POWER"] > 1000:
+			self.data["POWER"] = 1000
 
 		if self.data["POWER"] < 0:
 			self.data["POWER"] = 0
@@ -203,18 +212,18 @@ class FireBird(CoreAircraft):
 			self.data["HOVER"][0] = 0
 
 		## FORCES ##
-		power = self.data["POWER"] - self.linV[1]
+		power = self.data["POWER"] - (self.linV[1])
 		hover = (self.data["HOVER"][0]-(self.lift*(self.data["HOVER"][0]/980))) + self.data["HOVER"][1]
 		mx = abs(self.linV[1])
 
 		owner.applyTorque([torque[0]*400, torque[1]*800, torque[2]*400], True)
-		owner.applyForce([0.0, power, hover*1.5], True)
+		owner.applyForce([0.0, power*2, hover*1.5], True)
 
-		self.data["ENERGY"] = abs(self.data["POWER"]/100)
-		self.data["HUD"]["Text"] = str(int(hover))
+		self.data["HUD"]["Power"] = abs(self.data["POWER"]/10)
+		self.data["HUD"]["Lift"] = (self.data["HOVER"][0]/9.8)+((self.data["HOVER"][1]/500)*33)
 
 		## EXTRAS ##
-		mesh.color[0] = abs(self.data["POWER"]/10000)
+		mesh.color[0] = abs(self.data["POWER"]/1000)
 		if mesh.color[1] < 1:
 			mesh.color[1] += 0.01
 		else:
@@ -269,7 +278,7 @@ class RaynaPod(CoreAircraft):
 	AERO = {"LIFT":0, "DRAG":(3,0,3), "ALIGN":10}
 
 	def defaultData(self):
-		dict = {"FLYMODE":False}
+		dict = {"FLYMODE":False, "HUD":{"Power":0, "Lift":0}}
 		return dict
 
 	def ST_Startup(self):
@@ -342,6 +351,9 @@ class RaynaPod(CoreAircraft):
 			mxfire = force[2]
 			fire.localScale[1] = (0.3+(rand*0.2))
 
+			self.data["HUD"]["Power"] = 0
+			self.data["HUD"]["Lift"] = (force[2]*33)+100
+
 			self.doWheelBrake()
 
 			if keymap.BINDS["TOGGLEMODE"].tap() == True:
@@ -367,6 +379,9 @@ class RaynaPod(CoreAircraft):
 
 			mxfire = force[1]
 			fire.localScale[1] = (1+(rand*0.5))
+
+			self.data["HUD"]["Power"] = (1+force[1])*50
+			self.data["HUD"]["Lift"] = 100
 
 			if keymap.BINDS["TOGGLEMODE"].tap() == True:
 				#wings.localOrientation = ((1,0,0),(0,0,-1),(0,1,0))
