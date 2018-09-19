@@ -363,8 +363,9 @@ class Inventory(CoreHUD):
 
 	OBJECT = "Inventory"
 
-	def ST_Startup(self):
+	def defaultData(self):
 		self.itemdict = {}
+		return {}
 
 	def destroy(self):
 		for slot in self.itemdict:
@@ -508,6 +509,54 @@ class Cinema(CoreHUD):
 		self.objects["Line"].localPosition[0] = (len(subt["NAME"])+2)*0.6
 
 
+class Speedometer(CoreHUD):
+
+	OBJECT = "Speedometer"
+
+	def ST_Active(self, plr):
+		root = plr.objects["Root"]
+		refY = plr.data["HUD"].get("Forward", (0,1,0))
+		speed = abs(root.localLinearVelocity*self.createVector(vec=refY))*2.237
+		self.objects["Text"].text = str(round(speed))
+		if speed > 130:
+			speed = 130
+		self.objects["Speed"].localOrientation = self.createMatrix(rot=[0,0,-speed], deg=True)
+
+
+class Aircraft(CoreHUD):
+
+	OBJECT = "Aircraft"
+
+	def ST_Startup(self):
+		self.old_power = 0
+		self.old_lift = 0
+
+	def ST_Active(self, plr):
+		root = plr.objects["Root"]
+		glbZ = self.createVector(vec=[0,0,1])
+
+		## Roll ##
+		refX = plr.data["HUD"].get("Side", (1,0,0))
+		angX = root.getAxisVect(refX).angle(glbZ)
+		angX = self.toDeg(angX)-90
+		self.objects["Roll"].localOrientation = self.createMatrix(rot=[0,0,angX], deg=True)
+
+		## Pitch ##
+		refY = plr.data["HUD"].get("Forward", (0,1,0))
+		dotY = root.getAxisVect(refY).dot(glbZ)
+		self.objects["Pitch"].localScale[1] = dotY*2
+
+		## Power ##
+		power = plr.data["HUD"].get("Power", 0)*0.2
+		self.old_power += (power-self.old_power)*0.1
+		self.objects["Power"].localOrientation = self.createMatrix(rot=[0,0,self.old_power], deg=True)
+
+		## Lift ##
+		lift = plr.data["HUD"].get("Lift", 0)
+		self.old_lift += (lift-self.old_lift)*0.5
+		self.objects["Lift"].color[0] = ((self.old_lift/100)*0.75)
+
+
 class HUDLayout:
 
 	GROUP = "Core"
@@ -525,32 +574,6 @@ class HUDLayout:
 	def RUN(self, plr):
 		for cls in self.modlist:
 			cls.ST_Active(plr)
-
-
-class Aircraft(CoreHUD):
-
-	OBJECT = "Aircraft"
-
-	def ST_Active(self, plr):
-		root = plr.objects["Root"]
-		glbZ = self.createVector(vec=[0,0,1])
-
-		## Roll ##
-		angX = root.getAxisVect((1,0,0)).angle(glbZ)
-		angX = self.toDeg(angX)-90
-		self.objects["Roll"].localOrientation = self.createMatrix(rot=[0,0,angX], deg=True)
-
-		## Pitch ##
-		dotY = root.getAxisVect((0,1,0)).dot(glbZ)
-		self.objects["Pitch"].localScale[1] = dotY*2
-
-		## Power ##
-		power = plr.data["HUD"].get("Power", 0)*0.2
-		self.objects["Power"].localOrientation = self.createMatrix(rot=[0,0,power], deg=True)
-
-		## Lift ##
-		lift = plr.data["HUD"].get("Lift", 0)
-		self.objects["Lift"].color[0] = ((lift/100)*0.75)
 
 
 class LayoutCinema(HUDLayout):
@@ -577,11 +600,12 @@ class SceneManager:
 		obj = scene.addObject(scene.objectsInactive["HUD.Loading"], scene.active_camera, 0)
 		obj.applyMovement((0,0,-3), False)
 
-	def setControl(self, plr):
+	def setControl(self, plr, layout=None):
 		self.control = plr
 		if self.active_layout != None:
 			self.active_layout.destroy()
 			self.active_layout = None
+		self.custom_layout = layout
 		self.active_state = self.ST_Wait
 
 	def doBlackOut(self):
@@ -604,12 +628,20 @@ class SceneManager:
 	def ST_Wait(self):
 		if self.control != None:
 			plr = self.control
-			if plr.HUDLAYOUT != None:
-				self.active_layout = plr.HUDLAYOUT()
+
+			if self.custom_layout == None:
+				if plr.HUDLAYOUT != None:
+					self.custom_layout = plr.HUDLAYOUT
+
+			if self.custom_layout != None:
+				self.active_layout = self.custom_layout()
 				self.active_layout.RUN(plr)
+				self.custom_layout = None
+
 			if self.blackobj != None:
 				self.blackobj.endObject()
 				self.blackobj = None
+
 			self.active_state = self.ST_HUD
 
 	def ST_HUD(self):
