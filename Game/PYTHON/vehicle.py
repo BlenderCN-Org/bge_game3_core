@@ -378,11 +378,6 @@ class CoreVehicle(base.CoreAdvanced):
 		if keymap.SYSTEM["SCREENSHOT"].tap() == True:
 			self.doScreenshot()
 
-		#if keymap.SYSTEM["LAUNCHER"].tap() == True:
-		#	self.doUpdate()
-		#	PATH = base.DATA["GAMEPATH"]
-		#	logic.startGame(PATH+"Launcher.blend")
-
 	def checkClicked(self, OBJ=None):
 		if OBJ == None:
 			OBJ = self.objects["Root"]
@@ -446,4 +441,197 @@ class CoreVehicle(base.CoreAdvanced):
 		self.clearRayProps()
 		self.checkStability(True)
 
+
+class LayoutCar(HUD.HUDLayout):
+
+	GROUP = "Core"
+	MODULES = [HUD.Stats, HUD.Speedometer]
+
+class CoreCar(CoreVehicle):
+
+	AIRCONTROL = 0
+	CAMTHIRD = {"DIST":8, "ZRATIO":0.2, "MIN":1, "SLOW":20, "RANGE":(4, 16)}
+	DRIVECONFIG = {"POWER":100, "SPEED":2, "BRAKE":(1,2), "STEER":1, "DRIVE":0}
+	HUDLAYOUT = LayoutCar
+
+	def defaultData(self):
+		dict = {}
+		dict["ENGINE"] = {
+			"Gear":"D",
+			"Power":self.DRIVECONFIG["POWER"],
+			"Speed":self.DRIVECONFIG["SPEED"]
+			}
+
+		return dict
+
+	def ST_Active(self):
+		self.doCameraState()
+		self.doCameraCollision()
+		self.getInputs()
+
+		owner = self.objects["Root"]
+		engine = self.data["ENGINE"]
+
+		vel = owner.localLinearVelocity
+		speed = abs(vel[1])
+
+		## Steering Optimizer ##
+		STEER = 0.8
+
+		if speed > 6:
+			STEER = (3/(speed*0.5))*0.8
+
+		STEER = STEER*self.DRIVECONFIG["STEER"]*self.motion["Torque"][2]
+		POWER = 0
+		BRAKE = 0
+
+		## Gas Pedal ##
+		if keymap.BINDS["VEH_THROTTLEUP"].active() == True:
+			if vel[1] < -1:
+				BRAKE = 2
+				engine["Gear"] = "N"
+			else:
+				POWER = 1
+				engine["Gear"] = "D"
+
+		## Brake Pedal ##
+		elif keymap.BINDS["VEH_THROTTLEDOWN"].active() == True:
+			if vel[1] > 1:
+				BRAKE = 1
+				engine["Gear"] = "N"
+			else:
+				POWER = -0.5
+				engine["Gear"] = "R"
+
+		HANDBRAKE = 0
+		if keymap.BINDS["VEH_HANDBRAKE"].active() == True:
+			HANDBRAKE = 2
+
+		## Reset ##
+		if keymap.BINDS["VEH_ACTION"].tap() == True:
+			if owner.worldOrientation[2][2] < 0.5:
+				owner.alignAxisToVect((0,0,1), 2, 1.0)
+				owner.worldPosition[2] += 0.5
+				owner.localLinearVelocity = (0,0,0)
+				owner.localAngularVelocity = (0,0,0)
+
+
+		FORCE_F = (-engine["Power"] + (speed*engine["Speed"]))*POWER
+		DRIVE = self.DRIVECONFIG["DRIVE"]
+
+		## Apply Engine Force ##
+		if DRIVE == 0:
+			self.vehicle_constraint.applyEngineForce(FORCE_F, 0)
+			self.vehicle_constraint.applyEngineForce(FORCE_F, 1)
+			self.vehicle_constraint.applyEngineForce(0.0, 2)
+			self.vehicle_constraint.applyEngineForce(0.0, 3)
+		else:
+			if STEER > 0.05:
+				self.vehicle_constraint.applyEngineForce(FORCE_F, 2)
+				self.vehicle_constraint.applyEngineForce(0.0, 3)
+			elif STEER < -0.05:
+				self.vehicle_constraint.applyEngineForce(0.0, 2)
+				self.vehicle_constraint.applyEngineForce(FORCE_F, 3)
+			else:
+				self.vehicle_constraint.applyEngineForce(FORCE_F, 2)
+				self.vehicle_constraint.applyEngineForce(FORCE_F, 3)
+
+			if DRIVE == 2:
+				self.vehicle_constraint.applyEngineForce(FORCE_F, 0)
+				self.vehicle_constraint.applyEngineForce(FORCE_F, 1)
+			else:
+				self.vehicle_constraint.applyEngineForce(0.0, 0)
+				self.vehicle_constraint.applyEngineForce(0.0, 1)
+
+		if self.AIRCONTROL != 0:
+			owner.applyTorque((self.motion["Torque"][0]*self.AIRCONTROL, self.motion["Torque"][1]*self.AIRCONTROL, 0), True)
+
+		BRAKE = BRAKE*self.DRIVECONFIG["BRAKE"][0]
+		HANDBRAKE = HANDBRAKE*self.DRIVECONFIG["BRAKE"][1]
+
+		## Brake All Wheels ##
+		self.vehicle_constraint.applyBraking(BRAKE, 0)
+		self.vehicle_constraint.applyBraking(BRAKE, 1)
+		self.vehicle_constraint.applyBraking(BRAKE, 2)
+		self.vehicle_constraint.applyBraking(BRAKE, 3)
+
+		## Brake Rear Wheels ##
+		self.vehicle_constraint.applyBraking(HANDBRAKE, 2)
+		self.vehicle_constraint.applyBraking(HANDBRAKE, 3)
+
+		## Steer Front Wheels ##
+		self.vehicle_constraint.setSteeringValue(STEER, 0)
+		self.vehicle_constraint.setSteeringValue(STEER, 1)
+
+		self.data["HUD"]["Text"] = str(round(speed, 1))
+
+		if keymap.BINDS["ENTERVEH"].tap() == True:
+			self.ST_Idle_Set()
+
+	def ST_Idle(self):
+		owner = self.objects["Root"]
+
+		if self.vehicle_constraint != None:
+			self.vehicle_constraint.applyEngineForce(0.0, 0)
+			self.vehicle_constraint.applyEngineForce(0.0, 1)
+			self.vehicle_constraint.applyEngineForce(0.0, 2)
+			self.vehicle_constraint.applyEngineForce(0.0, 3)
+
+			self.vehicle_constraint.applyBraking(self.DRIVECONFIG["BRAKE"][0], 0)
+			self.vehicle_constraint.applyBraking(self.DRIVECONFIG["BRAKE"][0], 1)
+			self.vehicle_constraint.applyBraking(0.0, 2)
+			self.vehicle_constraint.applyBraking(0.0, 3)
+
+		if self.checkClicked() == True:
+			self.ST_Active_Set()
+
+
+class LayoutAircraft(HUD.HUDLayout):
+
+	GROUP = "Core"
+	MODULES = [HUD.Stats, HUD.Aircraft]
+
+class CoreAircraft(CoreVehicle):
+
+	AERO = {"LIFT":0.1, "DRAG":(1,0.1,1), "ALIGN":10}
+	HUDLAYOUT = LayoutAircraft
+
+	def airDrag(self):
+
+		#dampLin = 0.0
+		#dampRot = (self.linV[1]*0.002)+0.4
+
+		#if dampRot >= 0.7:
+		#	dampRot = 0.7
+
+		#self.objects["Root"].setDamping(dampLin, dampRot)
+
+		ABS_Y = abs(self.linV[1])
+
+		DRAG_X = self.linV[0]*ABS_Y*self.AERO["DRAG"][0]
+		DRAG_Y = self.linV[1]*ABS_Y*self.AERO["DRAG"][1]
+		DRAG_Z = self.linV[2]*ABS_Y*self.AERO["DRAG"][2]
+
+		self.objects["Root"].applyForce((-DRAG_X, -DRAG_Y, -DRAG_Z), True)
+
+	def airLift(self):
+		owner = self.objects["Root"]
+		speed = self.linV.length
+		grav = -owner.scene.gravity[2]
+
+		if speed > 0.1:
+			axis = owner.getAxisVect((0,1,0))
+			factor = self.AERO["ALIGN"]/speed
+			if factor > 1:
+				factor = 1
+			owner.alignAxisToVect(axis, 1, factor*0.5)
+
+		baselift = (self.linV[1]**2)*self.AERO["LIFT"]
+		mass = owner.mass*grav
+		lift = baselift
+
+		if lift > mass:
+			lift = mass
+
+		owner.applyForce((0,0,lift), True)
 

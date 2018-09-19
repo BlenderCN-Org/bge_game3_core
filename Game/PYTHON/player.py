@@ -60,16 +60,18 @@ def SPAWN(cont):
 
 	if base.CURRENT["Player"] == None:
 		player = owner.get("PLAYER", "Actor")
-		base.CURRENT["Player"] = player
 	else:
 		player = base.CURRENT["Player"]
 
+	if player not in scene.objectsInactive:
+		player = "Actor"
 
 	if spawn == False:
 		owner.endObject()
 		return
 
 	elif spawn == True:
+		base.CURRENT["Player"] = player
 		scene.addObject(player, owner, 0)
 		owner["SPAWN"] = None
 		return

@@ -54,6 +54,7 @@ class CorePowerup(att.CoreAttachment):
 
 		self.ST_Startup()
 
+
 class SimpleKey(CorePowerup):
 
 	SCALE = (0.1, 0.2, 0.05)
@@ -77,3 +78,4 @@ class SimpleKey(CorePowerup):
 
 		self.box.endObject()
 		self.box = None
+

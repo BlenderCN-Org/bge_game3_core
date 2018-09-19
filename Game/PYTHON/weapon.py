@@ -19,7 +19,7 @@
 #
 ####
 
-## WEAPON OBJECTS ##
+## WEAPON CORE ##
 
 
 from bge import logic
@@ -170,47 +170,6 @@ class CoreWeapon(attachment.CoreAttachment):
 				owner["DICT"]["Equiped"] = True
 
 
-class SandstormAxe(CoreWeapon):
-
-	NAME = "Sandstorm's Axe"
-	SLOTS = ["Shoulder_R", "Shoulder_L"]
-	TYPE = "MELEE"
-	OFFSET = (0.1, 0.0, 0.28)
-	SCALE = 1.9
-
-	def defaultData(self):
-		self.ori_qt = [self.createMatrix().to_quaternion(), self.createMatrix(mirror="YZ").to_quaternion(), None]
-		return {"MODE":"Axe"}
-
-	def ST_Startup(self):
-		self.data["HUD"]["Stat"] = self.data["MODE"]
-
-	def doPlayerAnim(self, frame=0):
-		plr = self.owning_player
-		anim = self.TYPE+plr.HAND[self.HAND]+self.owning_slot
-		start = 0
-		end = 20
-
-		if frame == "LOOP":
-			plr.doAnim(NAME=anim, FRAME=(end,end), LAYER=1, PRIORITY=2, MODE="LOOP")
-		elif type(frame) is int:
-			plr.doAnim(NAME=anim, FRAME=(start,end), LAYER=1)
-			fac = (frame/self.WAIT)
-			if frame < 0:
-				fac = 1+fac
-			plr.doAnim(LAYER=1, SET=end*fac)
-
-			self.ori_qt[2] = self.ori_qt[1].slerp(self.ori_qt[0], fac)
-			self.objects["Mesh"].localOrientation = self.ori_qt[2].to_matrix()
-
-	def ST_Idle(self):
-		self.data["HUD"]["Stat"] = self.data["MODE"]
-
-	def ST_Active(self):
-		self.doPlayerAnim("LOOP")
-		self.data["HUD"]["Stat"] = self.data["MODE"]
-
-
 class BasicSword(CoreWeapon):
 
 	NAME = "Pirate Sword"
@@ -228,75 +187,5 @@ class BasicSword(CoreWeapon):
 			self.data["COOLDOWN"] -= 1
 
 		self.doPlayerAnim("LOOP")
-
-
-class RaptorSword(BasicSword):
-
-	NAME = "Raptor's Sword"
-	OFFSET = (0, 0.2, 0.2)
-	SCALE = 1
-
-
-class Lightsaber(BasicSword):
-
-	NAME = "Lightsaber"
-	OFFSET = (0,0,0)
-	SCALE = 0.4
-	WAIT = 15
-	BLADETYPE = "GFX_LightSaber.Blade"
-	BLADECOLOR = (1,1,1,1)
-	BLADESIZE = 1
-
-	def manageBlade(self):
-		blade = self.objects["Blade"]
-
-		if self.data["ENABLE"] == True:
-			self.gfx_blade.visible = self.objects["Root"].visible
-		else:
-			self.gfx_blade.visible = False
-
-		if self.active_state == self.ST_Active:
-			blade.localScale[1] = 1
-		elif self.active_state == self.ST_Draw:
-			scale = abs(self.data["COOLDOWN"])/self.WAIT
-			blade.localScale[1] = scale
-		elif self.active_state == self.ST_Sheath:
-			scale = abs(self.data["COOLDOWN"])/self.WAIT
-			blade.localScale[1] = 1-scale
-		else:
-			blade.localScale[1] = 0
-
-	def addBlade(self):
-		blade = self.objects["Blade"]
-		self.gfx_blade = blade.scene.addObject(self.BLADETYPE, blade, 0)
-		self.gfx_blade.setParent(blade)
-		self.gfx_blade.color = self.BLADECOLOR
-		self.gfx_blade.visible = False
-		self.gfx_blade["SIZE"] = self.BLADESIZE
-		self.gfx_blade.localPosition = (0,0,0)
-		self.gfx_blade.localOrientation = self.createMatrix()
-		blade.localScale = (1,0,1)
-
-	def ST_Startup(self):
-		self.addBlade()
-		self.active_post.append(self.manageBlade)
-
-
-class LightsaberO(Lightsaber):
-
-	NAME = "Obiwan's Lightsaber"
-	BLADECOLOR = (0,0.3,1,1)
-
-class LightsaberW(Lightsaber):
-
-	NAME = "Windu's Lightsaber"
-	BLADECOLOR = (0.4,0,1,1)
-
-class LightsaberV(Lightsaber):
-
-	NAME = "Ergonomic Lightsaber"
-	BLADETYPE = "GFX_LightSaber.BladeToon"
-	BLADECOLOR = (1,0,0,1)
-	BLADESIZE = 0.8
 
 

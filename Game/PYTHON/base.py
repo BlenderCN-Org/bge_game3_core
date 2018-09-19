@@ -461,6 +461,7 @@ class CoreAdvanced(CoreObject):
 	WP_TYPE = "RANGED"
 	INVENTORY = {}
 	SLOTS = {}
+	HUDLAYOUT = None
 
 	def doScreenshot(self):
 		settings.triggerPrintScreen()
