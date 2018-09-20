@@ -1133,7 +1133,6 @@ class CorePlayer(base.CoreAdvanced):
 			self.getGroundPoint(edge[0])
 			self.groundhit = edge
 			owner.worldPosition[2] = (edge[1][2]-offset)+(vec[2]*(self.jump_timer/time))
-		print(vec)
 
 		if self.jump_timer == time or edge == None:
 			owner.restoreDynamics()
