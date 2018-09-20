@@ -594,7 +594,7 @@ def PLAYER(args=[], kwa=None):
 
 	"""Change Player Class"""
 
-	PL = ["Actor", "Raptor", "Sandstorm", "Wave"]
+	PL = ["Actor", "Red", "Blue", "Purple"]
 
 	if kwa != None:
 		if logic.CLASS.que[0] == "CLASS":
