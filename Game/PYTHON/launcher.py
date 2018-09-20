@@ -78,7 +78,7 @@ class LAUNCHER:
 		vsync:        toggle vsync
 		debug:        toggle debug properties; cfg file [master, fps, stats, properties]"""
 
-	VERSION = "0.4.3"
+	VERSION = "0.4.4"
 	OFFSET = 1
 
 	def __init__(self, OWNER):
@@ -328,56 +328,6 @@ def EXIT(args=[], kwa=None):
 	logic.endGame()
 
 
-def SAVE(args=[], kwa=None):
-	"""Save Current Profile"""
-
-	current = logic.globalDict["CURRENT"]
-	profile = logic.globalDict["PROFILES"][current["Profile"]]
-	portal = logic.globalDict["DATA"]["Portal"]
-
-	path = logic.globalDict["DATA"]["GAMEPATH"]
-	name = "Base"
-
-	if "_" not in current["Profile"]:
-		name = current["Profile"]
-
-	dict = {"CURRENT":current, "PROFILE":profile, "PORTAL":portal}
-
-	settings.SaveJSON(path+name+"Profile.sav", dict, "\t")
-	logic.CLASS.NEWLINE("Profile Saved!", 2, 2, (1,1,1,1))
-
-	settings.SETGFX(launcher=True, save=True)
-
-
-def LOAD(args=[], kwa=None):
-	"""Load Profile Data"""
-
-	current = logic.globalDict["CURRENT"]
-
-	path = logic.globalDict["DATA"]["GAMEPATH"]
-	name = "Base"
-
-	if "_" not in current["Profile"]:
-		name = current["Profile"]
-
-	dict = settings.LoadJSON(path+name+"Profile.sav")
-
-	if dict == None:
-		if "Return" in args and len(args) == 1:
-			return None
-		ERROR()
-		return
-
-	logic.globalDict["CURRENT"] = dict["CURRENT"]
-	logic.globalDict["PROFILES"][current["Profile"]] = dict["PROFILE"]
-	logic.globalDict["DATA"]["Portal"] = dict["PORTAL"]
-
-	if "Return" in args and len(args) == 1:
-		return dict
-
-	logic.CLASS.NEWLINE("Profile Loaded!", 2, 2, (1,1,1,1))
-
-
 def RESUME(args=[], kwa=None):
 	"""Resume from Last Save"""
 
@@ -546,6 +496,64 @@ def QUALITY(args=[], kwa=None):
 		settings.SETGFX(launcher=True, save=True)
 
 
+def SAVE(args=[], kwa=None):
+	"""Save Current Profile"""
+
+	current = logic.globalDict["CURRENT"]
+	profile = logic.globalDict["PROFILES"][current["Profile"]]
+	portal = logic.globalDict["DATA"]["Portal"]
+
+	path = logic.globalDict["DATA"]["GAMEPATH"]
+	name = "Base"
+
+	if "_" not in current["Profile"]:
+		name = current["Profile"]
+
+	profile["Last"]["CURRENT"] = current.copy()
+	profile["Last"]["PORTAL"] = portal.copy()
+	dict = profile
+
+	if "Switch" in args and len(args) == 1:
+		return
+
+	settings.SaveJSON(path+name+"Profile.sav", dict, "\t")
+	logic.CLASS.NEWLINE("Profile Saved!", 2, 2, (1,1,1,1))
+
+	settings.SETGFX(launcher=True, save=True)
+
+
+def LOAD(args=[], kwa=None):
+	"""Load Profile Data"""
+
+	current = logic.globalDict["CURRENT"]
+
+	path = logic.globalDict["DATA"]["GAMEPATH"]
+	name = "Base"
+
+	if "_" not in current["Profile"]:
+		name = current["Profile"]
+
+	dict = settings.LoadJSON(path+name+"Profile.sav")
+
+	if dict == None:
+		if "Return" in args and len(args) == 1:
+			return None
+		elif "Switch" in args and len(args) == 1:
+			dict = logic.globalDict["PROFILES"][current["Profile"]]
+		else:
+			ERROR()
+			return
+
+	logic.globalDict["CURRENT"] = dict["Last"]["CURRENT"].copy()
+	logic.globalDict["PROFILES"][current["Profile"]] = dict
+	logic.globalDict["DATA"]["Portal"] = dict["Last"]["PORTAL"].copy()
+
+	if "Return" in args and len(args) == 1:
+		return dict
+
+	logic.CLASS.NEWLINE("Profile Loaded!", 2, 2, (1,1,1,1))
+
+
 def LOGIN(args=[], kwa=None):
 
 	"""Login to a Profile, Creating New if Needed"""
@@ -557,14 +565,19 @@ def LOGIN(args=[], kwa=None):
 			kwa = kwa.capitalize()
 
 			if kwa in ["None", "Guest", "Base"]:
+				SAVE(["Switch"])
 				logic.globalDict["CURRENT"]["Profile"] = "__guest__"
+				LOAD(["Switch"])
 				return "Guest Profile Loaded..."
 
 			elif kwa in logic.globalDict["PROFILES"]:
+				SAVE(["Switch"])
 				logic.globalDict["CURRENT"]["Profile"] = kwa
+				LOAD(["Switch"])
 				return True
 
 			else:
+				SAVE(["Switch"])
 				logic.globalDict["CURRENT"]["Profile"] = kwa
 				dict = LOAD(["Return"])
 				chk = True
@@ -572,6 +585,11 @@ def LOGIN(args=[], kwa=None):
 					dict = settings.GenerateProfileData()
 					chk = "Data Failed to Load, Creating New..."
 					logic.globalDict["PROFILES"][kwa] = dict
+					for key in logic.globalDict["DATA"]["Portal"]:
+						logic.globalDict["DATA"]["Portal"][key] = None
+					for key in logic.globalDict["CURRENT"]:
+						if key != "Profile":
+							logic.globalDict["CURRENT"][key] = None
 				return chk
 
 		return False
