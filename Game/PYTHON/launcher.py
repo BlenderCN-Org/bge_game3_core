@@ -492,8 +492,12 @@ def RESOLUTION(args=[], kwa=None):
 		for i in args:
 			if "x " in i:
 				X = int(i.split(" ")[1])
+				if X % 2 != 0:
+					X -= 1
 			if "y " in i:
 				Y = int(i.split(" ")[1])
+				if Y % 2 != 0:
+					Y -= 1
 
 	else:
 		X = render.getWindowWidth()
@@ -508,7 +512,7 @@ def RESOLUTION(args=[], kwa=None):
 	X = render.getWindowWidth()
 	Y = render.getWindowHeight()
 
-	logic.globalDict["GRAPHICS"]["Resolution"] = (X,Y)
+	logic.globalDict["GRAPHICS"]["Resolution"] = [X,Y]
 	logic.CLASS.NEWLINE("Resolution: "+str(X)+"x"+str(Y), 2, 2, (1,1,1,1))
 
 	settings.SETGFX(launcher=True, save=True)
@@ -590,7 +594,7 @@ def PLAYER(args=[], kwa=None):
 
 	"""Change Player Class"""
 
-	PL = ["Actor", "Red", "Blue", "Purple"]
+	PL = ["Actor", "Raptor", "Sandstorm", "Wave"]
 
 	if kwa != None:
 		if logic.CLASS.que[0] == "CLASS":

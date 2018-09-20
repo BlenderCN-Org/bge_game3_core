@@ -70,21 +70,25 @@ def GenerateGraphicsData(low=False):
 		"Debug": data.get("Debug", [True, True, True, True])
 	}
 
-	#if low == True:
-	#	dict["Shaders"] = "LOW"
-	#	dict["Resolution"] = (1280, 720)
-
 	render.setFullScreen(dict["Fullscreen"])
 	X = render.getWindowWidth()
 	Y = render.getWindowHeight()
+
 	if dict["Resolution"] == None:
 		print("NOTICE: Initializing Resolution...")
-		dict["Resolution"] = (X, Y)
-	else:
-		if dict["Resolution"][0] > X or dict["Resolution"][1] > Y:
-			print("WARNING: Resolution out of Range...")
-			dict["Resolution"] = (X, Y)
-		render.setWindowSize(dict["Resolution"][0], dict["Resolution"][1])
+		dict["Resolution"] = [X, Y]
+	if dict["Resolution"][0] > X or dict["Resolution"][1] > Y:
+		print("WARNING: Resolution out of Range...")
+		dict["Resolution"] = [X, Y]
+
+	if dict["Resolution"][0] % 2 != 0:
+		dict["Resolution"][0] -= 1
+		print("NOTICE: Resolution Fix")
+	if dict["Resolution"][1] % 2 != 0:
+		dict["Resolution"][1] -= 1
+		print("NOTICE: Resolution Fix")
+
+	render.setWindowSize(dict["Resolution"][0], dict["Resolution"][1])
 	print("...")
 
 	return dict
@@ -94,12 +98,6 @@ def SETGFX(graphics=None, launcher=False, save=False):
 	if graphics == None:
 		graphics = logic.globalDict["GRAPHICS"]
 
-	## RESOLUTION ##
-	X = render.getWindowWidth()
-	Y = render.getWindowHeight()
-
-	#graphics["Resolution"] = (X,Y)
-
 	## SAVE ##
 	if launcher == True:
 		SaveJSON(logic.globalDict["DATA"]["GAMEPATH"]+"Graphics.cfg", graphics, "\t")
@@ -108,6 +106,10 @@ def SETGFX(graphics=None, launcher=False, save=False):
 			return
 		if SCREENSHOT not in logic.getSceneList()[0].post_draw:
 			logic.getSceneList()[0].post_draw.append(SCREENSHOT)
+
+	## RESOLUTION ##
+	X = render.getWindowWidth()
+	Y = render.getWindowHeight()
 
 	print("GRAPHICS:\n\tResolution", X, Y)
 
@@ -159,7 +161,7 @@ def triggerPrintScreen(mode=True):
 
 
 def SCREENSHOT():
-	path = ospath.normpath(logic.globalDict["DATA"]["GAMEPATH"]+"SCREENSHOTS")+"\\"
+	path = ospath.normpath(logic.globalDict["DATA"]["GAMEPATH"]+"../../../Shared Pictures/Rendered Scenes/Screenshots")+"\\"
 
 	if "SCREENSHOT" not in logic.globalDict:
 		dict = LoadJSON(path+"marker.json")
