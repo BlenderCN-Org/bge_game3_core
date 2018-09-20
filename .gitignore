@@ -3,6 +3,14 @@ __pycache__/
 *.py[cod]
 *$py.class
 
+# My filters
+*.db
+*.cfg
+TEXTURES
+MAPS
+FONTS
+CONTENT
+
 # C extensions
 *.so
 
