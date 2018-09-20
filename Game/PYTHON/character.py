@@ -231,22 +231,31 @@ class BluePlayer(player.CorePlayer):
 		if owner.localLinearVelocity[2] < -2 :
 			self.ST_Walking_Set()
 
-	## EDGE HANG STATE ##
 	def ST_Hanging(self):
 		owner = self.objects["Root"]
 
-		self.doAnim(NAME="EdgeClimb", FRAME=(0,0), MODE="LOOP", BLEND=10)
+		edge = self.checkEdge(simple=True)
+		ground = self.checkGround(simple=True)
+		offset = self.EYE_H-0.67
 
 		owner.applyForce((0,0,-1*owner.scene.gravity[2]), False)
-		owner.worldPosition = self.rayorder[0]
 
-		if keymap.BINDS["PLR_JUMP"].tap() == True:
-			self.ST_EdgeClimb_Set()
+		self.jump_state = "NONE"
 
-		if keymap.BINDS["PLR_DUCK"].active() == True:
+		if edge != None:
+			self.getGroundPoint(edge[0])
+			self.groundhit = edge
+			owner.worldPosition[2] = edge[1][2]-offset
+
+		self.doAnim(NAME="EdgeClimb", FRAME=(0,0), MODE="LOOP", BLEND=5)
+
+		if keymap.BINDS["PLR_DUCK"].active() == True or edge == None or ground != None:
 			self.ST_EdgeFall_Set()
 
-		if keymap.BINDS["TOGGLEMODE"].tap() == True:
+		elif keymap.BINDS["PLR_JUMP"].tap() == True:
+			self.ST_EdgeClimb_Set()
+
+		elif keymap.BINDS["TOGGLEMODE"].tap() == True:
 			wall = self.findWall()
 			if wall == True:
 				self.ST_EdgeFall_Set()
