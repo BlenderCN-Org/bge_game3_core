@@ -13,6 +13,6 @@
 
 All content in **Game Data.zip**[(wiki)](https://github.com/DaedalusMDW/bge_game-3.0_template/wiki/%22Game-Data%22-zip-file) is [CC0](https://creativecommons.org/publicdomain/zero/1.0/) when applicable*  
 
-*Player rig is based off of Manuel Bastioni Lab character basic rig ([CC-BY 4.0](https://creativecommons.org/licenses/by/4.0/))  
+*Player rig is based off of [Manuel Bastioni Lab](http://www.manuelbastioni.com/) character basic rig
 
 
