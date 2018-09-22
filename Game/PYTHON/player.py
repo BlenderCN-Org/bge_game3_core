@@ -814,6 +814,37 @@ class CorePlayer(base.CoreAdvanced):
 
 		self.doAnim(NAME="Jumping", FRAME=(0,20), PRIORITY=2, MODE="PLAY", BLEND=10)
 
+	def doMovement(self, vec, mx=0, local=False):
+		owner = self.objects["Root"]
+		camera = self.objects["VertRef"]
+
+		axis = vec
+		if local == True:
+			axis = (0,1,0)
+
+		vref = camera.getAxisVect(axis)
+		dref = owner.getAxisVect((0,1,0))
+		dot = 1-((vref.dot(dref)*0.5)+0.5)
+		dot = 0.2+((dot**2)*0.5)
+
+		owner.alignAxisToVect(vref, 1, dot)
+
+		if mx <= 0:
+			return
+
+		if self.ACCEL > 1:
+			mx = mx*(self.motion["Accel"]/self.ACCEL)
+			if self.motion["Accel"] < self.ACCEL:
+				self.motion["Accel"] += 1
+
+		mref = vref.copy()
+		if local == True:
+			mref = camera.getAxisVect(vec)
+
+		owner.worldPosition[0] += mref[0]*mx
+		owner.worldPosition[1] += mref[1]*mx
+
+
 	def doCrouch(self, state):
 		if state == True or self.crouch != 0:
 			self.objects["Root"].localScale[2] = 0.25
@@ -883,23 +914,7 @@ class CorePlayer(base.CoreAdvanced):
 			move = self.motion["Move"].normalized()
 
 			if self.motion["Move"].length > 0.01:
-				vref = self.objects["VertRef"].getAxisVect((move[0], move[1], 0))
-				dref = self.objects["Root"].getAxisVect((0,1,0))
-				dot = 1-((vref.dot(dref)*0.5)+0.5)
-				dot = 0.2+((dot**2)*0.5)
-				owner.alignAxisToVect(vref, 1, dot)
-
-				mx = 0.015
-
-				if self.ACCEL > 1:
-					mx = mx*(self.motion["Accel"]/self.ACCEL)
-					if self.motion["Accel"] < self.ACCEL:
-						self.motion["Accel"] += 1
-
-				mref = dref.copy()*mx
-				owner.worldPosition[0] += mref[0]
-				owner.worldPosition[1] += mref[1]
-
+				self.doMovement((move[0], move[1], 0), 0.02)
 			else:
 				self.motion["Accel"] = 0
 
@@ -939,23 +954,17 @@ class CorePlayer(base.CoreAdvanced):
 
 		wall, wallnrm = self.checkWall(z=False)
 
+		invck = 0
+		for slot in self.cls_dict:
+			if slot in ["Hip_L", "Hip_R"]:
+				invck = -5
+
 		if ground != None:
 			if self.jump_state == "NONE":
 				owner.applyForce((0,0,-1*scene.gravity[2]), False)
 				owner.worldPosition[2] = ground[1][2]+(1+((angle/90)*0.3))
 
-				still = keymap.SYSTEM["ALT"].checkModifiers()
-				invck = 0
-				for slot in self.cls_dict:
-					if slot in ["Hip_L", "Hip_R"]:
-						invck = -5
-
-				if still == True:
-					vref = self.objects["VertRef"].getAxisVect((0,1,0))
-					dref = self.objects["Root"].getAxisVect((0,1,0))
-					dot = 1-((vref.dot(dref)*0.5)+0.5)
-					dot = 0.2+((dot**2)*0.3)
-					owner.alignAxisToVect(vref, 1, dot)
+				strafe = keymap.SYSTEM["ALT"].checkModifiers()
 
 				if keymap.BINDS["PLR_DUCK"].active() == True:
 					self.doCrouch(True)
@@ -965,36 +974,37 @@ class CorePlayer(base.CoreAdvanced):
 					self.jump_timer = 0
 					self.doJump()
 
-				elif self.motion["Move"].length > 0.01 and still == False:
-					vref = self.objects["VertRef"].getAxisVect((move[0], move[1], 0))
-					dref = self.objects["Root"].getAxisVect((0,1,0))
-					dot = 1-((vref.dot(dref)*0.5)+0.5)
-					dot = 0.2+((dot**2)*0.5)
-					owner.alignAxisToVect(vref, 1, dot)
+				elif self.motion["Move"].length > 0.01:
+					mx = self.data["SPEED"]*slope
 
-					if self.data["RUN"] == False or self.motion["Move"].length <= 0.5:
-						mx = 0.03*slope
+					if strafe == True:
+						if wall < 160 and move[0] < 0.5 and move[0] > -0.5:
+							if move[0] > 0:
+								frame = (0,39)
+							else:
+								frame = (39, 0)
+							self.doAnim(NAME="Running", FRAME=frame, PRIORITY=3, MODE="LOOP", BLEND=10)
+						else:
+							self.doAnim(NAME="Jumping", FRAME=(0+invck,0+invck), PRIORITY=3, MODE="LOOP", BLEND=10)
+
+					elif self.data["RUN"] == False or self.motion["Move"].length <= 0.5:
+						mx = 0.05*slope
 						if wall < 150:
 							self.doAnim(NAME="Walking", FRAME=(0,59), PRIORITY=3, MODE="LOOP", BLEND=10)
 						else:
 							self.doAnim(NAME="Jumping", FRAME=(0+invck,0+invck), PRIORITY=3, MODE="LOOP", BLEND=10)
 					else:
-						mx = self.data["SPEED"]*slope
 						if wall < 160:
 							self.doAnim(NAME="Running", FRAME=(0,39), PRIORITY=3, MODE="LOOP", BLEND=10)
 						else:
 							self.doAnim(NAME="Jumping", FRAME=(0+invck,0+invck), PRIORITY=3, MODE="LOOP", BLEND=10)
 
-					if self.ACCEL > 1:
-						mx = mx*(self.motion["Accel"]/self.ACCEL)
-						if self.motion["Accel"] < self.ACCEL:
-							self.motion["Accel"] += 1
-
-					mref = dref.copy()*mx
-					owner.worldPosition[0] += mref[0]
-					owner.worldPosition[1] += mref[1]
+					self.doMovement((move[0], move[1], 0), mx, strafe)
 
 				else:
+					if strafe == True or self.data["CAMERA"]["State"] == 1:
+						self.doMovement((0, 1, 0), 0, True)
+
 					self.motion["Accel"] = 0
 					self.doAnim(NAME="Jumping", FRAME=(0+invck,0+invck), PRIORITY=3, MODE="LOOP", BLEND=10)
 
