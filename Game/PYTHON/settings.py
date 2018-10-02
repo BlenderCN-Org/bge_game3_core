@@ -26,6 +26,13 @@ import os.path as ospath
 
 from bge import logic, events, render
 
+try:
+	import bpy
+	logic.endGame()
+	raise RuntimeError("Embedded Player Dectected...")
+except ImportError:
+	pass
+
 from mathutils import Vector, Matrix
 
 import PYTHON.keymap as keymap

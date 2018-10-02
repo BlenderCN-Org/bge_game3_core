@@ -27,15 +27,8 @@ for i in sys.path:
 
 from bge import logic, render
 
-try:
-	import bpy
-	logic.endGame()
-	raise RuntimeError("Embedded Player Dectected...")
-except ImportError:
-	pass
-
-import PYTHON.keymap as keymap
 import PYTHON.settings as settings
+import PYTHON.keymap as keymap
 
 
 if "PROFILES" not in logic.globalDict:

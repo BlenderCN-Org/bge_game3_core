@@ -30,15 +30,8 @@ import math
 
 from bge import logic
 
-try:
-	import bpy
-	logic.endGame()
-	raise RuntimeError("Embedded Player Dectected...")
-except ImportError:
-	pass
-
-import PYTHON.keymap as keymap
 import PYTHON.settings as settings
+import PYTHON.keymap as keymap
 
 
 SC_SCN = logic.getCurrentScene()
