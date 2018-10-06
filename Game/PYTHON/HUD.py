@@ -635,7 +635,6 @@ class SceneManager:
 
 			if self.custom_layout != None:
 				self.active_layout = self.custom_layout()
-				self.active_layout.RUN(plr)
 				self.custom_layout = None
 
 			if self.blackobj != None:
