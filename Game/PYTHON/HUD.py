@@ -43,7 +43,7 @@ def START(cont):
 
 	print("Loading HUD...")
 
-	logic.LibLoad( base.DATA["GAMEPATH"]+"CONTENT\\Game Assets HUD.blend", "Scene", load_actions=True, verbose=False, load_scripts=True, async=False)
+	logic.LibLoad( base.DATA["GAMEPATH"]+"CONTENT\\Game Assets HUD.blend", "Scene", load_actions=True, verbose=False, load_scripts=True)
 
 	logic.HUDCLASS.doBlackOut()
 
@@ -539,16 +539,17 @@ class Aircraft(CoreHUD):
 		refX = plr.data["HUD"].get("Side", (1,0,0))
 		angX = root.getAxisVect(refX).angle(glbZ)
 		angX = self.toDeg(angX)-90
-		self.objects["Roll"].localOrientation = self.createMatrix(rot=[0,0,angX], deg=True)
+		self.objects["Roll"].localOrientation = self.createMatrix(rot=[0,0,angX*0.167], deg=True)
 
 		## Pitch ##
 		refY = plr.data["HUD"].get("Forward", (0,1,0))
-		dotY = root.getAxisVect(refY).dot(glbZ)
-		self.objects["Pitch"].localScale[1] = dotY*2
+		angY = root.getAxisVect(refY).angle(glbZ)
+		angY = self.toDeg(angY)
+		self.objects["Pitch"].localOrientation = self.createMatrix(rot=[angY,0,0], deg=True)
 
 		## Power ##
 		power = plr.data["HUD"].get("Power", 0)*0.2
-		self.old_power += (power-self.old_power)*0.1
+		self.old_power += (power-self.old_power)*0.5
 		self.objects["Power"].localOrientation = self.createMatrix(rot=[0,0,self.old_power], deg=True)
 
 		## Lift ##
@@ -560,7 +561,7 @@ class Aircraft(CoreHUD):
 class HUDLayout:
 
 	GROUP = "Core"
-	MODULES = [Stats, Interact, Inventory]
+	MODULES = [Stats, Interact, Inventory, Weapons]
 
 	def __init__(self):
 		self.modlist = []
@@ -587,9 +588,13 @@ class SceneManager:
 	def __init__(self, plr):
 		self.active_state = self.ST_Wait
 		self.active_layout = None
+		self.MENU = None
+
+		self.start_check = True
 		self.blackobj = None
 
 		self.setControl(plr)
+		self.doLoad()
 
 	def doLoad(self):
 		if self not in logic.UPDATELIST:
@@ -597,6 +602,8 @@ class SceneManager:
 
 	def doUpdate(self):
 		scene = base.SC_HUD
+		if self.MENU != None:
+			return
 		obj = scene.addObject(scene.objectsInactive["HUD.Loading"], scene.active_camera, 0)
 		obj.applyMovement((0,0,-3), False)
 
@@ -628,7 +635,6 @@ class SceneManager:
 	def ST_Wait(self):
 		if self.control != None:
 			plr = self.control
-
 			if self.custom_layout == None:
 				if plr.HUDLAYOUT != None:
 					self.custom_layout = plr.HUDLAYOUT
@@ -637,15 +643,19 @@ class SceneManager:
 				self.active_layout = self.custom_layout()
 				self.custom_layout = None
 
-			if self.blackobj != None:
-				self.blackobj.endObject()
-				self.blackobj = None
+				if self.start_check == False:
+					self.active_layout.RUN(plr)
+				else:
+					self.start_check = False
 
 			self.active_state = self.ST_HUD
 
 	def ST_HUD(self):
-		if self.active_layout != None:
-			self.active_layout.RUN(self.control)
+		if self.blackobj != None:
+			self.blackobj.endObject()
+			self.blackobj = None
+
+		self.active_layout.RUN(self.control)
 
 		if logic.globalDict["SCREENSHOT"]["Trigger"] == True:
 			frameobj = base.SC_HUD.addObject("HUD.FreezeFrame", base.SC_HUD.active_camera, 0)
@@ -662,16 +672,18 @@ class SceneManager:
 
 		if status == "Launcher":
 			self.control.doUpdate()
+			self.doBlackOut()
+			self.MENU.destroy()
+			self.active_state = None
 			PATH = base.DATA["GAMEPATH"]
 			logic.startGame(PATH+"Launcher.blend")
-			self.doBlackOut()
-			self.doSceneResume()
 
 		if status == "Resume" or keymap.SYSTEM["ESCAPE"].tap() == True:
 			self.doSceneResume()
 
 	def RUN(self):
-		self.active_state()
+		if self.active_state != None:
+			self.active_state()
 
 
 class MenuPause:
@@ -716,6 +728,7 @@ class MenuPause:
 		self.objects["Cam"].useViewport = False
 		for dict in self.items:
 			dict["Root"].endObject()
+		self.items = []
 
 	def addItem(self, name):
 		scene = base.SC_HUD
