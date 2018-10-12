@@ -29,10 +29,10 @@ import PYTHON.base as base
 import PYTHON.HUD as HUD
 
 if "CURRENT" in logic.globalDict:
-	logic.LibLoad( base.DATA["GAMEPATH"] + "CONTENT\\Game Assets.blend", "Scene", load_actions=True, verbose=False, load_scripts=True, async=False)
-	logic.LibLoad( base.DATA["GAMEPATH"] + "CONTENT\\Player.blend",      "Scene", load_actions=True, verbose=False, load_scripts=True, async=False)
-	logic.LibLoad( base.DATA["GAMEPATH"] + "CONTENT\\Stargate.blend",    "Scene", load_actions=True, verbose=False, load_scripts=True, async=False)
-	logic.LibLoad( base.DATA["GAMEPATH"] + "CONTENT\\Cinematics.blend",  "Scene", load_actions=True, verbose=False, load_scripts=True, async=False)
+	logic.LibLoad( base.DATA["GAMEPATH"] + "CONTENT\\Game Assets.blend", "Scene", load_actions=True, verbose=False, load_scripts=True)
+	logic.LibLoad( base.DATA["GAMEPATH"] + "CONTENT\\Player.blend",      "Scene", load_actions=True, verbose=False, load_scripts=True)
+	logic.LibLoad( base.DATA["GAMEPATH"] + "CONTENT\\Stargate.blend",    "Scene", load_actions=True, verbose=False, load_scripts=True)
+	logic.LibLoad( base.DATA["GAMEPATH"] + "CONTENT\\Cinematics.blend",  "Scene", load_actions=True, verbose=False, load_scripts=True)
 
 	BLACK = base.SC_SCN.addObject("GFX_Black", base.SC_CAM, 0)
 	BLACK.setParent(base.SC_CAM)
@@ -775,7 +775,7 @@ class CorePlayer(base.CoreAdvanced):
 			self.rayhit = RAYHIT  #(RAYOBJ, RAYPNT, RAYNRM)
 			self.rayvec = rayfrom.worldPosition.copy()-RAYHIT[1]
 
-			RAYTARGPOS = scene.active_camera.getScreenPosition(RAYHIT[1])
+			RAYTARGPOS[1] = scene.active_camera.getScreenPosition(RAYHIT[1])[1]
 
 			if self.rayvec.length < range:
 				RAYOBJ = RAYHIT[0]
@@ -918,6 +918,10 @@ class CorePlayer(base.CoreAdvanced):
 			else:
 				self.motion["Accel"] = 0
 
+			if ground[0].getPhysicsId() != 0:
+				impulse = scene.gravity*owner.mass*0.1
+				ground[0].applyImpulse(ground[1], impulse, False)
+
 		owner.alignAxisToVect((0,0,1), 2, 1.0)
 
 		self.doInteract()
@@ -1008,6 +1012,10 @@ class CorePlayer(base.CoreAdvanced):
 					self.motion["Accel"] = 0
 					self.doAnim(NAME="Jumping", FRAME=(0+invck,0+invck), PRIORITY=3, MODE="LOOP", BLEND=10)
 
+				if ground[0].getPhysicsId() != 0:
+					impulse = scene.gravity*owner.mass*0.1
+					ground[0].applyImpulse(ground[1], impulse, False)
+
 			elif self.jump_state == "JUMP":
 				self.jump_timer += 1
 				if self.jump_timer > 10 and owner.localLinearVelocity[2] < 0.1:
@@ -1023,6 +1031,9 @@ class CorePlayer(base.CoreAdvanced):
 				owner.setDamping(1.0, 1.0)
 				self.jump_timer = 0
 				self.jump_state = "NONE"
+				if ground[0].getPhysicsId() != 0:
+					impulse = (owner.worldLinearVelocity+scene.gravity)*owner.mass*0.1
+					ground[0].applyImpulse(ground[1], impulse, False)
 				if self.motion["Move"].length > 0.01:
 					self.motion["Accel"] = self.ACCEL
 				else:
