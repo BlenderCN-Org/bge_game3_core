@@ -65,12 +65,13 @@ class CoreAttachment(base.CoreObject):
 		self.data["ENABLE"] = self.ENABLE
 		self.data["COOLDOWN"] = 0
 
-		self.SCALE = [self.SCALE, self.SCALE, self.SCALE]
-		self.OFFSET = [self.OFFSET[0], self.OFFSET[1], self.OFFSET[2]]
+		self.SCALE = self.createVector(size=3, fill=self.SCALE)
+		self.OFFSET = self.createVector(vec=self.OFFSET)
 		for i in range(3):
 			if self.SCALE[i] < 0.1:
 				self.SCALE[i] = 0.1
-			self.OFFSET[i] = self.OFFSET[i]/self.SCALE[i]
+			self.SCALE[i] = 1/self.SCALE[i]
+			self.OFFSET[i] = self.OFFSET[i]*self.SCALE[i]
 
 		self.checkGhost(owner)
 		self.findObjects(owner)
@@ -107,7 +108,7 @@ class CoreAttachment(base.CoreObject):
 				halo["AXIS"] = None
 			owner["DICT"]["Equiped"] = False
 
-		box.localScale = self.SCALE
+		#box.localScale = self.SCALE
 		box["RAYCAST"] = None
 		box["RAYNAME"] = self.NAME
 
@@ -152,9 +153,14 @@ class CoreAttachment(base.CoreObject):
 
 		obj.setParent(socket)
 		if offset != None:
-			obj.localPosition = offset
-			obj.localOrientation = self.createMatrix()
-		obj.worldScale = (1,1,1)
+			print("OFFSET NONE:", self.NAME)
+		obj.localOrientation = self.createMatrix()
+		if socket == self.box:
+			obj.localPosition = self.OFFSET.copy()
+			obj.worldScale = self.SCALE.copy()
+		else:
+			obj.localPosition = (0,0,0)
+			obj.worldScale = (1,1,1)
 
 	def equipItem(self, cls):
 		owner = self.objects["Root"]
@@ -199,11 +205,7 @@ class CoreAttachment(base.CoreObject):
 		self.removeFromPlayer()
 		self.attachToSocket(owner, self.box, self.OFFSET)
 
-		self.box.worldPosition[0] = self.data["POS"][0]
-		self.box.worldPosition[1] = self.data["POS"][1]
-		self.box.worldPosition[2] = self.data["POS"][2]
-
-		#self.checkStability(offset=self.SCALE[2])
+		self.box.worldPosition = self.data["POS"]
 
 		self.active_state = self.ST_Box
 		self.owning_slot = None
@@ -227,6 +229,7 @@ class CoreAttachment(base.CoreObject):
 
 	def checkStability(self, align=False, offset=1.0):
 		box = self.box
+		offset = 1
 		if self.box == None:
 			box = self.objects["Root"]
 
@@ -248,7 +251,6 @@ class CoreAttachment(base.CoreObject):
 			self.checkStability(offset=self.SCALE[2])
 		else:
 			self.box_timer -= 1
-			return
 
 		if self.checkClicked(self.box) == True:
 			self.equipItem(self.box["RAYCAST"])
