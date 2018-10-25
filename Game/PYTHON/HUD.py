@@ -27,6 +27,8 @@ from bge import logic
 import PYTHON.keymap as keymap
 import PYTHON.base as base
 
+from mathutils import Vector
+
 logic.HUDCLASS = None
 
 if "CURRENT" in logic.globalDict:
@@ -753,35 +755,37 @@ class MenuPause:
 	def RUN(self):
 		click = None
 
-		X, Y = logic.mouse.position
+		X, Y = keymap.MOUSELOOK.axis(ui=True)
+		X = X*64
+		Y = Y*36
 
 		for JOYID in keymap.events.JOYBUTTONS:
-			ZONE = 0.2
 			AXREF = keymap.events.JOYBUTTONS[JOYID]["Axis"]
 
 			VALX = AXREF.get(0, {"VALUE":0})["VALUE"]
-			ABSX = (abs(VALX)-ZONE)*(1/(1-ZONE))
-
-			if VALX >= ZONE:
-				X += ABSX*0.01
-			elif VALX <= -ZONE:
-				X += ABSX*-0.01
-
 			VALY = AXREF.get(1, {"VALUE":0})["VALUE"]
-			ABSY = (abs(VALY)-ZONE)*(1/(1-ZONE))
 
-			if VALY >= ZONE:
-				Y += ABSY*0.01
-			elif VALY <= -ZONE:
-				Y += ABSY*-0.01
+			NORM = keymap.input.JoinAxis(VALX, VALY)
 
-			logic.mouse.position[0] += X
-			logic.mouse.position[1] += Y
+			X += NORM[0]*0.5
+			Y -= NORM[1]*0.5
 
 		ray = self.objects["Ray"]
 
-		ray.localPosition[0] = (X-0.5)*64
-		ray.localPosition[1] = (0.5-Y)*36
+		rlp = ray.localPosition.copy()
+		rlp[0] += X
+		rlp[1] += Y
+		if rlp[0] > 32:
+			rlp[0] = 32
+		if rlp[0] < -32:
+			rlp[0] = -32
+		if rlp[1] > 18:
+			rlp[1] = 18
+		if rlp[1] < -18:
+			rlp[1] = -18
+
+		ray.localPosition[0] = rlp[0]
+		ray.localPosition[1] = rlp[1]
 
 		rayOBJ = ray.rayCastTo(self.objects["Cursor"], 100, "RAYCAST")
 
