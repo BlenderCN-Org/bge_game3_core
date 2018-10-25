@@ -160,6 +160,8 @@ class CoreVehicle(base.CoreAdvanced):
 		first.setParent(owner)
 		first.localPosition = self.CAMFIRST["POS"]
 
+		self.cam_slow = []
+
 	def getConstraint(self):
 		owner = self.objects["Root"]
 
@@ -223,6 +225,17 @@ class CoreVehicle(base.CoreAdvanced):
 		for wheel in self.objects["Wheels"]:
 			wheel.setVisible(False, True)
 
+	def alignObject(self, offset=0.5, velocity=True):
+		owner = self.objects["Root"]
+		if owner.worldOrientation[2][2] < 0.5:
+			owner.alignAxisToVect((0,0,1), 2, 1.0)
+			owner.worldPosition[2] += offset
+			if velocity == True:
+				owner.localLinearVelocity = (0,0,0)
+				owner.localAngularVelocity = (0,0,0)
+			return True
+		return False
+
 	def setCamera(self, CAM=0):
 		self.objects["CamThird"]["Cam"].timeOffset = self.CAMTHIRD["SLOW"]
 		self.data["CAMERA"]["Dist"] = self.data["CAMERA"]["Zoom"]
@@ -260,14 +273,16 @@ class CoreVehicle(base.CoreAdvanced):
 		elif keymap.BINDS["ZOOM_OUT"].tap() == True and camdata["Zoom"] < self.CAMTHIRD["RANGE"][1]:
 			camdata["Zoom"] += 1
 
+		## Slow Cam ##
+		#if self.CAMTHIRD["SLOW"] > 1:
+		#	self.cam_slow.append(self.objects["Root"].worldOrientation.copy())
+		#	if len(self.cam_slow) > abs(self.CAMTHIRD["SLOW"]):
+		#		self.cam_slow.pop(0)
+		#	self.objects["CamThird"]["Loc"].worldOrientation = self.cam_slow[0]
+
+
 		## Toggle Orbit ##
-		if self.data["CAMERA"]["Orbit"] == False:
-			keymap.MOUSELOOK.center()
-
-			if keymap.BINDS["CAM_ORBIT"].tap() == True:
-				self.data["CAMERA"]["Orbit"] = True
-
-		elif self.data["CAMERA"]["Orbit"] == True:
+		if self.data["CAMERA"]["Orbit"] == True:
 			X, Y = keymap.MOUSELOOK.axis()
 
 			self.objects["CamFirst"]["Loc"].applyRotation((0,0,X), True)
@@ -280,6 +295,20 @@ class CoreVehicle(base.CoreAdvanced):
 
 			self.objects["CamThird"]["Loc"].localOrientation = self.objects["CamFirst"]["Loc"].localOrientation.copy()
 			self.objects["CamThird"]["Rot"].localOrientation = self.objects["CamFirst"]["Rot"].localOrientation.copy()
+
+			#wp = self.objects["Root"].worldPosition
+			#self.objects["CamThird"]["Loc"] = wp
+
+		else:
+			keymap.MOUSELOOK.center()
+
+			if keymap.BINDS["CAM_ORBIT"].tap() == True:
+				self.data["CAMERA"]["Orbit"] = True
+
+			#wp = self.objects["Root"].worldPosition
+			#wv = self.objects["Root"].worldLinearVelocity
+			#self.objects["CamThird"]["Loc"] = wp-(wv*0.05)
+
 
 	def doCameraCollision(self):
 		camdata = self.data["CAMERA"]
@@ -322,54 +351,19 @@ class CoreVehicle(base.CoreAdvanced):
 
 	def getInputs(self):
 		self.linV = self.objects["Root"].getLinearVelocity(True)
+		KB = keymap.BINDS
 
-		STRAFE = keymap.BINDS["VEH_STRAFERIGHT"].axis() - keymap.BINDS["VEH_STRAFELEFT"].axis()
-		POWER = keymap.BINDS["VEH_THROTTLEUP"].axis() - keymap.BINDS["VEH_THROTTLEDOWN"].axis()
-		CLIMB = keymap.BINDS["VEH_ASCEND"].axis() - keymap.BINDS["VEH_DESCEND"].axis()
-
-		if keymap.BINDS["VEH_STRAFERIGHT"].active() == True:
-			STRAFE = 1
-
-		if keymap.BINDS["VEH_STRAFELEFT"].active() == True:
-			STRAFE = -1
-
-		if keymap.BINDS["VEH_THROTTLEUP"].active() == True:
-			POWER = 1
-
-		if keymap.BINDS["VEH_THROTTLEDOWN"].active() == True:
-			POWER = -1
-
-		if keymap.BINDS["VEH_ASCEND"].active() == True:
-			CLIMB = 1
-
-		if keymap.BINDS["VEH_DESCEND"].active() == True:
-			CLIMB = -1
+		STRAFE = KB["VEH_STRAFERIGHT"].axis(True, clip=True) - KB["VEH_STRAFELEFT"].axis(True, clip=True)
+		POWER = KB["VEH_THROTTLEUP"].axis(True, clip=True) - KB["VEH_THROTTLEDOWN"].axis(True, clip=True)
+		CLIMB = KB["VEH_ASCEND"].axis(True, clip=True) - KB["VEH_DESCEND"].axis(True, clip=True)
 
 		self.motion["Force"][0] = STRAFE
 		self.motion["Force"][1] = POWER
 		self.motion["Force"][2] = CLIMB
 
-		PITCH = keymap.BINDS["VEH_PITCHUP"].axis() - keymap.BINDS["VEH_PITCHDOWN"].axis()
-		BANK = keymap.BINDS["VEH_BANKRIGHT"].axis() - keymap.BINDS["VEH_BANKLEFT"].axis()
-		YAW = keymap.BINDS["VEH_YAWLEFT"].axis() - keymap.BINDS["VEH_YAWRIGHT"].axis()
-
-		if keymap.BINDS["VEH_PITCHUP"].active() == True:
-			PITCH = 1
-
-		if keymap.BINDS["VEH_PITCHDOWN"].active() == True:
-			PITCH = -1
-
-		if keymap.BINDS["VEH_BANKRIGHT"].active() == True:
-			BANK = 1
-
-		if keymap.BINDS["VEH_BANKLEFT"].active() == True:
-			BANK = -1
-
-		if keymap.BINDS["VEH_YAWLEFT"].active() == True:
-			YAW = 1
-
-		if keymap.BINDS["VEH_YAWRIGHT"].active() == True:
-			YAW = -1
+		PITCH = KB["VEH_PITCHUP"].axis(True, clip=True) - KB["VEH_PITCHDOWN"].axis(True, clip=True)
+		BANK = KB["VEH_BANKRIGHT"].axis(True, clip=True) - KB["VEH_BANKLEFT"].axis(True, clip=True)
+		YAW = KB["VEH_YAWLEFT"].axis(True, clip=True) - KB["VEH_YAWRIGHT"].axis(True, clip=True)
 
 		self.motion["Torque"][0] = PITCH
 		self.motion["Torque"][1] = BANK
@@ -420,6 +414,8 @@ class CoreVehicle(base.CoreAdvanced):
 			self.ST_Idle_Set()
 
 	def ST_Active_Set(self):
+		if self.alignObject() == True:
+			return
 		self.setCamera()
 		self.driving_player = self.objects["Root"]["RAYCAST"]
 		self.driving_player.enterVehicle(self.objects["Seat"]["1"], self.PLAYERACTION)
@@ -509,12 +505,7 @@ class CoreCar(CoreVehicle):
 
 		## Reset ##
 		if keymap.BINDS["VEH_ACTION"].tap() == True:
-			if owner.worldOrientation[2][2] < 0.5:
-				owner.alignAxisToVect((0,0,1), 2, 1.0)
-				owner.worldPosition[2] += 0.5
-				owner.localLinearVelocity = (0,0,0)
-				owner.localAngularVelocity = (0,0,0)
-
+			self.alignObject()
 
 		FORCE_F = (-engine["Power"] + (speed*engine["Speed"]))*POWER
 		DRIVE = self.DRIVECONFIG["DRIVE"]

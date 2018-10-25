@@ -406,54 +406,32 @@ class CorePlayer(base.CoreAdvanced):
 
 	def getInputs(self):
 
-		TURN = keymap.BINDS["PLR_TURNLEFT"].axis() - keymap.BINDS["PLR_TURNRIGHT"].axis()
-		LOOK = keymap.BINDS["PLR_LOOKUP"].axis() - keymap.BINDS["PLR_LOOKDOWN"].axis()
+		TURN = keymap.BINDS["PLR_TURNLEFT"].axis(True) - keymap.BINDS["PLR_TURNRIGHT"].axis(True)
+		LOOK = keymap.BINDS["PLR_LOOKUP"].axis(True) - keymap.BINDS["PLR_LOOKDOWN"].axis(True)
+		ROTATE = keymap.input.JoinAxis(LOOK, 0, TURN)
 
-		MOVE = keymap.BINDS["PLR_FORWARD"].axis() - keymap.BINDS["PLR_BACKWARD"].axis()
-		STRAFE = keymap.BINDS["PLR_STRAFERIGHT"].axis() - keymap.BINDS["PLR_STRAFELEFT"].axis()
+		FORWARD = keymap.BINDS["PLR_FORWARD"].axis(True) - keymap.BINDS["PLR_BACKWARD"].axis(True)
+		STRAFE = keymap.BINDS["PLR_STRAFERIGHT"].axis(True) - keymap.BINDS["PLR_STRAFELEFT"].axis(True)
+		MOVE = keymap.input.JoinAxis(STRAFE, FORWARD)
 		CLIMB = 0
 
 		## Key Commands ##
-		if keymap.BINDS["PLR_FORWARD"].active() == True:
-			MOVE = 1
-
-		if keymap.BINDS["PLR_BACKWARD"].active() == True:
-			MOVE = -1
-
-		if keymap.BINDS["PLR_STRAFERIGHT"].active() == True:
-			STRAFE = 1
-
-		if keymap.BINDS["PLR_STRAFELEFT"].active() == True:
-			STRAFE = -1
-
 		if keymap.BINDS["PLR_JUMP"].active() == True:
 			CLIMB = 1
 
 		if keymap.BINDS["PLR_DUCK"].active() == True:
 			CLIMB = -1
 
-		if keymap.BINDS["PLR_TURNLEFT"].active() == True:
-			TURN += 1
-
-		if keymap.BINDS["PLR_TURNRIGHT"].active() == True:
-			TURN -= 1
-
-		if keymap.BINDS["PLR_LOOKUP"].active() == True:
-			LOOK += 1
-
-		if keymap.BINDS["PLR_LOOKDOWN"].active() == True:
-			LOOK -= 1
-
 		if keymap.BINDS["PLR_RUN"].tap() == True:
 			self.data["RUN"] ^= True
 
-		self.motion["Move"][0] = STRAFE
-		self.motion["Move"][1] = MOVE
+		self.motion["Move"][0] = MOVE[0]
+		self.motion["Move"][1] = MOVE[1]
 		self.motion["Climb"] = CLIMB
 
-		self.motion["Rotate"][0] = LOOK
+		self.motion["Rotate"][0] = ROTATE[0]
 		self.motion["Rotate"][1] = 0
-		self.motion["Rotate"][2] = TURN
+		self.motion["Rotate"][2] = ROTATE[2]
 
 		for slot in self.data["SLOTS"]:
 			key = self.data["SLOTS"][slot]
@@ -844,7 +822,6 @@ class CorePlayer(base.CoreAdvanced):
 		owner.worldPosition[0] += mref[0]*mx
 		owner.worldPosition[1] += mref[1]*mx
 
-
 	def doCrouch(self, state):
 		if state == True or self.crouch != 0:
 			self.objects["Root"].localScale[2] = 0.25
@@ -888,14 +865,6 @@ class CorePlayer(base.CoreAdvanced):
 
 		owner.worldPosition[0] += offset[0]
 		owner.worldPosition[1] += offset[1]
-
-		eulerOLD = self.groundori[1].to_euler()
-		eulerNEW = self.groundori[0].to_euler()
-
-		RZ = eulerOLD[2] - eulerNEW[2]
-
-		owner.applyRotation((0, 0, -RZ), False)
-		#self.objects["VertRef"].applyRotation((0, 0, -RZ), False)
 
 		self.groundhit = None
 
@@ -991,8 +960,8 @@ class CorePlayer(base.CoreAdvanced):
 						else:
 							self.doAnim(NAME="Jumping", FRAME=(0+invck,0+invck), PRIORITY=3, MODE="LOOP", BLEND=10)
 
-					elif self.data["RUN"] == False or self.motion["Move"].length <= 0.5:
-						mx = 0.05*slope
+					elif self.data["RUN"] == False or self.motion["Move"].length <= 0.7:
+						mx = 0.03*slope
 						if wall < 150:
 							self.doAnim(NAME="Walking", FRAME=(0,59), PRIORITY=3, MODE="LOOP", BLEND=10)
 						else:
