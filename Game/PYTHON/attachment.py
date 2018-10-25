@@ -152,7 +152,7 @@ class CoreAttachment(base.CoreObject):
 			obj = self.objects["Root"]
 
 		obj.setParent(socket)
-		if offset != None:
+		if offset == None:
 			print("OFFSET NONE:", self.NAME)
 		obj.localOrientation = self.createMatrix()
 		if socket == self.box:
