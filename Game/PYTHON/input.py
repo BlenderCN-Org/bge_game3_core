@@ -24,6 +24,7 @@
 
 from bge import logic, events, render
 
+from mathutils import Vector
 import json
 
 
@@ -49,6 +50,7 @@ for JOYID in range(len(logic.joysticks)):
 			events.JOYBUTTONS[JOYID]["Hats"][HAT] = {"U":0, "D":0, "L":0, "R":0}
 
 
+## SAVE/LOAD ##
 def SaveBinds(binds, path, profile):
 	dict = {}
 	for key in binds:
@@ -80,6 +82,29 @@ def LoadBinds(binds, path, profile):
 			binds[key].setData(dict[key])
 
 	print("NOTICE: Keybinds Loaded...\n\t", name)
+
+
+## EXTRAS ##
+def ClipAxis(value):
+	LZ = 0.2
+	HZ = 1.0
+
+	if value < LZ:
+		value = LZ
+	if value > HZ:
+		value = HZ
+
+	value = ( (value-LZ)*(1/(HZ-LZ)) )
+
+	return value
+
+def JoinAxis(VX=0, VY=0, VZ=0):
+	vec = Vector([VX, VY, VZ])
+
+	CLIP = ClipAxis(vec.length)
+	NORM = vec.normalized()*CLIP
+
+	return NORM
 
 
 ## Base Class for Inputs ##
@@ -285,7 +310,7 @@ class KeyBase:
 
 		return False
 
-	def axis(self):
+	def axis(self, key=False, clip=False):
 		if self.sceneGamepadCheck() == False:
 			return 0.0
 
@@ -294,17 +319,15 @@ class KeyBase:
 		TYPE = self.gamepad["Type"]
 		CURVE = self.gamepad["Curve"]
 
+		if self.checkInput(logic.KX_INPUT_ACTIVE) == True and key == True:
+			return 1.0
 		if JOYID == None or AXIS == None or CURVE == "B":
 			return 0.0
 
 		VALUE = events.JOYBUTTONS[JOYID]["Axis"][AXIS]["VALUE"]
 		ABSVAL = abs(VALUE)
-
-		ZONE = 0.2
-		if ABSVAL >= ZONE:
-			ABSVAL = (ABSVAL-ZONE)*(1/(1-ZONE))
-		else:
-			ABSVAL = 0.0
+		if clip == True:
+			ABSVAL = ClipAxis(ABSVAL)
 
 		if TYPE == "POS":
 			if VALUE > 0:
@@ -346,7 +369,7 @@ class MouseLook:
 		logic.mouse.position = (0.5, 0.5)
 		self.skip = True
 
-	def axis(self):
+	def axis(self, ui=False):
 		if self.skip == True:
 			self.skip = False
 			logic.mouse.position = (0.5, 0.5)
@@ -354,7 +377,13 @@ class MouseLook:
 
 		RAW_X, RAW_Y = logic.mouse.position
 
-		if self.smoothing > 1:
+		if ui == True:
+			X = (RAW_X-0.5)
+			Y = (0.5-RAW_Y)
+			logic.mouse.position = (0.5, 0.5)
+			return (X,Y)
+
+		elif self.smoothing > 1:
 			NEW_X = (0.5-RAW_X)*2
 			NEW_Y = (0.5-RAW_Y)*2
 
