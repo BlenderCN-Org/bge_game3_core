@@ -584,7 +584,9 @@ class LayoutAircraft(HUD.HUDLayout):
 
 class CoreAircraft(CoreVehicle):
 
-	AERO = {"LIFT":0.1, "DRAG":(1,0.1,1), "ALIGN":10}
+	LANDACTION = "AircraftRigLand"
+	LANDFRAMES = [0, 100]
+	AERO = {"POWER":1000, "HOVER":0, "LIFT":0.1, "ALIGN":10}
 	HUDLAYOUT = LayoutAircraft
 
 	def airDrag(self):
@@ -625,4 +627,84 @@ class CoreAircraft(CoreVehicle):
 			lift = mass
 
 		owner.applyForce((0,0,lift), True)
+
+	def getEngineForce(self):
+		owner = self.objects["Root"]
+		force = self.motion["Force"]
+		torque = self.motion["Torque"]
+
+		self.data["POWER"] += force[1]*(self.AERO["POWER"]/100)
+		if self.data["POWER"] > self.AERO["POWER"]:
+			self.data["POWER"] = self.AERO["POWER"]
+
+		if self.data["POWER"] < 0:
+			self.data["POWER"] = 0
+
+		self.data["HOVER"][0] += force[2]*20
+		if self.data["HOVER"][0] > 980 or self.data["HOVER"][1] > 0:
+			self.data["HOVER"][0] = 980
+			if force[2] > 0.1:
+				self.data["HOVER"][1] += force[2]*20
+				if self.data["HOVER"][1] > self.AERO["HOVER"]:
+					self.data["HOVER"][1] = self.AERO["HOVER"]
+			else:
+				self.data["HOVER"][1] -= 20
+				if self.data["HOVER"][1] < 0:
+					self.data["HOVER"][1] = 0
+
+		if self.data["HOVER"][0] < 0:
+			self.data["HOVER"][0] = 0
+
+		## FORCES ##
+		mass = owner.mass/100
+		power = self.data["POWER"]
+		hover = ((self.data["HOVER"][0]-(self.lift*(self.data["HOVER"][0]/980)))+self.data["HOVER"][1])*mass
+
+		return power, hover
+
+	def doLandingGear(self, init=False):
+		start, end = self.LANDFRAMES
+
+		if init == True:
+			self.active_post.append(self.doLandingGear)
+			self.data["LANDFRAME"] = 0
+			self.data["LANDSTATE"] = "LAND"
+
+		if self.data["LANDSTATE"] == "LAND":
+			if init == True:
+				self.doAnim(NAME=self.LANDACTION, FRAME=(start,start))
+				return
+			if self.data["LANDFRAME"] == 100:
+				self.doAnim(NAME=self.LANDACTION, FRAME=(end,start))
+			if self.data["LANDFRAME"] == 1:
+				self.createVehicle()
+			if self.data["LANDFRAME"] != 0:
+				self.data["LANDFRAME"] -= 1
+
+		elif self.data["LANDSTATE"] == "FLY":
+			if init == True:
+				self.doAnim(NAME=self.LANDACTION, FRAME=(end,end))
+				return
+			if self.data["LANDFRAME"] == 0:
+				self.doAnim(NAME=self.LANDACTION, FRAME=(start,end))
+				self.removeVehicle()
+			if self.data["LANDFRAME"] != abs(end-start):
+				self.data["LANDFRAME"] += 1
+
+		if self.driving_player == None:
+			return
+
+		owner = self.objects["Root"]
+		rayto = list(owner.worldPosition)
+		rayto[2] -= 1
+		dist = self.WHEELSETUP["HEIGHT"]+self.WHEELSETUP["LENGTH"]+self.WHEELOBJECT["RADIUS"]
+		ground = owner.rayCastTo(rayto, dist, "GROUND")
+
+		if keymap.BINDS["TOGGLEMODE"].tap() == True and ground == None:
+			if self.data["LANDSTATE"] == "LAND" and self.data["LANDFRAME"] == 0:
+				self.data["LANDSTATE"] = "FLY"
+			elif self.data["LANDSTATE"] == "FLY" and self.data["LANDFRAME"] == abs(end-start):
+				self.data["LANDSTATE"] = "LAND"
+
+
 
