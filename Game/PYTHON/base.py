@@ -328,13 +328,13 @@ class CoreObject:
 			LEVEL["DROP"].append(owner["DICT"])
 
 	def getTransformDiff(self, obj):
-		root = player.objects["Root"]
+		root = self.objects["Root"]
 
 		pnt = root.worldPosition-obj.worldPosition
 		lp = obj.worldOrientation.inverted()*pnt
 		lp = [lp[0], lp[1], lp[2]]
 
-		dr = owner.worldOrientation.to_euler()
+		dr = obj.worldOrientation.to_euler()
 		pr = root.worldOrientation.to_euler()
 		lr = [pr[0]-dr[0], pr[1]-dr[1], pr[2]-dr[2]]
 
