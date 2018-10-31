@@ -69,8 +69,8 @@ def openWorldBlend(map):
 		blend = "Keymap.blend"
 	else:
 		gd["CURRENT"]["Level"] = map
-		blend = gd["DATA"]["GAMEPATH"]+"MAPS/"+map
-
+		blend = "MAPS\\"+map
+	print("OPEN MAP:\n\t"+blend)
 	logic.startGame(gd["DATA"]["GAMEPATH"]+blend)
 
 
