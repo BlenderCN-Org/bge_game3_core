@@ -346,14 +346,16 @@ def RESUME(args=[], kwa=None):
 	#	logic.CLASS.NEWLINE("Something Happened...", 2, 2, (1,1,1,1))
 	#	return
 
-	logic.startGame(logic.expandPath("//MAPS/"+map))
+	settings.openWorldBlend(map)
+	#logic.startGame(logic.expandPath("//MAPS/"+map))
 	logic.CLASS.NEWLINE("LOADING...", 2, 2, (1,1,1,1))
 
 
 def KEYMAP(args=[], kwa=None):
 	"""Open Keymap Utility"""
 
-	logic.startGame(logic.expandPath("//")+"Keymap.blend")
+	settings.openWorldBlend("KEYMAP")
+	#logic.startGame(logic.expandPath("//")+"Keymap.blend")
 
 
 def MOUSE(args=[], kwa=None):
@@ -612,7 +614,7 @@ def PLAYER(args=[], kwa=None):
 
 	"""Change Player Class"""
 
-	PL = ["Actor", "Red", "Blue", "Purple"]
+	PL = settings.config.LIST_CHARACTERS
 
 	if kwa != None:
 		if logic.CLASS.que[0] == "CLASS":
@@ -666,8 +668,9 @@ def OPEN(args=[], kwa=None):
 				map = logic.globalDict["BLENDS"][int(kwa)]
 
 		if map in logic.globalDict["BLENDS"]:
-			logic.globalDict["CURRENT"]["Level"] = map
-			logic.startGame(logic.expandPath("//MAPS/"+map))
+			settings.openWorldBlend(map)
+			#logic.globalDict["CURRENT"]["Level"] = map
+			#logic.startGame(logic.expandPath("//MAPS/"+map))
 			return "LOAD"
 		ERROR()
 		return False
@@ -698,8 +701,9 @@ def OPEN(args=[], kwa=None):
 					map = logic.globalDict["BLENDS"][int(split[1])]
 
 			if map in logic.globalDict["BLENDS"]:
-				logic.globalDict["CURRENT"]["Level"] = map
-				logic.startGame(logic.expandPath("//MAPS/"+map))
+				settings.openWorldBlend(map)
+				#logic.globalDict["CURRENT"]["Level"] = map
+				#logic.startGame(logic.expandPath("//MAPS/"+map))
 				logic.CLASS.NEWLINE("LOADING...", 2, 2, (1,1,1,1))
 				return
 	ERROR()

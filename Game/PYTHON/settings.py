@@ -36,6 +36,7 @@ except ImportError:
 from mathutils import Vector, Matrix
 
 import PYTHON.keymap as keymap
+import PYTHON.config as config
 
 import json
 
@@ -58,6 +59,19 @@ def LoadJSON(name):
 
 	file.close()
 	return dict
+
+
+def openWorldBlend(map):
+	gd = logic.globalDict
+	if map == "LAUNCHER":
+		blend = "Launcher.blend"
+	elif map == "KEYMAP":
+		blend = "Keymap.blend"
+	else:
+		gd["CURRENT"]["Level"] = map
+		blend = gd["DATA"]["GAMEPATH"]+"MAPS/"+map
+
+	logic.startGame(gd["DATA"]["GAMEPATH"]+blend)
 
 
 def GenerateProfileData():
@@ -168,7 +182,7 @@ def triggerPrintScreen(mode=True):
 
 
 def SCREENSHOT():
-	path = ospath.normpath(logic.globalDict["DATA"]["GAMEPATH"]+"SCREENSHOTS")+"\\"
+	path = ospath.normpath(logic.globalDict["DATA"]["GAMEPATH"]+config.SCREENSHOT_PATH)+"\\"
 
 	if "SCREENSHOT" not in logic.globalDict:
 		dict = LoadJSON(path+"marker.json")

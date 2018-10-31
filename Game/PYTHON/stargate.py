@@ -9,19 +9,7 @@ import PYTHON.keymap as keymap
 if "STARGATE" not in base.LEVEL:
 	base.LEVEL["STARGATE"] = {}
 
-ADDRESS = {}
-
-ADDRESS["MILKYWAY"] = {
-"1A:1B:1C:1D:1E:1F:1P": "LevelThree",
-"2A:2B:2C:2D:2E:2F:1P": "LevelTwo",
-"1A:1B:1C:1D:1E:1F:1O:1P": "Midway",
-}
-
-ADDRESS["PEGASUS"] = {
-"1A:1B:1C:1D:1E:1F:1P": "Atlantis Room",
-"2A:2B:2C:2D:2E:2F:1P": "Village Game",
-"1A:1B:1C:1D:1E:1F:1O:1P": "Midway",
-}
+ADDRESS = base.settings.config.STARGATE_ADDRESS
 
 
 class IrisControl(base.CoreObject):
@@ -301,28 +289,30 @@ class CoreGate(base.CoreObject):
 		player = self.doPuddle()
 
 		if player != None:
-			map = self.puddle.get("MAP", "")
 			gd = logic.globalDict
-			map = map+".blend"
+			map = self.puddle.get("MAP", "")+".blend"
+			door = self.objects["Root"].name
 			if map in gd["BLENDS"]:
 				player.doUpdate()
 				#player.hideObject()
-				owner = self.puddle
-				root = player.objects["Root"]
-				WP = root.worldPosition
-				pnt = WP-owner.worldPosition
-				lp = owner.worldOrientation.inverted()*pnt
+				lp, lr = player.getTransformDiff(self.puddle)
+				#owner = self.puddle
+				#root = player.objects["Root"]
+				#WP = root.worldPosition
+				#pnt = WP-owner.worldPosition
+				#lp = owner.worldOrientation.inverted()*pnt
+				#lp = list(lp)
 				lp[1] *= -1
-				lp = list(lp)
-				dr = owner.worldOrientation.to_euler()
-				pr = root.worldOrientation.to_euler()
-				lr = [pr[0]-dr[0], pr[1]-dr[1], pr[2]-dr[2]]
+				#dr = owner.worldOrientation.to_euler()
+				#pr = root.worldOrientation.to_euler()
+				#lr = [pr[0]-dr[0], pr[1]-dr[1], pr[2]-dr[2]]
 				gd["DATA"]["Portal"]["Zone"] = [lp, lr]
-				gd["DATA"]["Portal"]["Door"] = self.objects["Root"].name
+				gd["DATA"]["Portal"]["Door"] = door
 				gd["DATA"]["Portal"]["Stargate"] = self.GALAXY
-				gd["CURRENT"]["Level"] = map
-				blend = gd["DATA"]["GAMEPATH"]+"MAPS/"+map
-				logic.startGame(blend)
+				base.settings.openWorldBlend(map)
+				#gd["CURRENT"]["Level"] = map
+				#blend = gd["DATA"]["GAMEPATH"]+"MAPS/"+map
+				#logic.startGame(blend)
 				self.puddle["MAP"] = ""
 
 		if self.timer > 36000 or len(self.data["ADDRESS"]) == 0:
