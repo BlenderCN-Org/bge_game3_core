@@ -37,7 +37,7 @@ import PYTHON.keymap as keymap
 SC_SCN = logic.getCurrentScene()
 SC_HUD = None
 SC_CAM = SC_SCN.active_camera
-
+print(logic.globalDict.keys())
 if "CURRENT" not in logic.globalDict:
 	print("""\nPARTIALISM ERROR:\n\tIm going stop you right there...\n""")
 	SC_CAM.near = 0.1
@@ -327,6 +327,19 @@ class CoreObject:
 		if self.UPDATE == True and owner["DICT"] not in LEVEL["DROP"]:
 			LEVEL["DROP"].append(owner["DICT"])
 
+	def getTransformDiff(self, obj):
+		root = player.objects["Root"]
+
+		pnt = root.worldPosition-obj.worldPosition
+		lp = obj.worldOrientation.inverted()*pnt
+		lp = [lp[0], lp[1], lp[2]]
+
+		dr = owner.worldOrientation.to_euler()
+		pr = root.worldOrientation.to_euler()
+		lr = [pr[0]-dr[0], pr[1]-dr[1], pr[2]-dr[2]]
+
+		return lp, lr
+
 	def teleportTo(self, pos=None, ori=None, vel=False):
 		owner = self.objects["Root"]
 
@@ -401,7 +414,7 @@ class CoreObject:
 				obj.worldPosition[2] = pnt[2]+offset
 				if align == True:
 					obj.alignAxisToVect(nrm, 2, 1.0)
-			else: #if obj.getPhysicsId() != 0:
+			elif obj.getPhysicsId() != 0:
 				obj.applyForce((0,0,-obj.scene.gravity[2]*obj.mass), False)
 
 	def checkClicked(self, obj=None):

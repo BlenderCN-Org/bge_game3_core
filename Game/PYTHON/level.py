@@ -104,13 +104,8 @@ def DOOR(cont):
 
 	owner = cont.owner
 
-	map = owner.get("MAP", "")
-	scn = owner.get("SCENE", None)
 	ray = owner.get("RAYCAST", None)
 	player = None
-
-	if map == "":
-		return
 
 	if  ray != None:
 		if keymap.BINDS["ACTIVATE"].tap():
@@ -118,15 +113,19 @@ def DOOR(cont):
 
 	if player != None:
 		gd = logic.globalDict
-		map = map+".blend"
+		scn = owner.get("SCENE", None)
+		door = owner.get("OBJECT", owner.name)
+		map = owner.get("MAP", "")+".blend"
 		if map in gd["BLENDS"]:
+			import PYTHON.settings as settings
 			player.alignPlayer()
 			player.doUpdate()
-			gd["DATA"]["Portal"]["Door"] = owner.get("OBJECT", owner.name)
+			gd["DATA"]["Portal"]["Door"] = door
 			gd["DATA"]["Portal"]["Scene"] = scn
-			gd["CURRENT"]["Level"] = map
-			blend = gd["DATA"]["GAMEPATH"]+"MAPS/"+map
-			logic.startGame(blend)
+			settings.openWorldBlend(map)
+			#gd["CURRENT"]["Level"] = map
+			#blend = gd["DATA"]["GAMEPATH"]+"MAPS/"+map
+			#logic.startGame(blend)
 			owner["MAP"] = ""
 
 	owner["RAYCAST"] = None
@@ -137,12 +136,7 @@ def ZONE(cont):
 
 	owner = cont.owner
 
-	map = owner.get("MAP", "")
-	scn = owner.get("SCENE", None)
 	player = None
-
-	if map == "":
-		return
 
 	if "COLLIDE" not in owner:
 		owner["COLLIDE"] = []
@@ -178,22 +172,27 @@ def ZONE(cont):
 	if player != None:
 		if owner["TIMER"] == 200:
 			gd = logic.globalDict
-			map = map+".blend"
+			scn = owner.get("SCENE", None)
+			map = owner.get("MAP", "")+".blend"
+			door = owner.get("OBJECT", owner.name)
 			if map in gd["BLENDS"]:
+				import PYTHON.settings as settings
 				player.doUpdate()
-				root = player.objects["Root"]
-				pnt = root.worldPosition-owner.worldPosition
-				lp = owner.worldOrientation.inverted()*pnt
-				lp = list(lp)
-				dr = owner.worldOrientation.to_euler()
-				pr = root.worldOrientation.to_euler()
-				lr = [pr[0]-dr[0], pr[1]-dr[1], pr[2]-dr[2]]
+				lp, lr = player.getTransformDiff(owner)
+				#root = player.objects["Root"]
+				#pnt = root.worldPosition-owner.worldPosition
+				#lp = owner.worldOrientation.inverted()*pnt
+				#lp = list(lp)
+				#dr = owner.worldOrientation.to_euler()
+				#pr = root.worldOrientation.to_euler()
+				#lr = [pr[0]-dr[0], pr[1]-dr[1], pr[2]-dr[2]]
 				gd["DATA"]["Portal"]["Zone"] = [lp, lr]
-				gd["DATA"]["Portal"]["Door"] = owner.get("OBJECT", owner.name)
+				gd["DATA"]["Portal"]["Door"] = door
 				gd["DATA"]["Portal"]["Scene"] = scn
-				gd["CURRENT"]["Level"] = map
-				blend = gd["DATA"]["GAMEPATH"]+"MAPS/"+map
-				logic.startGame(blend)
+				settings.openWorldBlend(map)
+				#gd["CURRENT"]["Level"] = map
+				#blend = gd["DATA"]["GAMEPATH"]+"MAPS/"+map
+				#logic.startGame(blend)
 				owner["MAP"] = ""
 		else:
 			owner["TIMER"] = 0

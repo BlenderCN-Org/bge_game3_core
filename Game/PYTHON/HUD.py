@@ -677,8 +677,9 @@ class SceneManager:
 			self.doBlackOut()
 			self.MENU.destroy()
 			self.active_state = None
-			PATH = base.DATA["GAMEPATH"]
-			logic.startGame(PATH+"Launcher.blend")
+			base.settings.openWorldBlend("LAUNCHER")
+			#PATH = base.DATA["GAMEPATH"]
+			#logic.startGame(PATH+"Launcher.blend")
 
 		if status == "Resume" or keymap.SYSTEM["ESCAPE"].tap() == True:
 			self.doSceneResume()

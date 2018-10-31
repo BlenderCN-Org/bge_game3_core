@@ -26,12 +26,12 @@ import os.path as ospath
 
 from bge import logic, events, render
 
-try:
-	import bpy
-	logic.endGame()
-	raise RuntimeError("Embedded Player Dectected...")
-except ImportError:
-	pass
+#try:
+#	import bpy
+#	logic.endGame()
+#	raise RuntimeError("Embedded Player Dectected...")
+#except ImportError:
+#	pass
 
 from mathutils import Vector, Matrix
 
@@ -58,6 +58,19 @@ def LoadJSON(name):
 
 	file.close()
 	return dict
+
+
+def openWorldBlend(map):
+	gd = logic.globalDict
+	if map == "LAUNCHER":
+		blend = "Launcher.blend"
+	elif map == "KEYMAP":
+		blend = "Keymap.blend"
+	else:
+		gd["CURRENT"]["Level"] = map
+		blend = gd["DATA"]["GAMEPATH"]+"MAPS/"+map
+
+	logic.startGame(gd["DATA"]["GAMEPATH"]+blend)
 
 
 def GenerateProfileData():
@@ -168,7 +181,7 @@ def triggerPrintScreen(mode=True):
 
 
 def SCREENSHOT():
-	path = ospath.normpath(logic.globalDict["DATA"]["GAMEPATH"]+"SCREENSHOTS")+"\\"
+	path = ospath.normpath(logic.globalDict["DATA"]["GAMEPATH"]+"../../../Shared Pictures/Rendered Scenes/Screenshots")+"\\"
 
 	if "SCREENSHOT" not in logic.globalDict:
 		dict = LoadJSON(path+"marker.json")
