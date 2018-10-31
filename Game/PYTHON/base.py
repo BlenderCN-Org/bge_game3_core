@@ -37,8 +37,9 @@ import PYTHON.keymap as keymap
 SC_SCN = logic.getCurrentScene()
 SC_HUD = None
 SC_CAM = SC_SCN.active_camera
+
 print(logic.globalDict.keys())
-if "CURRENT" not in logic.globalDict:
+if settings.checkWorldData() == False:
 	print("""\nPARTIALISM ERROR:\n\tIm going stop you right there...\n""")
 	SC_CAM.near = 0.1
 	SC_CAM.far = 0.2

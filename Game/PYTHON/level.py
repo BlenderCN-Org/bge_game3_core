@@ -33,24 +33,27 @@ def SC_MANAGER(cont):
 	owner = cont.owner
 	scene = owner.scene
 
-	if "CURRENT" not in logic.globalDict:
-		PATH = logic.expandPath("//../")
-		logic.startGame(PATH+"Launcher.blend")
-
 	if owner.get("END", False) == True:
 		scene.end()
 		return
 
-	portal = logic.globalDict["DATA"]["Portal"]
+	import PYTHON.settings as settings
 
-	if portal["Scene"] != None:
-		logic.addScene(portal["Scene"], False)
+	if settings.checkWorldData() == False:
+		PATH = logic.expandPath("//../")
+		logic.startGame(PATH+"Launcher.blend")
 
-	elif owner.get("SCENE", None) != None:
-		portal["Scene"] = owner["SCENE"]
-		logic.addScene(owner["SCENE"], False)
+	else:
+		portal = logic.globalDict["DATA"]["Portal"]
 
-	owner["END"] = True
+		if portal["Scene"] != None:
+			logic.addScene(portal["Scene"], False)
+
+		elif owner.get("SCENE", None) != None:
+			portal["Scene"] = owner["SCENE"]
+			logic.addScene(owner["SCENE"], False)
+
+		owner["END"] = True
 
 
 # Teleport

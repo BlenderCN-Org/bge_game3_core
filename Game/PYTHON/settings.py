@@ -63,6 +63,8 @@ def LoadJSON(name):
 
 def openWorldBlend(map):
 	gd = logic.globalDict
+
+	gd["TRAVELING"] = True
 	if map == "LAUNCHER":
 		blend = "Launcher.blend"
 	elif map == "KEYMAP":
@@ -70,8 +72,32 @@ def openWorldBlend(map):
 	else:
 		gd["CURRENT"]["Level"] = map
 		blend = "MAPS\\"+map
+
 	print("OPEN MAP:\n\t"+blend)
+
+	if config.UPBGE_FIX == True:
+		SaveJSON(gd["DATA"]["GAMEPATH"]+"gd_dump", gd, "\t")
 	logic.startGame(gd["DATA"]["GAMEPATH"]+blend)
+
+
+def checkWorldData(path=None):
+	if config.UPBGE_FIX == True:
+		if path == None:
+			path = logic.expandPath("//")
+		print(path)
+		dict = LoadJSON(path+"gd_dump")
+		if dict == None:
+			dict = LoadJSON(path+"..\\gd_dump")
+		if dict != None:
+			if dict["TRAVELING"] == True:
+				logic.globalDict = dict
+
+	if "CURRENT" in logic.globalDict:
+		logic.globalDict["TRAVELING"] = False
+		SaveJSON(logic.globalDict["DATA"]["GAMEPATH"]+"gd_dump", {"TRAVELING":False}, "\t")
+		return True
+
+	return False
 
 
 def GenerateProfileData():
