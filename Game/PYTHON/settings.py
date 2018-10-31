@@ -71,7 +71,22 @@ def openWorldBlend(map):
 		gd["CURRENT"]["Level"] = map
 		blend = "MAPS\\"+map
 	print("OPEN MAP:\n\t"+blend)
+	if config.UPBGE_FIX == True:
+		SaveJSON(gd["DATA"]["GAMEPATH"]+"gd_dump", gd)
 	logic.startGame(gd["DATA"]["GAMEPATH"]+blend)
+
+
+def checkWorldData(path=None):
+	if "CURRENT" in logic.globalDict:
+		return True
+	if config.UPBGE_FIX == True:
+		if path == None:
+			path = logic.expandPath("//")
+		dict = LoadJSON(path+"gd_dump")
+		if dict != None:
+			logic.globalDict = dict
+			return True
+	return False
 
 
 def GenerateProfileData():

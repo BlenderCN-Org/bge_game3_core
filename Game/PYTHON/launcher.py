@@ -31,12 +31,13 @@ import PYTHON.settings as settings
 import PYTHON.keymap as keymap
 
 
-if "PROFILES" not in logic.globalDict:
+if settings.checkWorldData() == False:
+#if "PROFILES" not in logic.globalDict:
 	logic.globalDict = {"PROFILES": {}}
 
 	logic.globalDict["PROFILES"]["__guest__"] = settings.GenerateProfileData()
 
-if "CURRENT" not in logic.globalDict:
+#if "CURRENT" not in logic.globalDict:
 	logic.globalDict["BLENDS"] = logic.getBlendFileList("//MAPS")
 	logic.globalDict["DATA"] = {"GAMEPATH":logic.expandPath("//"), "Portal":{"Door":None, "Vehicle":None, "Zone":None, "Scene":None}}
 	logic.globalDict["CURRENT"] = {"Profile":"__guest__", "Level":None, "Player":None, "Scene":None}

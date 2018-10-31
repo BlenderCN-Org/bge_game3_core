@@ -3,6 +3,8 @@ SCREENSHOT_PATH = "SCREENSHOTS"
 
 LIST_CHARACTERS = ["Actor", "Red", "Blue", "Purple"]
 
+UPBGE_FIX = True
+
 STARGATE_ADDRESS = {
 	"MILKYWAY":{
 		"1A:1B:1C:1D:1E:1F:1P": "LevelThree",
