@@ -614,7 +614,7 @@ def PLAYER(args=[], kwa=None):
 
 	"""Change Player Class"""
 
-	PL = ["Actor", "Raptor", "Sandstorm", "Wave"]
+	PL = settings.config.LIST_CHARACTERS
 
 	if kwa != None:
 		if logic.CLASS.que[0] == "CLASS":
