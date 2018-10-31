@@ -252,6 +252,9 @@ def buildKeys(cont):
 	render.showProfile(False)
 	render.showProperties(False)
 
+	if checkWorldData() == False:
+		return
+
 	owner = cont.owner
 	scene = owner.scene
 
@@ -265,7 +268,7 @@ def buildKeys(cont):
 	keymap.input.LoadBinds(keymap.BINDS, logic.expandPath("//"), profile)
 
 	owner["KEYLIST"] = []
-	owner["OBJECTS"] = [owner]
+	owner["OBJECTS"] = []
 
 	for key in keymap.BINDS:
 		cls = keymap.BINDS[key]
@@ -297,6 +300,7 @@ def buildKeys(cont):
 	owner.worldPosition = (0,0,0)
 
 	for obj in owner["OBJECTS"]:
+		#print(obj)
 		obj.setParent(owner)
 
 
@@ -319,7 +323,6 @@ def manageKeys(cont):
 			logic.FREEZE = None
 		return
 
-	last = owner["OBJECTS"][len(owner["OBJECTS"])-1]
 	ms = logic.mouse.events
 	wu = keymap.events.WHEELUPMOUSE
 	wd = keymap.events.WHEELDOWNMOUSE
