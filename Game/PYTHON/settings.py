@@ -26,16 +26,17 @@ import os.path as ospath
 
 from bge import logic, events, render
 
-#try:
-#	import bpy
-#	logic.endGame()
-#	raise RuntimeError("Embedded Player Dectected...")
-#except ImportError:
-#	pass
+try:
+	import bpy
+	logic.endGame()
+	raise RuntimeError("Embedded Player Dectected...")
+except ImportError:
+	pass
 
 from mathutils import Vector, Matrix
 
 import PYTHON.keymap as keymap
+import PYTHON.config as config
 
 import json
 
@@ -181,7 +182,7 @@ def triggerPrintScreen(mode=True):
 
 
 def SCREENSHOT():
-	path = ospath.normpath(logic.globalDict["DATA"]["GAMEPATH"]+"../../../Shared Pictures/Rendered Scenes/Screenshots")+"\\"
+	path = ospath.normpath(logic.globalDict["DATA"]["GAMEPATH"]+config.SCREENSHOT_PATH)+"\\"
 
 	if "SCREENSHOT" not in logic.globalDict:
 		dict = LoadJSON(path+"marker.json")
