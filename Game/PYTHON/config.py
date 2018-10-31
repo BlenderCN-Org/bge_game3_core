@@ -4,6 +4,7 @@ SCREENSHOT_PATH = "SCREENSHOTS"
 LIST_CHARACTERS = ["Actor", "Red", "Blue", "Purple"]
 
 UPBGE_FIX = True
+MOUSE_FIX = True
 
 STARGATE_ADDRESS = {
 	"MILKYWAY":{

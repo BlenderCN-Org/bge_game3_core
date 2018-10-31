@@ -379,7 +379,7 @@ class MouseLook:
 
 		RAW_X, RAW_Y = logic.mouse.position
 
-		if config.UPBGE_FIX == True:
+		if config.MOUSE_FIX == True:
 			RAW_X = (RAW_X*self.screen[0])/(self.screen[0]-1)
 			RAW_Y = (RAW_Y*self.screen[1])/(self.screen[1]-1)
 
