@@ -27,6 +27,7 @@ from bge import logic, events, render
 from mathutils import Vector
 import json
 
+import PYTHON.config as config
 
 ## Find Available Gamepads ##
 events.JOYBUTTONS = {}
@@ -354,7 +355,8 @@ class MouseLook:
 		self.center()
 
 	def getScreenRatio(self):
-		self.ratio = render.getWindowHeight()/render.getWindowWidth()
+		self.screen = (render.getWindowWidth(), render.getWindowHeight())
+		self.ratio = self.screen[1]/self.screen[0]
 
 	def updateSpeed(self, SPEED=None, SMOOTH=None):
 		if SPEED != None:
@@ -376,6 +378,10 @@ class MouseLook:
 			return (0,0)
 
 		RAW_X, RAW_Y = logic.mouse.position
+
+		if config.UPBGE_FIX == True:
+			RAW_X = (RAW_X*self.screen[0])/(self.screen[0]-1)
+			RAW_Y = (RAW_Y*self.screen[1])/(self.screen[1]-1)
 
 		if ui == True:
 			X = (RAW_X-0.5)
