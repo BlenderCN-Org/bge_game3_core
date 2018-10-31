@@ -29,10 +29,8 @@ import PYTHON.base as base
 import PYTHON.HUD as HUD
 
 if "CURRENT" in logic.globalDict:
-	logic.LibLoad( base.DATA["GAMEPATH"] + "CONTENT\\Game Assets.blend", "Scene", load_actions=True, verbose=False, load_scripts=True)
-	logic.LibLoad( base.DATA["GAMEPATH"] + "CONTENT\\Player.blend",      "Scene", load_actions=True, verbose=False, load_scripts=True)
-	logic.LibLoad( base.DATA["GAMEPATH"] + "CONTENT\\Stargate.blend",    "Scene", load_actions=True, verbose=False, load_scripts=True)
-	logic.LibLoad( base.DATA["GAMEPATH"] + "CONTENT\\Cinematics.blend",  "Scene", load_actions=True, verbose=False, load_scripts=True)
+	for libblend in base.settings.config.LIBRARIES:
+		logic.LibLoad( base.DATA["GAMEPATH"]+"CONTENT\\"+libblend, "Scene", load_actions=True, verbose=False, load_scripts=True)
 
 	BLACK = base.SC_SCN.addObject("GFX_Black", base.SC_CAM, 0)
 	BLACK.setParent(base.SC_CAM)
@@ -387,6 +385,7 @@ class CorePlayer(base.CoreAdvanced):
 
 	def setCamera(self, CAM=0):
 		base.SC_SCN.active_camera = self.objects["CamThird"]
+		self.objects["Character"].setVisible(True, True)
 		self.setCameraEye()
 		self.setCameraFOV()
 

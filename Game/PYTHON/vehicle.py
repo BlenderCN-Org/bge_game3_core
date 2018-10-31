@@ -236,6 +236,21 @@ class CoreVehicle(base.CoreAdvanced):
 			return True
 		return False
 
+	def setPlayerVisibility(self, seat, vis=None):
+		if self.driving_player == None:
+			return
+		if vis == None:
+			if self.data["CAMERA"]["State"] == 1:
+				vis = False
+			else:
+				vis = True
+			
+		for child in seat.childrenRecursive:
+			if child == self.driving_player.objects["Mesh"]:
+				child.setVisible(vis, False)
+			else:
+				child.setVisible(False, False)
+
 	def setCamera(self, CAM=0):
 		self.objects["CamThird"]["Cam"].timeOffset = self.CAMTHIRD["SLOW"]
 		self.data["CAMERA"]["Dist"] = self.data["CAMERA"]["Zoom"]
@@ -245,12 +260,14 @@ class CoreVehicle(base.CoreAdvanced):
 
 		if CAM == 3:
 			base.SC_SCN.active_camera = self.objects["CamThird"]["Cam"]
-			self.objects["Seat"]["1"].setVisible(True, True)
+			self.setPlayerVisibility(self.objects["Seat"]["1"], True)
+			#self.objects["Seat"]["1"].setVisible(True, True)
 			self.data["CAMERA"]["State"] = 3
 
 		elif CAM == 1:
 			base.SC_SCN.active_camera = self.objects["CamFirst"]["Cam"]
-			self.objects["Seat"]["1"].setVisible(False, True)
+			self.setPlayerVisibility(self.objects["Seat"]["1"], False)
+			#self.objects["Seat"]["1"].setVisible(False, True)
 			self.data["CAMERA"]["State"] = 1
 
 	def doCameraState(self):
@@ -420,6 +437,7 @@ class CoreVehicle(base.CoreAdvanced):
 		self.driving_player = self.objects["Root"]["RAYCAST"]
 		self.driving_player.enterVehicle(self.objects["Seat"]["1"], self.PLAYERACTION)
 		logic.HUDCLASS.setControl(self)
+		self.setPlayerVisibility(self.objects["Seat"]["1"])
 		self.data["PORTAL"] = True
 		self.active_state = self.ST_Active
 
@@ -667,8 +685,8 @@ class CoreAircraft(CoreVehicle):
 
 		if init == True:
 			self.active_post.append(self.doLandingGear)
-			self.data["LANDFRAME"] = 0
-			self.data["LANDSTATE"] = "LAND"
+			self.data["LANDFRAME"] = self.data.get("LANDFRAME", 0)
+			self.data["LANDSTATE"] = self.data.get("LANDSTATE", "LAND")
 
 		if self.data["LANDSTATE"] == "LAND":
 			if init == True:
