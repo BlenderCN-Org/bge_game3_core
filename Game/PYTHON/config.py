@@ -1,4 +1,11 @@
 
+LIBRARIES = [
+	"Game Assets",
+	"Player",
+	"Stargate",
+	"Cinematics"
+]
+
 SCREENSHOT_PATH = "SCREENSHOTS"
 
 LIST_CHARACTERS = ["Actor", "Red", "Blue", "Purple"]

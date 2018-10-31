@@ -30,6 +30,7 @@ import PYTHON.HUD as HUD
 
 if "CURRENT" in logic.globalDict:
 	for libblend in base.settings.config.LIBRARIES:
+		libblend = libblend+".blend"
 		logic.LibLoad( base.DATA["GAMEPATH"]+"CONTENT\\"+libblend, "Scene", load_actions=True, verbose=False, load_scripts=True)
 
 	BLACK = base.SC_SCN.addObject("GFX_Black", base.SC_CAM, 0)
