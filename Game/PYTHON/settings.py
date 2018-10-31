@@ -252,11 +252,12 @@ def buildKeys(cont):
 	render.showProfile(False)
 	render.showProperties(False)
 
-	if checkWorldData() == False:
-		return
-
 	owner = cont.owner
 	scene = owner.scene
+
+	if checkWorldData() == False:
+		owner.endObject()
+		return
 
 	profile = logic.globalDict["CURRENT"]["Profile"]
 	scene.objects["Profile"].text = "Profile:"
