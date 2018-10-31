@@ -42,6 +42,7 @@ if settings.checkWorldData() == False:
 	logic.globalDict["DATA"] = {"GAMEPATH":logic.expandPath("//"), "Portal":{"Door":None, "Vehicle":None, "Zone":None, "Scene":None}}
 	logic.globalDict["CURRENT"] = {"Profile":"__guest__", "Level":None, "Player":None, "Scene":None}
 	logic.globalDict["GRAPHICS"] = settings.GenerateGraphicsData("LOW" in logic.getCurrentController().owner)
+	logic.globalDict["TRAVELING"] = False
 
 settings.SETGFX(logic.globalDict["GRAPHICS"], launcher=True)
 
