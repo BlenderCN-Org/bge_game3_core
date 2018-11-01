@@ -114,7 +114,41 @@ class JetPack(attachment.CoreAttachment):
 		self.doEffects()
 
 
-class DemoStaff(weapon.BasicStaff):
+class BasicStaff(weapon.CoreWeapon):
+
+	NAME = "Glorified Stick"
+	SLOTS = ["Shoulder_R", "Shoulder_L"]
+	TYPE = "MELEE"
+	OFFSET = (0.1, 0.0, 0.28)
+	SCALE = 1.9
+
+	def defaultData(self):
+		self.ori_qt = [self.createMatrix().to_quaternion(), self.createMatrix(mirror="YZ").to_quaternion(), None]
+		return {}
+
+	def doPlayerAnim(self, frame=0):
+		plr = self.owning_player
+		anim = self.TYPE+plr.HAND[self.HAND]+self.owning_slot
+		start = 0
+		end = 20
+
+		if frame == "LOOP":
+			plr.doAnim(NAME=anim, FRAME=(end,end), LAYER=1, PRIORITY=2, MODE="LOOP")
+
+		elif type(frame) is int:
+			plr.doAnim(NAME=anim, FRAME=(start,end), LAYER=1)
+			fac = (frame/self.WAIT)
+			if frame < 0:
+				fac = 1+fac
+			plr.doAnim(LAYER=1, SET=end*fac)
+			self.ori_qt[2] = self.ori_qt[1].slerp(self.ori_qt[0], fac)
+			self.objects["Mesh"].localOrientation = self.ori_qt[2].to_matrix()
+
+	def ST_Active(self):
+		self.doPlayerAnim("LOOP")
+
+
+class DemoStaff(BasicStaff):
 
 	NAME = "Simple Pole Staff"
 	SLOTS = ["Shoulder_R", "Shoulder_L"]
@@ -123,7 +157,27 @@ class DemoStaff(weapon.BasicStaff):
 	SCALE = 1.9
 
 
-class Lightsaber(weapon.BasicSword):
+class BasicSword(weapon.CoreWeapon):
+
+	NAME = "Pirate Sword"
+	NAME = "Sword"
+	SLOTS = ["Hip_L", "Hip_R"]
+	TYPE = "MELEE"
+	OFFSET = (0, 0.2, 0.15)
+ 	SCALE = 1
+ 
+ 	def ST_Active(self):
+ 		if self.data["COOLDOWN"] == 0:
+ 			if keymap.BINDS["ATTACK_ONE"].tap() == True:
+ 				self.owning_player.doAnim(NAME="MeleeAttackR", FRAME=(0,45), LAYER=1)
+ 				self.data["COOLDOWN"] = 50
+ 		else:
+ 			self.data["COOLDOWN"] -= 1
+ 
+		self.doPlayerAnim("LOOP")
+
+
+class Lightsaber(BasicSword):
 
 	NAME = "Lightsaber"
 	OFFSET = (0,0,0)
