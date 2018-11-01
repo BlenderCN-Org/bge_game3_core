@@ -164,16 +164,16 @@ class BasicSword(weapon.CoreWeapon):
 	SLOTS = ["Hip_L", "Hip_R"]
 	TYPE = "MELEE"
 	OFFSET = (0, 0.2, 0.15)
- 	SCALE = 1
- 
- 	def ST_Active(self):
- 		if self.data["COOLDOWN"] == 0:
- 			if keymap.BINDS["ATTACK_ONE"].tap() == True:
- 				self.owning_player.doAnim(NAME="MeleeAttackR", FRAME=(0,45), LAYER=1)
- 				self.data["COOLDOWN"] = 50
- 		else:
- 			self.data["COOLDOWN"] -= 1
- 
+	SCALE = 1
+
+	def ST_Active(self):
+		if self.data["COOLDOWN"] == 0:
+			if keymap.BINDS["ATTACK_ONE"].tap() == True:
+				self.owning_player.doAnim(NAME="MeleeAttackR", FRAME=(0,45), LAYER=1)
+				self.data["COOLDOWN"] = 50
+		else:
+			self.data["COOLDOWN"] -= 1
+
 		self.doPlayerAnim("LOOP")
 
 
