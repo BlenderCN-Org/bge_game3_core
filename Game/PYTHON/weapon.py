@@ -188,38 +188,3 @@ class BasicSword(CoreWeapon):
 
 		self.doPlayerAnim("LOOP")
 
-
-class BasicStaff(CoreWeapon):
-
-	NAME = "Glorified Stick"
-	SLOTS = ["Shoulder_R", "Shoulder_L"]
-	TYPE = "MELEE"
-	OFFSET = (0.1, 0.0, 0.28)
-	SCALE = 1.9
-
-	def defaultData(self):
-		self.ori_qt = [self.createMatrix().to_quaternion(), self.createMatrix(mirror="YZ").to_quaternion(), None]
-		return {}
-
-	def doPlayerAnim(self, frame=0):
-		plr = self.owning_player
-		anim = self.TYPE+plr.HAND[self.HAND]+self.owning_slot
-		start = 0
-		end = 20
-
-		if frame == "LOOP":
-			plr.doAnim(NAME=anim, FRAME=(end,end), LAYER=1, PRIORITY=2, MODE="LOOP")
-		elif type(frame) is int:
-			plr.doAnim(NAME=anim, FRAME=(start,end), LAYER=1)
-			fac = (frame/self.WAIT)
-			if frame < 0:
-				fac = 1+fac
-			plr.doAnim(LAYER=1, SET=end*fac)
-
-			self.ori_qt[2] = self.ori_qt[1].slerp(self.ori_qt[0], fac)
-			self.objects["Mesh"].localOrientation = self.ori_qt[2].to_matrix()
-
-	def ST_Active(self):
-		self.doPlayerAnim("LOOP")
-
-
