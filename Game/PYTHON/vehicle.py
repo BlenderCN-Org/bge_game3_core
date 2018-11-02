@@ -116,7 +116,7 @@ class CoreVehicle(base.CoreAdvanced):
 				owner.worldPosition = pos
 				owner.worldOrientation = ori
 
-			owner.localLinearVelocity = self.data["LINVEL"]
+			owner.setLinearVelocity(self.data["LINVEL"], True)
 
 			base.DATA["Portal"]["Door"] = None
 			base.DATA["Portal"]["Zone"] = None
