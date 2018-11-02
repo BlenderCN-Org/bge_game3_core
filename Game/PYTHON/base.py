@@ -410,6 +410,7 @@ class CoreObject:
 			OBJECT.reinstancePhysicsMesh()
 
 	def checkStability(self, align=False, offset=1.0):
+		return
 		obj = self.objects["Root"]
 
 		rayto = obj.worldPosition.copy()

@@ -44,8 +44,10 @@ def SPAWN(cont):
 	owner = cont.owner
 	scene = owner.scene
 	spawn = owner.get("SPAWN", True)
+	timer = owner.get("TIMER", 0)
 
-	if "CURRENT" not in logic.globalDict:
+	if "CURRENT" not in logic.globalDict or timer < 100:
+		owner["TIMER"] = timer+1
 		return
 
 	if spawn == False:
@@ -66,6 +68,7 @@ def SPAWN(cont):
 	if spawn == True:
 		base.CURRENT["Player"] = player
 		char = scene.addObject(player, owner, 0)
+		print("PLAYER:", player, char.worldPosition)
 		owner["SPAWN"] = None
 		return
 
@@ -146,9 +149,9 @@ class CorePlayer(base.CoreAdvanced):
 		char["DEBUG1"] = ""
 		char["DEBUG2"] = ""
 		char["RAYTEXT"] = ""
-		char.addDebugProperty("DEBUG1", True)
-		char.addDebugProperty("DEBUG2", True)
-		char.addDebugProperty("RAYTEXT", True)
+		#char.addDebugProperty("DEBUG1", True)
+		#char.addDebugProperty("DEBUG2", True)
+		#char.addDebugProperty("RAYTEXT", True)
 
 		keymap.MOUSELOOK.center()
 
@@ -191,16 +194,16 @@ class CorePlayer(base.CoreAdvanced):
 		portal = scene.objects.get(str(door), None)
 
 		if portal != None:
-			owner.worldPosition = portal.worldPosition.copy()
-			owner.worldOrientation = portal.worldOrientation.copy()
+			pos = portal.worldPosition.copy()
+			ori = portal.worldOrientation.copy()
 
-		elif zone != None:
-			pos = self.createVector(vec=zone[0])
-			pos = portal.worldPosition+(portal.worldOrientation*pos)
+			if zone != None:
+				pos = self.createVector(vec=zone[0])
+				pos = portal.worldPosition+(portal.worldOrientation*pos)
 
-			dr = portal.worldOrientation.to_euler()
-			ori = (zone[1][0]+dr[0], zone[1][1]+dr[1], zone[1][2]+dr[2])
-			ori = self.createMatrix(rot=ori, deg=False)
+				dr = portal.worldOrientation.to_euler()
+				ori = (zone[1][0]+dr[0], zone[1][1]+dr[1], zone[1][2]+dr[2])
+				ori = self.createMatrix(rot=ori, deg=False)
 
 			owner.worldPosition = pos
 			owner.worldOrientation = ori
@@ -213,7 +216,7 @@ class CorePlayer(base.CoreAdvanced):
 		self.alignCamera(axis=self.data["CAMERA"]["ZR"])
 		self.objects["CamRot"].applyRotation([self.data["CAMERA"]["XR"],0,0], True)
 
-		owner.localLinearVelocity = self.data["LINVEL"]
+		owner.setLinearVelocity(self.data["LINVEL"], True)
 
 		if base.DATA["Portal"]["Vehicle"] == None or portal == None:
 			base.DATA["Portal"]["Door"] = None
@@ -263,7 +266,9 @@ class CorePlayer(base.CoreAdvanced):
 		else:
 			Z = 0
 
-		char.setParent(obj)
+		if char.parent != obj:
+			char.setParent(obj)
+			print("P")
 		char.localPosition = (0, 0, Z)
 		char.localOrientation = self.createMatrix()
 
