@@ -45,7 +45,7 @@ def START(cont):
 
 	print("Loading HUD...")
 
-	logic.LibLoad( base.DATA["GAMEPATH"]+"CONTENT\\Game Assets HUD.blend", "Scene", load_actions=True, verbose=False, load_scripts=False)
+	logic.LibLoad( base.DATA["GAMEPATH"]+"CONTENT\\Game Assets HUD.blend", "Scene", load_actions=True, verbose=False, load_scripts=True)
 
 	#logic.HUDCLASS.doBlackOut()
 
