@@ -44,9 +44,9 @@ def SPAWN(cont):
 	owner = cont.owner
 	scene = owner.scene
 	spawn = owner.get("SPAWN", True)
-	timer = owner.get("TIMER", 0+((base.settings.config.UPBGE_FIX == False)*100))
+	timer = owner.get("TIMER", 0+((base.settings.config.UPBGE_FIX == False)*30))
 
-	if "CURRENT" not in logic.globalDict or timer <= 100:
+	if "CURRENT" not in logic.globalDict or timer <= 30:
 		owner["TIMER"] = timer+1
 		return
 

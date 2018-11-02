@@ -18,8 +18,8 @@ NUMPAD = input.NumPad()
 BINDS = {
 
 "A": "Global",
-"ACTIVATE":          input.KeyBase("000.A",  "MIDDLEMOUSE",    "Activate",           JOYBUTTON=12, SHIFT=False),
-"ALTACT":            input.KeyBase("000.A",  "MIDDLEMOUSE",    "AltAct",             SHIFT=True),
+"ACTIVATE":          input.KeyBase("000.A",  "MIDDLEMOUSE",    "Activate",           JOYBUTTON=10),
+"ALTACT":            input.KeyBase("000.A",  "EKEY",           "AltAct",             JOYBUTTON=12),
 "ENTERVEH":          input.KeyBase("001.A",  "ENTERKEY",       "Enter/Exit Vehicle", JOYBUTTON=13),
 "TOGGLEMODE":        input.KeyBase("002.A",  "FKEY",           "Mode Switch",        JOYBUTTON=9),
 "TOGGLECAM":         input.KeyBase("003.A",  "VKEY",           "Camera Switch",      JOYBUTTON=7),
@@ -36,8 +36,8 @@ BINDS = {
 "PLR_LOOKDOWN":      input.KeyBase("105.P",  "DOWNARROWKEY",   "Look Down",     JOYAXIS=(3, "POS", "A")),
 "PLR_TURNLEFT":      input.KeyBase("106.P",  "LEFTARROWKEY",   "Turn Left",     JOYAXIS=(2, "NEG", "A")),
 "PLR_TURNRIGHT":     input.KeyBase("107.P",  "RIGHTARROWKEY",  "Turn Right",    JOYAXIS=(2, "POS", "A")),
-"PLR_JUMP":          input.KeyBase("108.P",  "SPACEKEY",       "Jump",          JOYBUTTON=10),
-"PLR_DUCK":          input.KeyBase("109.P",  "CKEY",           "Duck"),
+"PLR_JUMP":          input.KeyBase("108.P",  "SPACEKEY",       "Jump",          JOYAXIS=(5, "SLIDER", "B")),
+"PLR_DUCK":          input.KeyBase("109.P",  "CKEY",           "Duck"           JOYAXIS=(4, "SLIDER", "B")),
 "PLR_RUN":           input.KeyBase("110.P",  "RKEY",           "Toggle Run",    JOYBUTTON=6),
 "PLR_EDIT":          input.KeyBase("111.P",  "BACKSLASHKEY",   "Toggle Edit"),
 
@@ -57,7 +57,7 @@ BINDS = {
 "VEH_HANDBRAKE":     input.KeyBase("212.V",  "SPACEKEY",       "Vehicle Handbrake",     JOYBUTTON=10),
 "VEH_FIRE":          input.KeyBase("213.V",  "EKEY",           "Vehicle Weapon Fire"),
 "VEH_ACTION":        input.KeyBase("214.V",  "BACKSPACEKEY",   "Vehicle Action Key",    JOYBUTTON=11),
-"CAM_ORBIT":         input.KeyBase("299.V",  "MIDDLEMOUSE",    "Rotate Camera",         JOYBUTTON=6,     SHIFT=True),
+"CAM_ORBIT":         input.KeyBase("299.V",  "RKEY",           "Rotate Camera",         JOYBUTTON=6),
 
 "W": "Weapons",
 "WP_UP":             input.KeyBase("300.W",  "WHEELUPMOUSE",   "Weapon Up",        JOYBUTTON=3,  SHIFT=False),
