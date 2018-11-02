@@ -10,8 +10,18 @@ SCREENSHOT_PATH = "SCREENSHOTS"
 
 LIST_CHARACTERS = ["Actor", "Red", "Blue", "Purple"]
 
-UPBGE_FIX = True # use alt globalDict method
-MOUSE_FIX = False # if the mouse drifts
+try:
+	from bge import app
+	upver = app.upbge_version
+
+	UPBGE_FIX = True # alt gd and others
+	MOUSE_FIX = False # if mouse/camera drifts
+	if upver[1] >= 2 and upver[2] >= 2:
+		MOUSE_FIX = True
+
+except Exception:
+	UPBGE_FIX = False
+	MOUSE_FIX = False
 
 STARGATE_ADDRESS = {
 	"MILKYWAY":{

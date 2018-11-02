@@ -44,18 +44,18 @@ def SPAWN(cont):
 	owner = cont.owner
 	scene = owner.scene
 	spawn = owner.get("SPAWN", True)
+	timer = owner.get("TIMER", 0+((base.settings.config.UPBGE_FIX == False)*100))
 
-	if "CURRENT" not in logic.globalDict:
+	if "CURRENT" not in logic.globalDict or timer <= 100:
+		owner["TIMER"] = timer+1
+		return
+
+	if spawn == False:
+		owner.endObject()
 		return
 
 	if "CLIP" in owner:
 		base.LEVEL["CLIP"] = owner["CLIP"]
-
-	if "POS" not in base.LEVEL["PLAYER"]:
-		WP = owner.worldPosition
-		WO = owner.worldOrientation
-		base.LEVEL["PLAYER"]["POS"] = list(WP)
-		base.LEVEL["PLAYER"]["ORI"] = [list(WO[0]), list(WO[1]), list(WO[2])]
 
 	if base.CURRENT["Player"] == None:
 		player = owner.get("PLAYER", "Actor")
@@ -65,13 +65,10 @@ def SPAWN(cont):
 	if player not in scene.objectsInactive:
 		player = "Actor"
 
-	if spawn == False:
-		owner.endObject()
-		return
-
-	elif spawn == True:
+	if spawn == True:
 		base.CURRENT["Player"] = player
-		scene.addObject(player, owner, 0)
+		char = scene.addObject(player, owner, 0)
+		print("PLAYER:", player, char.worldPosition)
 		owner["SPAWN"] = None
 		return
 
@@ -152,9 +149,11 @@ class CorePlayer(base.CoreAdvanced):
 		char["DEBUG1"] = ""
 		char["DEBUG2"] = ""
 		char["RAYTEXT"] = ""
-		char.addDebugProperty("DEBUG1", True)
-		char.addDebugProperty("DEBUG2", True)
-		char.addDebugProperty("RAYTEXT", True)
+		#char.addDebugProperty("DEBUG1", True)
+		#char.addDebugProperty("DEBUG2", True)
+		#char.addDebugProperty("RAYTEXT", True)
+
+		keymap.MOUSELOOK.center()
 
 		self.doLoad()
 		self.loadInventory(char)
@@ -166,24 +165,23 @@ class CorePlayer(base.CoreAdvanced):
 
 			if portal != None:
 				portal["RAYCAST"] = self
+			else:
+				owner = scene.addObject("Player", char, 0)
+				owner.setDamping(self.data["DAMPING"][0], self.data["DAMPING"][1])
+				owner["Class"] = self
 
-			owner = scene.addObject("Player", char, 0)
-			owner.setDamping(self.data["DAMPING"][0], self.data["DAMPING"][1])
-			owner["Class"] = self
+				self.objects["Root"] = owner
 
-			self.objects["Root"] = owner
+				self.addCollisionCallBack()
+				self.findObjects(owner)
+				self.parentArmature(owner)
 
-			self.addCollisionCallBack()
-			self.findObjects(owner)
-			self.parentArmature(owner)
+				self.doPortal()
 
-			self.doPortal()
+				self.doCameraCollision()
+				self.setCamera()
 
 			logic.HUDCLASS = HUD.SceneManager(self)
-
-			keymap.MOUSELOOK.center()
-			self.doCameraCollision()
-			self.setCamera()
 
 		self.ST_Startup()
 
@@ -195,29 +193,30 @@ class CorePlayer(base.CoreAdvanced):
 		zone = base.DATA["Portal"]["Zone"]
 		portal = scene.objects.get(str(door), None)
 
-		if portal == None:
-			owner.worldPosition = base.LEVEL["PLAYER"]["POS"]
-			owner.worldOrientation = base.LEVEL["PLAYER"]["ORI"]
+		if portal != None:
+			pos = portal.worldPosition.copy()
+			ori = portal.worldOrientation.copy()
 
-		elif zone != None:
-			pos = self.createVector(vec=zone[0])
-			pos = portal.worldPosition+(portal.worldOrientation*pos)
+			if zone != None:
+				pos = self.createVector(vec=zone[0])
+				pos = portal.worldPosition+(portal.worldOrientation*pos)
 
-			dr = portal.worldOrientation.to_euler()
-			ori = (zone[1][0]+dr[0], zone[1][1]+dr[1], zone[1][2]+dr[2])
-			ori = self.createMatrix(rot=ori, deg=False)
+				dr = portal.worldOrientation.to_euler()
+				ori = (zone[1][0]+dr[0], zone[1][1]+dr[1], zone[1][2]+dr[2])
+				ori = self.createMatrix(rot=ori, deg=False)
 
 			owner.worldPosition = pos
 			owner.worldOrientation = ori
 
-		else:
-			owner.worldPosition = portal.worldPosition.copy()
-			owner.worldOrientation = portal.worldOrientation.copy()
+		elif "POS" in base.LEVEL["PLAYER"]:
+			owner.worldPosition = base.LEVEL["PLAYER"]["POS"]
+			owner.worldOrientation = base.LEVEL["PLAYER"]["ORI"]
+
 
 		self.alignCamera(axis=self.data["CAMERA"]["ZR"])
 		self.objects["CamRot"].applyRotation([self.data["CAMERA"]["XR"],0,0], True)
 
-		owner.localLinearVelocity = self.data["LINVEL"]
+		owner.setLinearVelocity(self.data["LINVEL"], True)
 
 		if base.DATA["Portal"]["Vehicle"] == None or portal == None:
 			base.DATA["Portal"]["Door"] = None
@@ -236,11 +235,14 @@ class CorePlayer(base.CoreAdvanced):
 		self.rayorder = self.data["GB_STATE"]
 
 	def doUpdate(self, world=True, vehicle=False):
-		owner = self.objects["Root"]
 
 		self.data["JP_STATE"] = self.jump_state
 		self.data["JP_TIMER"] = self.jump_timer
 		self.data["GB_STATE"] = self.rayorder
+
+		owner = self.objects["Root"]
+		if owner == None:
+			return
 
 		self.data["LINVEL"] = self.vecTuple(owner.localLinearVelocity)
 
@@ -264,7 +266,9 @@ class CorePlayer(base.CoreAdvanced):
 		else:
 			Z = 0
 
-		char.setParent(obj)
+		if char.parent != obj:
+			char.setParent(obj)
+			print("P")
 		char.localPosition = (0, 0, Z)
 		char.localOrientation = self.createMatrix()
 
@@ -272,7 +276,6 @@ class CorePlayer(base.CoreAdvanced):
 		self.jump_state = "NONE"
 		self.jump_timer = 0
 		self.crouch = 0
-		self.doCrouch(False)
 		self.rayorder = "NONE"
 		self.data["HUD"]["Target"] = None
 		self.data["HUD"]["Text"] = ""
@@ -280,6 +283,7 @@ class CorePlayer(base.CoreAdvanced):
 		self.doUpdate(False)
 
 		if self.objects["Root"] != None:
+			self.doCrouch(False)
 			self.objects["Character"].removeParent()
 			self.objects["Root"].endObject()
 			self.objects["Root"] = None
@@ -389,11 +393,6 @@ class CorePlayer(base.CoreAdvanced):
 		self.objects["Character"].setVisible(True, True)
 		self.setCameraEye()
 		self.setCameraFOV()
-
-	#def getCameraDirection(self):
-	#	owner = self.objects["Root"]
-	#	camd = self.objects["VertRef"]
-	#	return owner.worldOrientation.inverted()*camd.getAxisVect([0,1,0])
 
 	def getDropPoint(self):
 		drop = self.objects["Ray"].worldPosition.copy()

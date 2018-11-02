@@ -116,7 +116,7 @@ class CoreVehicle(base.CoreAdvanced):
 				owner.worldPosition = pos
 				owner.worldOrientation = ori
 
-			owner.localLinearVelocity = self.data["LINVEL"]
+			owner.setLinearVelocity(self.data["LINVEL"], True)
 
 			base.DATA["Portal"]["Door"] = None
 			base.DATA["Portal"]["Zone"] = None
@@ -167,11 +167,12 @@ class CoreVehicle(base.CoreAdvanced):
 
 		if hasattr(constraints, "createVehicle") == True:
 			vehicle = constraints.createVehicle(owner.getPhysicsId())
+			self.cid = vehicle.getConstraintId()
 		else:
 			vehicle = constraints.createConstraint(owner.getPhysicsId(), 0, constraints.VEHICLE_CONSTRAINT)
 
-		self.cid = vehicle.getConstraintId()
-		vehicle = constraints.getVehicleConstraint(self.cid)
+			self.cid = vehicle.getConstraintId()
+			vehicle = constraints.getVehicleConstraint(self.cid)
 
 		return vehicle
 
