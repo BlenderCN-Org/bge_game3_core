@@ -44,7 +44,7 @@ import json
 def SaveJSON(name, dict, pretty=None):
 	file = open(name, "w")
 
-	json.dump(dict, file, indent=pretty)
+	json.dump(dict, file, indent="  ")
 
 	file.close()
 

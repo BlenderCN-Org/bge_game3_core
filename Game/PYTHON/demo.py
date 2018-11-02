@@ -181,7 +181,7 @@ class Lightsaber(BasicSword):
 
 	NAME = "Lightsaber"
 	OFFSET = (0,0,0)
-	SCALE = 0.4
+	SCALE = 0.7
 	WAIT = 15
 	BLADETYPE = "GFX_LightSaber.Blade"
 	BLADECOLOR = (1,1,1,1)

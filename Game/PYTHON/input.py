@@ -58,16 +58,16 @@ def SaveBinds(binds, path, profile):
 		if getattr(binds[key], "id", None) != None:
 			dict[key] = binds[key].getData()
 
-	name = path+profile+"Keymap.cfg"
+	name = path+profile+"Keymap.json"
 	file = open(name, "w")
 
-	json.dump(dict, file, indent="\t")
+	json.dump(dict, file, indent="  ")
 
 	file.close()
 	print("NOTICE: Keybinds Saved...\n\t", name)
 
 def LoadBinds(binds, path, profile):
-	name = path+profile+"Keymap.cfg"
+	name = path+profile+"Keymap.json"
 	try:
 		file = open(name, "r")
 	except OSError:

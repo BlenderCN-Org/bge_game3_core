@@ -520,7 +520,7 @@ def SAVE(args=[], kwa=None):
 	if "Switch" in args and len(args) == 1:
 		return
 
-	settings.SaveJSON(path+name+"Profile.sav", dict, "\t")
+	settings.SaveJSON(path+name+"Profile.json", dict, "\t")
 	logic.CLASS.NEWLINE("Profile Saved!", 2, 2, (1,1,1,1))
 
 	settings.SETGFX(launcher=True, save=True)
@@ -537,7 +537,7 @@ def LOAD(args=[], kwa=None):
 	if "_" not in current["Profile"]:
 		name = current["Profile"]
 
-	dict = settings.LoadJSON(path+name+"Profile.sav")
+	dict = settings.LoadJSON(path+name+"Profile.json")
 
 	if dict == None:
 		if "Return" in args and len(args) == 1:
