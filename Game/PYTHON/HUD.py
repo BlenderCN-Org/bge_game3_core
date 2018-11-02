@@ -45,7 +45,7 @@ def START(cont):
 
 	print("Loading HUD...")
 
-	logic.LibLoad( base.DATA["GAMEPATH"]+"CONTENT\\Game Assets HUD.blend", "Scene", load_actions=True, verbose=False, load_scripts=True)
+	logic.LibLoad( base.DATA["GAMEPATH"]+"CONTENT\\Game Assets HUD.blend", "Scene", load_actions=True, verbose=False, load_scripts=False)
 
 	logic.HUDCLASS.doBlackOut()
 
@@ -541,7 +541,9 @@ class Aircraft(CoreHUD):
 		refX = plr.data["HUD"].get("Side", (1,0,0))
 		angX = root.getAxisVect(refX).angle(glbZ)
 		angX = self.toDeg(angX)-90
-		self.objects["Roll"].localOrientation = self.createMatrix(rot=[0,0,angX*0.167], deg=True)
+		rscl = 0.167
+		#rscl = 1.0
+		self.objects["Roll"].localOrientation = self.createMatrix(rot=[0,0,angX*rscl], deg=True)
 
 		## Pitch ##
 		refY = plr.data["HUD"].get("Forward", (0,1,0))

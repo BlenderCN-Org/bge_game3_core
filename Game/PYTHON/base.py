@@ -95,6 +95,13 @@ def LOAD(owner):
 		elif obj.getPhysicsId() != 0:
 			obj["GROUND"] = True
 
+	if "POS" not in LEVEL["PLAYER"]:
+		LEVEL["PLAYER"]["POS"] = list(owner.worldPosition)
+		LEVEL["PLAYER"]["ORI"] = [
+			list(owner.worldOrientation[0]),
+			list(owner.worldOrientation[1]),
+			list(owner.worldOrientation[2])]
+
 	## Spawn New Objects ##
 	cleanup = []
 
@@ -116,7 +123,7 @@ def LOAD(owner):
 						if prop not in ["SPAWN", "OBJECT", "DICT"]:
 							newobj[prop] = obj[prop]
 					newobj["DICT"] = {"Object":name, "Data":None, "Add":obj.name}
-					print("SPAWNED:", name)
+					print("SPAWNED:", name, newobj.worldPosition)
 				else:
 					print("SPAWN ERROR: Object '"+name+"' does not exist")
 			else:
@@ -268,10 +275,11 @@ class CoreObject:
 		if obj == None:
 			obj = self.objects["Root"]
 
-		self.clearCollisionList()
-		obj.collisionCallbacks = [self.COLCB]
+		if self.COLCB not in obj.collisionCallbacks:
+			self.clearCollisionList()
+			obj.collisionCallbacks.append(self.COLCB)
 
-		self.active_post.append(self.clearCollisionList)
+			self.active_post.append(self.clearCollisionList)
 
 	def clearCollisionList(self):
 		self.collisionList = []

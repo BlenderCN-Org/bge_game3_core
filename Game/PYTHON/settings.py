@@ -75,6 +75,7 @@ def openWorldBlend(map):
 
 	print("OPEN MAP:\n\t"+blend)
 
+	#gd["TRAVEL"] = gd["DATA"]["GAMEPATH"]+blend
 	if config.UPBGE_FIX == True:
 		SaveJSON(gd["DATA"]["GAMEPATH"]+"gd_dump", gd, "\t")
 	logic.startGame(gd["DATA"]["GAMEPATH"]+blend)
@@ -91,10 +92,10 @@ def checkWorldData(path=None):
 		if dict != None:
 			if dict["TRAVELING"] == True:
 				logic.globalDict = dict
+				logic.globalDict["TRAVELING"] = False
+				SaveJSON(logic.globalDict["DATA"]["GAMEPATH"]+"gd_dump", {"TRAVELING":False}, "\t")
 
 	if "CURRENT" in logic.globalDict:
-		logic.globalDict["TRAVELING"] = False
-		SaveJSON(logic.globalDict["DATA"]["GAMEPATH"]+"gd_dump", {"TRAVELING":False}, "\t")
 		return True
 
 	return False
