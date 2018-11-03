@@ -73,6 +73,7 @@ class CoreVehicle(base.CoreAdvanced):
 		self.data["HUD"] = {"Text":"", "Color":(0,0,0,0.5), "Target":None}
 		self.data["PORTAL"] = False
 		self.data["LINVEL"] = (0,0,0)
+		self.data["ANGVEL"] = (0,0,0)
 
 		self.linV = owner.getLinearVelocity(True)
 		self.motion = {"Force": self.createVector(), "Torque": self.createVector()}
@@ -117,16 +118,18 @@ class CoreVehicle(base.CoreAdvanced):
 				owner.worldOrientation = ori
 
 			owner.setLinearVelocity(self.data["LINVEL"], True)
+			owner.setAngularVelocity(self.data["ANGVEL"], True)
 
+			self.ST_Active_Set()
 			base.DATA["Portal"]["Door"] = None
 			base.DATA["Portal"]["Zone"] = None
 			base.DATA["Portal"]["Vehicle"] = None
-			self.ST_Active_Set()
 
 	def doUpdate(self, world=True):
 		owner = self.objects["Root"]
 
 		self.data["LINVEL"] = self.vecTuple(owner.localLinearVelocity)
+		self.data["ANGVEL"] = self.vecTuple(owner.localAngularVelocity)
 
 		if self.data["PORTAL"] == True:
 			base.LEVEL["PLAYER"]["POS"] = self.vecTuple(owner.worldPosition)
@@ -432,8 +435,9 @@ class CoreVehicle(base.CoreAdvanced):
 			self.ST_Idle_Set()
 
 	def ST_Active_Set(self):
-		if self.alignObject() == True:
-			return
+		if self.data["PORTAL"] == False:
+			if self.alignObject() == True:
+				return
 		self.setCamera()
 		self.driving_player = self.objects["Root"]["RAYCAST"]
 		self.driving_player.enterVehicle(self.objects["Seat"]["1"], self.PLAYERACTION)
