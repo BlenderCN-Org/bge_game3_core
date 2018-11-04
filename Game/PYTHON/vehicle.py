@@ -120,10 +120,10 @@ class CoreVehicle(base.CoreAdvanced):
 			owner.setLinearVelocity(self.data["LINVEL"], True)
 			owner.setAngularVelocity(self.data["ANGVEL"], True)
 
-			self.ST_Active_Set()
 			base.DATA["Portal"]["Door"] = None
 			base.DATA["Portal"]["Zone"] = None
 			base.DATA["Portal"]["Vehicle"] = None
+			self.ST_Active_Set()
 
 	def doUpdate(self, world=True):
 		owner = self.objects["Root"]

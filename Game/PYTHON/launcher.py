@@ -31,18 +31,19 @@ import PYTHON.settings as settings
 import PYTHON.keymap as keymap
 
 
-if settings.checkWorldData() == False:
-#if "PROFILES" not in logic.globalDict:
-	logic.globalDict = {"PROFILES": {}}
+settings.checkWorldData(launcher=True)
 
-	logic.globalDict["PROFILES"]["__guest__"] = settings.GenerateProfileData()
+#if "PROFILES" not in logic.globalDict:
+#	logic.globalDict = {"PROFILES": {}}
+
+#	logic.globalDict["PROFILES"]["__guest__"] = settings.GenerateProfileData()
 
 #if "CURRENT" not in logic.globalDict:
-	logic.globalDict["BLENDS"] = logic.getBlendFileList("//MAPS")
-	logic.globalDict["DATA"] = {"GAMEPATH":logic.expandPath("//"), "Portal":{"Door":None, "Vehicle":None, "Zone":None, "Scene":None}}
-	logic.globalDict["CURRENT"] = {"Profile":"__guest__", "Level":None, "Player":None, "Scene":None}
-	logic.globalDict["GRAPHICS"] = settings.GenerateGraphicsData("LOW" in logic.getCurrentController().owner)
-	logic.globalDict["TRAVELING"] = False
+#	logic.globalDict["BLENDS"] = logic.getBlendFileList("//MAPS")
+#	logic.globalDict["DATA"] = {"GAMEPATH":logic.expandPath("//"), "Portal":{"Door":None, "Vehicle":None, "Zone":None, "Scene":None}}
+#	logic.globalDict["CURRENT"] = {"Profile":"__guest__", "Level":None, "Player":None, "Scene":None}
+#	logic.globalDict["GRAPHICS"] = settings.GenerateGraphicsData("LOW" in logic.getCurrentController().owner)
+#	logic.globalDict["TRAVELING"] = False
 
 settings.SETGFX(logic.globalDict["GRAPHICS"], launcher=True)
 
