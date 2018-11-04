@@ -233,6 +233,7 @@ def SCREENSHOT():
 			num = 0
 		else:
 			num = dict["Value"]
+		screen["Count"] = num
 
 	if screen["Trigger"] == "Launcher":
 		curlvl = "Launcher"

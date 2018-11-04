@@ -279,9 +279,9 @@ class CorePlayer(base.CoreAdvanced):
 		self.data["HUD"]["Target"] = None
 		self.data["HUD"]["Text"] = ""
 
+		self.doUpdate(False)
 
 		if self.objects["Root"] != None:
-			self.doUpdate(False)
 			self.doCrouch(False)
 			self.objects["Character"].removeParent()
 			self.objects["Root"].endObject()
