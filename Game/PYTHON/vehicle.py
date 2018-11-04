@@ -69,7 +69,7 @@ class CoreVehicle(base.CoreAdvanced):
 		self.data = self.defaultData()
 		self.data["HEALTH"] = 100
 		self.data["ENERGY"] = 100
-		self.data["CAMERA"] = {"State":3, "Orbit":False, "Dist":self.CAMTHIRD["DIST"], "Zoom":self.CAMTHIRD["DIST"]}
+		self.data["CAMERA"] = {"State":3, "Orbit":None, "Dist":self.CAMTHIRD["DIST"], "Zoom":self.CAMTHIRD["DIST"]}
 		self.data["HUD"] = {"Text":"", "Color":(0,0,0,0.5), "Target":None}
 		self.data["PORTAL"] = False
 		self.data["LINVEL"] = (0,0,0)
@@ -303,33 +303,39 @@ class CoreVehicle(base.CoreAdvanced):
 
 
 		## Toggle Orbit ##
-		if self.data["CAMERA"]["Orbit"] == True:
+		if self.data["CAMERA"]["Orbit"] == None:
+			keymap.MOUSELOOK.center()
+
+			if keymap.BINDS["CAM_ORBIT"].tap() == True:
+				self.data["CAMERA"]["Orbit"] = self.CAMTHIRD["SLOW"]
+
+			#wp = self.objects["Root"].worldPosition
+			#wv = self.objects["Root"].worldLinearVelocity
+			#self.objects["CamThird"]["Loc"] = wp-(wv*0.05)
+
+		else:
 			X, Y = keymap.MOUSELOOK.axis()
 
 			self.objects["CamFirst"]["Loc"].applyRotation((0,0,X), True)
 			self.objects["CamFirst"]["Rot"].applyRotation((Y,0,0), True)
 
 			if keymap.BINDS["CAM_ORBIT"].tap() == True:
-				self.data["CAMERA"]["Orbit"] = False
+				self.data["CAMERA"]["Orbit"] = None
+				self.objects["CamThird"]["Cam"].timeOffset = self.CAMTHIRD["SLOW"]
 				self.objects["CamFirst"]["Loc"].localOrientation = self.createMatrix()
 				self.objects["CamFirst"]["Rot"].localOrientation = self.createMatrix()
+
+			else:
+				self.objects["CamThird"]["Cam"].timeOffset = self.data["CAMERA"]["Orbit"]
+				self.data["CAMERA"]["Orbit"] -= 1
+				if self.data["CAMERA"]["Orbit"] < 0:
+					self.data["CAMERA"]["Orbit"] = 0
 
 			self.objects["CamThird"]["Loc"].localOrientation = self.objects["CamFirst"]["Loc"].localOrientation.copy()
 			self.objects["CamThird"]["Rot"].localOrientation = self.objects["CamFirst"]["Rot"].localOrientation.copy()
 
 			#wp = self.objects["Root"].worldPosition
 			#self.objects["CamThird"]["Loc"] = wp
-
-		else:
-			keymap.MOUSELOOK.center()
-
-			if keymap.BINDS["CAM_ORBIT"].tap() == True:
-				self.data["CAMERA"]["Orbit"] = True
-
-			#wp = self.objects["Root"].worldPosition
-			#wv = self.objects["Root"].worldLinearVelocity
-			#self.objects["CamThird"]["Loc"] = wp-(wv*0.05)
-
 
 	def doCameraCollision(self):
 		camdata = self.data["CAMERA"]
