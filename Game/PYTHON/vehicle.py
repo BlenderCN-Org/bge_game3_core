@@ -609,7 +609,7 @@ class CoreAircraft(CoreVehicle):
 
 	LANDACTION = "AircraftRigLand"
 	LANDFRAMES = [0, 100]
-	AERO = {"POWER":1000, "HOVER":0, "LIFT":0.1, "ALIGN":10}
+	AERO = {"POWER":1000, "HOVER":0, "LIFT":0.1, "TAIL":10}
 	HUDLAYOUT = LayoutAircraft
 
 	def airDrag(self):
@@ -635,16 +635,15 @@ class CoreAircraft(CoreVehicle):
 		speed = self.linV.length
 		grav = -owner.scene.gravity[2]
 
-		if speed > 0.1:
-			axis = owner.getAxisVect((0,1,0))
+		if speed > 0.1 and self.AERO["ALIGN"] > 0:
+			axis = owner.getAxisVect(self.linV.normalized())
 			factor = self.AERO["ALIGN"]/speed
 			if factor > 1:
 				factor = 1
 			owner.alignAxisToVect(axis, 1, factor*0.5)
 
-		baselift = (self.linV[1]**2)*self.AERO["LIFT"]
+		lift = (self.linV[1]**2)*self.AERO["LIFT"]
 		mass = owner.mass*grav
-		lift = baselift
 
 		if lift > mass:
 			lift = mass
@@ -653,8 +652,11 @@ class CoreAircraft(CoreVehicle):
 
 	def getEngineForce(self):
 		owner = self.objects["Root"]
+
 		force = self.motion["Force"]
 		torque = self.motion["Torque"]
+		grav = owner.scene.gravity[2]
+		mass = owner.mass/100
 
 		self.data["POWER"] += force[1]*(self.AERO["POWER"]/100)
 		if self.data["POWER"] > self.AERO["POWER"]:
@@ -664,8 +666,8 @@ class CoreAircraft(CoreVehicle):
 			self.data["POWER"] = 0
 
 		self.data["HOVER"][0] += force[2]*20
-		if self.data["HOVER"][0] > 980 or self.data["HOVER"][1] > 0:
-			self.data["HOVER"][0] = 980
+		if self.data["HOVER"][0] > 1000 or self.data["HOVER"][1] > 0:
+			self.data["HOVER"][0] = 1000
 			if force[2] > 0.1:
 				self.data["HOVER"][1] += force[2]*20
 				if self.data["HOVER"][1] > self.AERO["HOVER"]:
@@ -679,9 +681,10 @@ class CoreAircraft(CoreVehicle):
 			self.data["HOVER"][0] = 0
 
 		## FORCES ##
-		mass = owner.mass/100
 		power = self.data["POWER"]
-		hover = ((self.data["HOVER"][0]-(self.lift*(self.data["HOVER"][0]/980)))+self.data["HOVER"][1])*mass
+		normal = self.data["HOVER"][0]/1000
+		base = normal*grav*mass
+		hover = ( (base-(self.lift*normal)) + self.data["HOVER"][1] )
 
 		return power, hover
 

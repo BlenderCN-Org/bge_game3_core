@@ -85,12 +85,11 @@ def checkWorldData(launcher=False):
 	path = logic.expandPath("//")
 	if launcher == False:
 		path = path+"..\\"
+	path = ospath.normpath(path)+"\\"
 	print(path)
 
 	if config.UPBGE_FIX == True:
 		dict = LoadJSON(path+"gd_dump")
-		#if dict == None:
-		#	dict = LoadJSON(path+"..\\gd_dump")
 		if dict != None:
 			if dict["TRAVELING"] == True:
 				logic.globalDict = dict
@@ -219,8 +218,7 @@ def SETGFX(graphics=None, launcher=False, save=False):
 
 
 def triggerPrintScreen(mode=True):
-	if "SCREENSHOT" in globalDict:
-		logic.globalDict["SCREENSHOT"]["Trigger"] = mode
+	logic.globalDict["SCREENSHOT"]["Trigger"] = mode
 
 
 def SCREENSHOT():

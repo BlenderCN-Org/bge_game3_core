@@ -55,8 +55,6 @@ def SPAWN(cont):
 
 	if "CLIP" in owner:
 		base.LEVEL["CLIP"] = owner["CLIP"]
-	if "MAP" in owner and base.CURRENT["Level"] == None:
-		base.CURRENT["Level"] = owner["MAP"]+".blend"+base.SC_SCN.name
 
 	if base.CURRENT["Player"] == None:
 		player = owner.get("PLAYER", "Actor")

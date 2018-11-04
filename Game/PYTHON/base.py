@@ -38,9 +38,6 @@ SC_SCN = logic.getCurrentScene()
 SC_HUD = None
 SC_CAM = SC_SCN.active_camera
 
-print(SC_SCN.dbvt_culling)
-print(logic.globalDict.keys())
-
 if settings.checkWorldData() == False:
 	print("""\nPARTIALISM ERROR:\n\tIm going stop you right there...\n""")
 	SC_CAM.near = 0.1
@@ -416,7 +413,9 @@ class CoreObject:
 			OBJECT.reinstancePhysicsMesh()
 
 	def checkStability(self, align=False, offset=1.0):
-		return
+		if settings.config.DO_STABILITY == False:
+			return
+
 		obj = self.objects["Root"]
 
 		rayto = obj.worldPosition.copy()
