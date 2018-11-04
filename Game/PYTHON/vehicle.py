@@ -643,20 +643,20 @@ class CoreAircraft(CoreVehicle):
 		speed = self.linV.length
 		grav = -owner.scene.gravity[2]
 
-		if speed > 0.1 and self.AERO["ALIGN"] > 0:
+		if speed > 0.1 and self.AERO["TAIL"] > 0:
 			axis = owner.getAxisVect(self.linV.normalized())
-			factor = self.AERO["ALIGN"]/speed
+			factor = self.AERO["TAIL"]/speed
 			if factor > 1:
 				factor = 1
 			owner.alignAxisToVect(axis, 1, factor*0.5)
 
-		lift = (self.linV[1]**2)*self.AERO["LIFT"]
+		self.lift = (self.linV[1]**2)*self.AERO["LIFT"]
 		mass = owner.mass*grav
 
-		if lift > mass:
-			lift = mass
+		if self.lift > mass:
+			self.lift = mass
 
-		owner.applyForce((0,0,lift), True)
+		owner.applyForce((0,0,self.lift), True)
 
 	def getEngineForce(self):
 		owner = self.objects["Root"]
