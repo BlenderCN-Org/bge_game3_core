@@ -120,10 +120,10 @@ class CoreVehicle(base.CoreAdvanced):
 			owner.setLinearVelocity(self.data["LINVEL"], True)
 			owner.setAngularVelocity(self.data["ANGVEL"], True)
 
-			self.ST_Active_Set()
 			base.DATA["Portal"]["Door"] = None
 			base.DATA["Portal"]["Zone"] = None
 			base.DATA["Portal"]["Vehicle"] = None
+			self.ST_Active_Set()
 
 	def doUpdate(self, world=True):
 		owner = self.objects["Root"]
@@ -609,24 +609,32 @@ class CoreAircraft(CoreVehicle):
 
 	LANDACTION = "AircraftRigLand"
 	LANDFRAMES = [0, 100]
-	AERO = {"POWER":1000, "HOVER":0, "LIFT":0.1, "ALIGN":10}
+	AERO = {"POWER":1000, "HOVER":0, "LIFT":0.1, "TAIL":10}
 	HUDLAYOUT = LayoutAircraft
+
+	def defaultData(self):
+		self.lift = 0
+
+		dict = {}
+		dict["POWER"] = 0
+		dict["HOVER"] = [0,0]
+		dict["HUD"] = {"Power":0, "Lift":0}
+
+		return dict
 
 	def airDrag(self):
 
-		#dampLin = 0.0
-		#dampRot = (self.linV[1]*0.002)+0.4
+		dampLin = 0.0
+		dampRot = (self.linV[1]*0.002)+0.4
 
-		#if dampRot >= 0.7:
-		#	dampRot = 0.7
+		if dampRot >= 0.7:
+			dampRot = 0.7
 
-		#self.objects["Root"].setDamping(dampLin, dampRot)
+		self.objects["Root"].setDamping(dampLin, dampRot)
 
-		ABS_Y = abs(self.linV[1])
-
-		DRAG_X = self.linV[0]*ABS_Y*self.AERO["DRAG"][0]
-		DRAG_Y = self.linV[1]*ABS_Y*self.AERO["DRAG"][1]
-		DRAG_Z = self.linV[2]*ABS_Y*self.AERO["DRAG"][2]
+		DRAG_X = self.linV[0]*abs(self.linV[0])*1
+		DRAG_Y = self.linV[1]*abs(self.linV[1])*1
+		DRAG_Z = self.linV[2]*abs(self.linV[2])*1
 
 		self.objects["Root"].applyForce((-DRAG_X, -DRAG_Y, -DRAG_Z), True)
 
@@ -635,16 +643,15 @@ class CoreAircraft(CoreVehicle):
 		speed = self.linV.length
 		grav = -owner.scene.gravity[2]
 
-		if speed > 0.1:
-			axis = owner.getAxisVect((0,1,0))
+		if speed > 0.1 and self.AERO["ALIGN"] > 0:
+			axis = owner.getAxisVect(self.linV.normalized())
 			factor = self.AERO["ALIGN"]/speed
 			if factor > 1:
 				factor = 1
 			owner.alignAxisToVect(axis, 1, factor*0.5)
 
-		baselift = (self.linV[1]**2)*self.AERO["LIFT"]
+		lift = (self.linV[1]**2)*self.AERO["LIFT"]
 		mass = owner.mass*grav
-		lift = baselift
 
 		if lift > mass:
 			lift = mass
@@ -653,19 +660,28 @@ class CoreAircraft(CoreVehicle):
 
 	def getEngineForce(self):
 		owner = self.objects["Root"]
+
 		force = self.motion["Force"]
 		torque = self.motion["Torque"]
+		grav = -owner.scene.gravity[2]
+		mass = owner.mass
 
 		self.data["POWER"] += force[1]*(self.AERO["POWER"]/100)
 		if self.data["POWER"] > self.AERO["POWER"]:
 			self.data["POWER"] = self.AERO["POWER"]
 
-		if self.data["POWER"] < 0:
-			self.data["POWER"] = 0
+		maxR = self.AERO["POWER"]/4
+		if self.data["POWER"] < -maxR:
+			self.data["POWER"] = -maxR
+		elif self.data["POWER"] < 0:
+			if force[1] > -0.1:
+				self.data["POWER"] += (self.AERO["POWER"]/100)
+				if self.data["POWER"] > 0:
+					self.data["POWER"] = 0
 
 		self.data["HOVER"][0] += force[2]*20
-		if self.data["HOVER"][0] > 980 or self.data["HOVER"][1] > 0:
-			self.data["HOVER"][0] = 980
+		if self.data["HOVER"][0] > 1000 or self.data["HOVER"][1] > 0:
+			self.data["HOVER"][0] = 1000
 			if force[2] > 0.1:
 				self.data["HOVER"][1] += force[2]*20
 				if self.data["HOVER"][1] > self.AERO["HOVER"]:
@@ -679,9 +695,10 @@ class CoreAircraft(CoreVehicle):
 			self.data["HOVER"][0] = 0
 
 		## FORCES ##
-		mass = owner.mass/100
 		power = self.data["POWER"]
-		hover = ((self.data["HOVER"][0]-(self.lift*(self.data["HOVER"][0]/980)))+self.data["HOVER"][1])*mass
+		normal = self.data["HOVER"][0]/1000
+		base = normal*grav*mass
+		hover = ( (base-(self.lift*normal)) + self.data["HOVER"][1] )
 
 		return power, hover
 

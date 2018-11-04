@@ -81,30 +81,43 @@ def openWorldBlend(map):
 	logic.startGame(gd["DATA"]["GAMEPATH"]+blend)
 
 
-def checkWorldData(path=None):
+def checkWorldData(launcher=False):
+	path = logic.expandPath("//")
+	if launcher == False:
+		path = path+"..\\"
+	path = ospath.normpath(path)+"\\"
+	print(path)
+
 	if config.UPBGE_FIX == True:
-		if path == None:
-			path = logic.expandPath("//")
-		print(path)
 		dict = LoadJSON(path+"gd_dump")
-		if dict == None:
-			dict = LoadJSON(path+"..\\gd_dump")
 		if dict != None:
 			if dict["TRAVELING"] == True:
 				logic.globalDict = dict
 				logic.globalDict["TRAVELING"] = False
 				SaveJSON(logic.globalDict["DATA"]["GAMEPATH"]+"gd_dump", {"TRAVELING":False}, "\t")
 
-	if "CURRENT" in logic.globalDict:
-		return True
+	if "CURRENT" not in logic.globalDict:
+		generateGlobalDict(path)
+	return True
 
-	return False
 
+def generateGlobalDict(path):
+	logic.globalDict = {"PROFILES": {}}
+
+	logic.globalDict["PROFILES"]["__guest__"] = GenerateProfileData()
+
+	logic.globalDict["BLENDS"] = logic.getBlendFileList(path+"MAPS")
+	logic.globalDict["DATA"] = {"GAMEPATH":path, "Portal":{"Door":None, "Vehicle":None, "Zone":None, "Scene":None}}
+	logic.globalDict["CURRENT"] = {"Profile":"__guest__", "Level":None, "Player":None, "Scene":None}
+	logic.globalDict["GRAPHICS"] = GenerateGraphicsData()
+	logic.globalDict["TRAVELING"] = False
+
+	logic.globalDict["SCREENSHOT"] = {"Trigger":False, "Count":None}
 
 def GenerateProfileData():
 	return {"LVLData":{}, "PLRData":{}, "Last":{}, "Settings":{}}
 
-def GenerateGraphicsData(low=False):
+def GenerateGraphicsData():
 	data = LoadJSON(logic.globalDict["DATA"]["GAMEPATH"]+"Graphics.cfg")
 
 	if data == None:
@@ -211,16 +224,16 @@ def triggerPrintScreen(mode=True):
 def SCREENSHOT():
 	path = ospath.normpath(logic.globalDict["DATA"]["GAMEPATH"]+config.SCREENSHOT_PATH)+"\\"
 
-	if "SCREENSHOT" not in logic.globalDict:
+	screen = logic.globalDict["SCREENSHOT"]
+	curlvl = str(logic.globalDict["CURRENT"]["Level"]).replace(".blend", "")
+
+	if screen["Count"] == None:
 		dict = LoadJSON(path+"marker.json")
 		if dict == None:
 			num = 0
 		else:
 			num = dict["Value"]
-		logic.globalDict["SCREENSHOT"] = {"Trigger":False, "Count":num}
-
-	screen = logic.globalDict["SCREENSHOT"]
-	curlvl = str(logic.globalDict["CURRENT"]["Level"]).replace(".blend", "")
+		screen["Count"] = num
 
 	if screen["Trigger"] == "Launcher":
 		curlvl = "Launcher"

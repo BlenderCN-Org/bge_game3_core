@@ -28,14 +28,13 @@ import PYTHON.keymap as keymap
 import PYTHON.base as base
 import PYTHON.HUD as HUD
 
-if "CURRENT" in logic.globalDict:
-	for libblend in base.settings.config.LIBRARIES:
-		libblend = libblend+".blend"
-		logic.LibLoad( base.DATA["GAMEPATH"]+"CONTENT\\"+libblend, "Scene", load_actions=True, verbose=False, load_scripts=True)
+for libblend in base.settings.config.LIBRARIES:
+	libblend = libblend+".blend"
+	logic.LibLoad( base.DATA["GAMEPATH"]+"CONTENT\\"+libblend, "Scene", load_actions=True, verbose=False, load_scripts=True)
 
-	BLACK = base.SC_SCN.addObject("GFX_Black", base.SC_CAM, 0)
-	BLACK.setParent(base.SC_CAM)
-	BLACK.color = (0, 0, 0, 1)
+BLACK = base.SC_SCN.addObject("GFX_Black", base.SC_CAM, 0)
+BLACK.setParent(base.SC_CAM)
+BLACK.color = (0, 0, 0, 1)
 
 logic.PLAYERCLASS = None
 
@@ -46,7 +45,7 @@ def SPAWN(cont):
 	spawn = owner.get("SPAWN", True)
 	timer = owner.get("TIMER", 0+((base.settings.config.UPBGE_FIX == False)*30))
 
-	if "CURRENT" not in logic.globalDict or timer <= 30:
+	if timer <= 30:
 		owner["TIMER"] = timer+1
 		return
 

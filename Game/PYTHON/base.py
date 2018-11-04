@@ -38,7 +38,6 @@ SC_SCN = logic.getCurrentScene()
 SC_HUD = None
 SC_CAM = SC_SCN.active_camera
 
-print(logic.globalDict.keys())
 if settings.checkWorldData() == False:
 	print("""\nPARTIALISM ERROR:\n\tIm going stop you right there...\n""")
 	SC_CAM.near = 0.1
@@ -49,6 +48,10 @@ if settings.checkWorldData() == False:
 
 else:
 	CURRENT = logic.globalDict["CURRENT"]
+
+	if CURRENT["Level"] == None:
+		spawnerobj = logic.getCurrentController().owner
+		CURRENT["Level"] = spawnerobj.get("MAP", "None")+".blend"
 
 	CUR_LVL = CURRENT["Level"]+SC_SCN.name
 	CUR_PRF = CURRENT["Profile"]
@@ -157,14 +160,14 @@ def LOAD(owner):
 
 def RUN(cont):
 	owner = cont.owner
-	#try:
-	owner["Class"].RUN()
-	#except Exception as ex:
-	#	print("FATAL RUNTIME ERROR:", owner.name)
-	#	print("	", ex)
-	#	if owner.scene.active_camera in owner.childrenRecursive:
-	#		owner.scene.active_camera = SC_CAM
-	#	owner.endObject()
+	try:
+		owner["Class"].RUN()
+	except Exception as ex:
+		print("FATAL RUNTIME ERROR:", owner.name)
+		print("	", ex)
+		if owner.scene.active_camera in owner.childrenRecursive:
+			owner.scene.active_camera = SC_CAM
+		owner.endObject()
 
 class CoreObject:
 
@@ -410,6 +413,9 @@ class CoreObject:
 			OBJECT.reinstancePhysicsMesh()
 
 	def checkStability(self, align=False, offset=1.0):
+		if settings.config.DO_STABILITY == False:
+			return
+
 		obj = self.objects["Root"]
 
 		rayto = obj.worldPosition.copy()
