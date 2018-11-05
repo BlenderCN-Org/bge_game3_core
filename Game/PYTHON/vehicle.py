@@ -464,7 +464,7 @@ class CoreVehicle(base.CoreAdvanced):
 		self.runStates()
 		self.runPost()
 		self.clearRayProps()
-		self.checkStability(True)
+		self.checkStability(True, override=(keymap.SYSTEM["STABILITY"].tap() and self.driving_player) )
 
 
 class LayoutCar(HUD.HUDLayout):

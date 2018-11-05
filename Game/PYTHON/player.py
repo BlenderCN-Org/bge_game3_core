@@ -45,12 +45,12 @@ def SPAWN(cont):
 	spawn = owner.get("SPAWN", True)
 	timer = owner.get("TIMER", 0+((base.settings.config.UPBGE_FIX == False)*30))
 
-	if timer <= 30:
-		owner["TIMER"] = timer+1
+	if spawn == False:
+		#owner.endObject()
 		return
 
-	if spawn == False:
-		owner.endObject()
+	if timer <= 30:
+		owner["TIMER"] = timer+1
 		return
 
 	if "CLIP" in owner:
@@ -780,7 +780,12 @@ class CorePlayer(base.CoreAdvanced):
 			if self.rayvec.length < range:
 				RAYOBJ = RAYHIT[0]
 
-				if "RAYCAST" in RAYOBJ:
+				if self.rayvec.dot(RAYHIT[2]) < 0:
+					RAYCOLOR = (0,0,1,1)
+					self.data["HUD"]["Text"] = "Press "+keymap.BINDS["ACTIVATE"].input_name+" To Ghost Jump"
+					if keymap.BINDS["ACTIVATE"].tap() == True:
+						owner.worldPosition = RAYHIT[1]+(RAYHIT[2]*1.2)
+				elif "RAYCAST" in RAYOBJ:
 					if self.active_weapon != None:
 						RAYCOLOR = (1,0,0,1)
 					else:
@@ -1061,7 +1066,7 @@ class CorePlayer(base.CoreAdvanced):
 		self.objects["Character"]["DEBUG2"] = str(self.jump_state)
 
 		self.doInteract()
-		self.checkStability()
+		self.checkStability(override=keymap.SYSTEM["STABILITY"].tap())
 		self.weaponManager()
 
 		if keymap.BINDS["TOGGLEMODE"].tap() == True:

@@ -61,7 +61,7 @@ else:
 
 	if CUR_LVL not in PROFILE["LVLData"]:
 		print("Initializing Level Data...")
-		PROFILE["LVLData"][CUR_LVL] = {"SPAWN":[], "DROP":[], "CLIP":-100, "PLAYER":{}}
+		PROFILE["LVLData"][CUR_LVL] = {"SPAWN":[], "DROP":[], "CLIP":settings.config.LOW_CLIP, "PLAYER":{}}
 
 	LEVEL = PROFILE["LVLData"][CUR_LVL]
 
@@ -412,7 +412,7 @@ class CoreObject:
 		if KEY == True:
 			OBJECT.reinstancePhysicsMesh()
 
-	def checkStability(self, align=False, offset=1.0):
+	def checkStability(self, align=False, offset=1.0, override=False):
 		if settings.config.DO_STABILITY == False:
 			return
 
@@ -423,14 +423,16 @@ class CoreObject:
 
 		down, pnt, nrm = obj.rayCast(rayto, None, -20000, "GROUND", 1, 1, 0)
 
-		if down == None:
+		if down == None or override == True:
 			up, pnt, nrm = obj.rayCast(rayto, None, 10000, "GROUND", 1, 1, 0)
 			if up != None:
+				if override == True and nrm.dot(self.createVector(vec=[0,0,1])) < 0:
+					return
 				obj.worldPosition[2] = pnt[2]+offset
 				if align == True:
 					obj.alignAxisToVect(nrm, 2, 1.0)
-			elif obj.getPhysicsId() != 0:
-				obj.applyForce((0,0,-obj.scene.gravity[2]*obj.mass), False)
+			#elif obj.getPhysicsId() != 0:
+			#	obj.applyForce((0,0,-obj.scene.gravity[2]*obj.mass), False)
 
 	def checkClicked(self, obj=None):
 		if obj == None:
