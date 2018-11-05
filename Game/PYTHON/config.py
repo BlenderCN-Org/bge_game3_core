@@ -11,6 +11,7 @@ SCREENSHOT_PATH = "SCREENSHOTS"
 LIST_CHARACTERS = ["Actor", "Red", "Blue", "Purple"]
 
 DO_STABILITY = True #snap players to the surface above if no floor
+LOW_CLIP = -1000
 
 try:
 	from bge import app
