@@ -948,6 +948,25 @@ class CorePlayer(base.CoreAdvanced):
 
 		self.objects["CamRot"].localPosition[2] = (self.EYE_H-1)*((20-self.crouch)*0.05)
 
+	def doMoveAnim(self, action, walk):
+		invck = 0
+		for slot in self.cls_dict:
+			if slot in ["Hip_L", "Hip_R"]:
+				invck = -5
+
+		if action == "FORWARD":
+			if walk == False:
+				self.doAnim(NAME="Running", FRAME=(0,39), PRIORITY=3, MODE="LOOP", BLEND=10)
+			else:
+				self.doAnim(NAME="Walking", FRAME=(0,59), PRIORITY=3, MODE="LOOP", BLEND=10)
+		elif action == "BACKWARD":
+			if walk == False:
+				self.doAnim(NAME="Running", FRAME=(39,0), PRIORITY=3, MODE="LOOP", BLEND=10)
+			else:
+				self.doAnim(NAME="Walking", FRAME=(59,0), PRIORITY=3, MODE="LOOP", BLEND=10)
+		else:
+			self.doAnim(NAME="Jumping", FRAME=(0+invck,0+invck), PRIORITY=3, MODE="LOOP", BLEND=10)
+
 	def ST_Walking(self):
 		scene = base.SC_SCN
 		owner = self.objects["Root"]
@@ -959,17 +978,14 @@ class CorePlayer(base.CoreAdvanced):
 
 		wall, wallnrm = self.checkWall(z=False)
 
-		invck = 0
-		for slot in self.cls_dict:
-			if slot in ["Hip_L", "Hip_R"]:
-				invck = -5
-
 		if ground != None:
 			if self.jump_state == "NONE":
 				owner.applyForce((0,0,-1*scene.gravity[2]), False)
 				owner.worldPosition[2] = ground[1][2]+(1+((angle/90)*0.3))
 
 				strafe = self.data["CAMERA"]["Strafe"]
+				action = "IDLE"
+				walk = False
 
 				if keymap.BINDS["PLR_DUCK"].active() == True:
 					self.doCrouch(True)
@@ -984,35 +1000,24 @@ class CorePlayer(base.CoreAdvanced):
 
 					if self.data["RUN"] == False or self.motion["Move"].length <= 0.7:
 						mx = 0.03*slope
+						action = "FORWARD"
+						walk = True
 						if strafe == True:
-							if wall < 160 and move[0] < 0.5 and move[0] > -0.5:
-								if move[0] > 0:
-									frame = (0,59)
-								else:
-									frame = (59, 0)
-								self.doAnim(NAME="Walking", FRAME=frame, PRIORITY=3, MODE="LOOP", BLEND=10)
-							else:
-								self.doAnim(NAME="Jumping", FRAME=(0+invck,0+invck), PRIORITY=3, MODE="LOOP", BLEND=10)
-						else:
-							if wall < 150:
-								self.doAnim(NAME="Walking", FRAME=(0,59), PRIORITY=3, MODE="LOOP", BLEND=10)
-							else:
-								self.doAnim(NAME="Jumping", FRAME=(0+invck,0+invck), PRIORITY=3, MODE="LOOP", BLEND=10)
+							if move[1] < 0:
+								action = "BACKWARD"
+							if move[0] > 0.5:
+								action = "STRAFE_R"
+							if move[0] < -0.5:
+								action = "STRAFE_L"
 					else:
+						action = "FORWARD"
 						if strafe == True:
-							if wall < 160 and move[0] < 0.5 and move[0] > -0.5:
-								if move[0] > 0:
-									frame = (0,39)
-								else:
-									frame = (39, 0)
-								self.doAnim(NAME="Running", FRAME=frame, PRIORITY=3, MODE="LOOP", BLEND=10)
-							else:
-								self.doAnim(NAME="Jumping", FRAME=(0+invck,0+invck), PRIORITY=3, MODE="LOOP", BLEND=10)
-						else:
-							if wall < 160:
-								self.doAnim(NAME="Running", FRAME=(0,39), PRIORITY=3, MODE="LOOP", BLEND=10)
-							else:
-								self.doAnim(NAME="Jumping", FRAME=(0+invck,0+invck), PRIORITY=3, MODE="LOOP", BLEND=10)
+							if move[1] < 0:
+								action = "BACKWARD"
+							if move[0] > 0.5:
+								action = "STRAFE_R"
+							if move[0] < -0.5:
+								action = "STRAFE_L"
 
 					self.doMovement((move[0], move[1], 0), mx, strafe)
 
@@ -1021,7 +1026,9 @@ class CorePlayer(base.CoreAdvanced):
 						self.doMovement((0, 1, 0), 0, True)
 
 					self.motion["Accel"] = 0
-					self.doAnim(NAME="Jumping", FRAME=(0+invck,0+invck), PRIORITY=3, MODE="LOOP", BLEND=10)
+					action = "IDLE"
+
+				self.doMoveAnim(action, walk)
 
 				if ground[0].getPhysicsId() != 0:
 					impulse = scene.gravity*owner.mass*0.1
