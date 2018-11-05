@@ -88,9 +88,9 @@ BINDS = {
 
 SYSTEM = {
 
-"SCREENSHOT":        input.KeyBase("999.Z",  "F12KEY",  "PrintScreen", ALT=False),
-"LAUNCHER":          input.KeyBase("999.Z",  "F12KEY",  "FarmerJoe",   ALT=True),
-"ESCAPE":            input.KeyBase("999.Z",  "ESCKEY",  "Escape",      JOYBUTTON=4),
+"SCREENSHOT":        input.KeyBase("999.Z",  "F12KEY",     "PrintScreen",   ALT=False),
+"STABILITY":         input.KeyBase("999.Z",  "PAGEUPKEY",  "Snap to Floor", ALT=True),
+"ESCAPE":            input.KeyBase("999.Z",  "ESCKEY",     "Escape",        JOYBUTTON=4),
 
 "SHIFT":             input.KeyBase("999.Z",  "NONE",    "Shift",   SHIFT=True),
 "CTRL":              input.KeyBase("999.Z",  "NONE",    "Control", CTRL=True),
