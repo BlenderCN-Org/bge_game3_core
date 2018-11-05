@@ -127,7 +127,9 @@ class CorePlayer(base.CoreAdvanced):
 		self.motion = {"Move":self.createVector(2), "Rotate":self.createVector(3), "Climb":0, "Accel":0}
 
 		self.data = {"HEALTH":100, "ENERGY":100, "SPEED":0.1, "JUMP":6, "RUN":True, "RECHARGE":0.1}
-		self.data["CAMERA"] = {"State":3, "Orbit":True, "Zoom":4, "Dist":4, "Range":(1,6), "FOV":[self.FOV, 90], "ZR":[0,1,0], "XR":0}
+		self.data["CAMERA"] = {"State":3, "Orbit":True, "Zoom":4, "Dist":4, "Range":(1,6),
+			"FOV":[self.FOV, 90], "ZR":[0,1,0], "XR":0, "Strafe":False}
+
 		self.data["HUD"] = {"Text":"", "Color":(0,0,0,0.5), "Target":None, "Locked":None}
 
 		self.data["DAMPING"] = [1.0, 1.0]
@@ -446,6 +448,9 @@ class CorePlayer(base.CoreAdvanced):
 
 		if keymap.BINDS["PLR_RUN"].tap() == True:
 			self.data["RUN"] ^= True
+
+		if keymap.BINDS["PLR_STRAFETOGGLE"].tap() == True:
+			self.data["CAMERA"]["Strafe"] ^= True
 
 		self.motion["Move"][0] = MOVE[0]
 		self.motion["Move"][1] = MOVE[1]
@@ -964,7 +969,7 @@ class CorePlayer(base.CoreAdvanced):
 				owner.applyForce((0,0,-1*scene.gravity[2]), False)
 				owner.worldPosition[2] = ground[1][2]+(1+((angle/90)*0.3))
 
-				strafe = keymap.SYSTEM["ALT"].checkModifiers()
+				strafe = self.data["CAMERA"]["Strafe"]
 
 				if keymap.BINDS["PLR_DUCK"].active() == True:
 					self.doCrouch(True)
@@ -977,27 +982,37 @@ class CorePlayer(base.CoreAdvanced):
 				elif self.motion["Move"].length > 0.01:
 					mx = self.data["SPEED"]*slope
 
-					if strafe == True:
-						if wall < 160 and move[0] < 0.5 and move[0] > -0.5:
-							if move[0] > 0:
-								frame = (0,39)
-							else:
-								frame = (39, 0)
-							self.doAnim(NAME="Running", FRAME=frame, PRIORITY=3, MODE="LOOP", BLEND=10)
-						else:
-							self.doAnim(NAME="Jumping", FRAME=(0+invck,0+invck), PRIORITY=3, MODE="LOOP", BLEND=10)
-
-					elif self.data["RUN"] == False or self.motion["Move"].length <= 0.7:
+					if self.data["RUN"] == False or self.motion["Move"].length <= 0.7:
 						mx = 0.03*slope
-						if wall < 150:
-							self.doAnim(NAME="Walking", FRAME=(0,59), PRIORITY=3, MODE="LOOP", BLEND=10)
+						if strafe == True:
+							if wall < 160 and move[0] < 0.5 and move[0] > -0.5:
+								if move[0] > 0:
+									frame = (0,59)
+								else:
+									frame = (59, 0)
+								self.doAnim(NAME="Walking", FRAME=frame, PRIORITY=3, MODE="LOOP", BLEND=10)
+							else:
+								self.doAnim(NAME="Jumping", FRAME=(0+invck,0+invck), PRIORITY=3, MODE="LOOP", BLEND=10)
 						else:
-							self.doAnim(NAME="Jumping", FRAME=(0+invck,0+invck), PRIORITY=3, MODE="LOOP", BLEND=10)
+							if wall < 150:
+								self.doAnim(NAME="Walking", FRAME=(0,59), PRIORITY=3, MODE="LOOP", BLEND=10)
+							else:
+								self.doAnim(NAME="Jumping", FRAME=(0+invck,0+invck), PRIORITY=3, MODE="LOOP", BLEND=10)
 					else:
-						if wall < 160:
-							self.doAnim(NAME="Running", FRAME=(0,39), PRIORITY=3, MODE="LOOP", BLEND=10)
+						if strafe == True:
+							if wall < 160 and move[0] < 0.5 and move[0] > -0.5:
+								if move[0] > 0:
+									frame = (0,39)
+								else:
+									frame = (39, 0)
+								self.doAnim(NAME="Running", FRAME=frame, PRIORITY=3, MODE="LOOP", BLEND=10)
+							else:
+								self.doAnim(NAME="Jumping", FRAME=(0+invck,0+invck), PRIORITY=3, MODE="LOOP", BLEND=10)
 						else:
-							self.doAnim(NAME="Jumping", FRAME=(0+invck,0+invck), PRIORITY=3, MODE="LOOP", BLEND=10)
+							if wall < 160:
+								self.doAnim(NAME="Running", FRAME=(0,39), PRIORITY=3, MODE="LOOP", BLEND=10)
+							else:
+								self.doAnim(NAME="Jumping", FRAME=(0+invck,0+invck), PRIORITY=3, MODE="LOOP", BLEND=10)
 
 					self.doMovement((move[0], move[1], 0), mx, strafe)
 
