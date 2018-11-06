@@ -110,6 +110,7 @@ class CorePlayer(base.CoreAdvanced):
 		self.active_state = self.ST_Walking
 		self.active_post = [self.PS_Recharge, self.PS_GroundTrack]
 
+		self.gndraybias = 0.3
 		self.jump_state = "NONE"
 		self.jump_timer = 0
 		self.crouch = 0
@@ -637,7 +638,7 @@ class CorePlayer(base.CoreAdvanced):
 			if angle > self.SLOPE:
 				ground = None
 			if self.jump_state != "NONE":
-				if owner.worldPosition[2]-rayPNT[2] > (1+((angle/90)*0.3)):
+				if owner.worldPosition[2]-rayPNT[2] > (1+((angle/90)*self.gndraybias)):
 					ground = None
 
 			if ground != None:
@@ -803,24 +804,36 @@ class CorePlayer(base.CoreAdvanced):
 		self.data["HUD"]["Color"] = RAYCOLOR
 		self.data["HUD"]["Target"] = RAYTARGPOS
 
-	def doJump(self):
+	def doJump(self, vec=None):
 		owner = self.objects["Root"]
-		move = self.motion["Move"].normalized()
 
 		if self.motion["Move"].length > 0.01:
+			move = self.motion["Move"].normalized()
 			vref = self.objects["VertRef"].getAxisVect((move[0], move[1], 0))
-			self.alignPlayer(axis=vref)
+
+			if self.data["CAMERA"]["Strafe"] == False:
+				self.alignPlayer(axis=vref)
+
+		else:
+			vref = self.createVector()
 
 		owner.setDamping(0.3, 0.3)
 
-		mx = self.data["SPEED"]
-		if self.data["RUN"] == False or self.motion["Move"].length <= 0.5:
-			mx = 0.03
-		if self.ACCEL > 1:
-			mx = mx*(self.motion["Accel"]/self.ACCEL)
+		if vec == None:
+			mx = self.data["SPEED"]
+			if self.data["RUN"] == False or self.motion["Move"].length <= 0.7:
+				mx = 0.03
+			if self.ACCEL > 1:
+				mx = mx*(self.motion["Accel"]/self.ACCEL)
 
-		owner.localLinearVelocity[1] = self.data["JUMP"]*mx*6
-		owner.localLinearVelocity[2] = self.data["JUMP"]
+			jump = vref*self.data["JUMP"]*mx*6
+			jump[2] = self.data["JUMP"]
+
+		else:
+			jump = vref*vec[0]
+			jump[2] = vec[1]
+
+		owner.worldLinearVelocity = jump
 
 		self.doAnim(NAME="Jumping", FRAME=(0,20), PRIORITY=2, MODE="PLAY", BLEND=10)
 
@@ -856,10 +869,12 @@ class CorePlayer(base.CoreAdvanced):
 
 	def doCrouch(self, state):
 		if state == True or self.crouch != 0:
+			self.jump_state = "CROUCH"
 			self.objects["Root"].localScale[2] = 0.25
 			self.objects["Character"].localScale[2] = 4
 			self.active_state = self.ST_Crouch
 		elif state == False:
+			self.jump_state = "NONE"
 			self.objects["Root"].localScale[2] = 1
 			self.objects["Character"].localScale[2] = 1
 			self.active_state = self.ST_Walking
@@ -880,7 +895,7 @@ class CorePlayer(base.CoreAdvanced):
 		owner = self.objects["Root"]
 		self.groundchk = False
 
-		if self.groundhit == None or self.jump_state != "NONE":
+		if self.groundhit == None or self.jump_state not in ["NONE", "CROUCH"]:
 			self.groundobj = None
 			return
 
@@ -909,24 +924,27 @@ class CorePlayer(base.CoreAdvanced):
 		ground, angle, slope = self.checkGround()
 
 		if ground != None:
+			owner.setDamping(1.0, 1.0)
 			owner.applyForce((0,0,-1*scene.gravity[2]), False)
-			owner.worldPosition[2] = ground[1][2]+(1-(self.crouch*0.04))
-
-			move = self.motion["Move"].normalized()
-
-			if self.motion["Move"].length > 0.01:
-				self.doMovement((move[0], move[1], 0), 0.02)
-			else:
-				self.motion["Accel"] = 0
+			owner.worldPosition[2] = ground[1][2] + ((angle/90)*self.gndraybias) + (1-(self.crouch*0.04))
 
 			if ground[0].getPhysicsId() != 0:
 				impulse = scene.gravity*owner.mass*0.1
 				ground[0].applyImpulse(ground[1], impulse, False)
+		else:
+			
+			owner.setDamping(0.3, 0.3)
+
+		if self.motion["Move"].length > 0.01:
+			move = self.motion["Move"].normalized()
+			self.doMovement((move[0], move[1], 0), 0.02)
+		else:
+			self.motion["Accel"] = 0
 
 		owner.alignAxisToVect((0,0,1), 2, 1.0)
 
 		self.doInteract()
-		self.checkStability()
+		#self.checkStability()
 		self.weaponManager()
 
 		if keymap.BINDS["PLR_DUCK"].active() != True and self.checkWall(axis=(0,0,1), simple=1.4, prop="") == None:
@@ -981,7 +999,7 @@ class CorePlayer(base.CoreAdvanced):
 		if ground != None:
 			if self.jump_state == "NONE":
 				owner.applyForce((0,0,-1*scene.gravity[2]), False)
-				owner.worldPosition[2] = ground[1][2]+(1+((angle/90)*0.3))
+				owner.worldPosition[2] = ground[1][2]+(1+((angle/90)*self.gndraybias))
 
 				strafe = self.data["CAMERA"]["Strafe"]
 				action = "IDLE"
@@ -1005,18 +1023,18 @@ class CorePlayer(base.CoreAdvanced):
 						if strafe == True:
 							if move[1] < 0:
 								action = "BACKWARD"
-							if move[0] > 0.5:
+							if move[0] > 0.5 and abs(move[1]) < 0.5:
 								action = "STRAFE_R"
-							if move[0] < -0.5:
+							if move[0] < -0.5 and abs(move[1]) < 0.5:
 								action = "STRAFE_L"
 					else:
 						action = "FORWARD"
 						if strafe == True:
 							if move[1] < 0:
 								action = "BACKWARD"
-							if move[0] > 0.5:
+							if move[0] > 0.5 and abs(move[1]) < 0.5:
 								action = "STRAFE_R"
-							if move[0] < -0.5:
+							if move[0] < -0.5 and abs(move[1]) < 0.5:
 								action = "STRAFE_L"
 
 					self.doMovement((move[0], move[1], 0), mx, strafe)
@@ -1073,7 +1091,7 @@ class CorePlayer(base.CoreAdvanced):
 
 			if self.jump_state in ["NONE", "JUMP"]:
 				if self.jump_state == "NONE" and not keymap.BINDS["PLR_DUCK"].active() == True:
-					owner.localLinearVelocity = (0,1,1)
+					self.doJump([1,1])
 				self.jump_state = "A_JUMP"
 
 			if keymap.BINDS["PLR_JUMP"].active() == True:
