@@ -786,7 +786,7 @@ class CorePlayer(base.CoreAdvanced):
 			if self.rayvec.length < range:
 				RAYOBJ = RAYHIT[0]
 
-				if self.rayvec.dot(RAYHIT[2]) < 0:
+				if self.rayvec.dot(RAYHIT[2]) < 0 and base.settings.config.DO_STABILITY == True:
 					RAYCOLOR = (0,0,1,1)
 					self.data["HUD"]["Text"] = "Press "+keymap.BINDS["ACTIVATE"].input_name+" To Ghost Jump"
 					if keymap.BINDS["ACTIVATE"].tap() == True:
@@ -944,7 +944,7 @@ class CorePlayer(base.CoreAdvanced):
 		owner.alignAxisToVect((0,0,1), 2, 1.0)
 
 		self.doInteract()
-		#self.checkStability()
+		self.checkStability()
 		self.weaponManager()
 
 		if keymap.BINDS["PLR_DUCK"].active() != True and self.checkWall(axis=(0,0,1), simple=1.4, prop="") == None:
