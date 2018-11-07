@@ -257,6 +257,8 @@ class CoreVehicle(base.CoreAdvanced):
 
 	def setCamera(self, CAM=0):
 		self.objects["CamThird"]["Cam"].timeOffset = self.CAMTHIRD["SLOW"]
+		self.objects["CamFirst"]["Loc"].localOrientation = self.createMatrix()
+		self.objects["CamFirst"]["Rot"].localOrientation = self.createMatrix()
 		self.data["CAMERA"]["Dist"] = self.data["CAMERA"]["Zoom"]
 
 		if CAM == 0:
