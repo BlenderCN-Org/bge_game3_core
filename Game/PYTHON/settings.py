@@ -182,11 +182,11 @@ def SETGFX(graphics=None, launcher=False, save=False):
 
 	## VSYNC ##
 	if launcher == True or graphics["Vsync"] == True:
-		render.setVsync(render.VSYNC_ON)
+		#render.setVsync(render.VSYNC_ON)
 		print("\tVsync ON")
 	elif graphics["Vsync"] == False:
+		#render.setVsync(render.VSYNC_OFF)
 		print("\tVsync OFF")
-		render.setVsync(render.VSYNC_OFF)
 
 	## SHADERS ##
 	glsl = ["lights", "shaders", "shadows", "ramps", "extra_textures"]
