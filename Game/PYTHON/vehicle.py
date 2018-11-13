@@ -75,7 +75,6 @@ class CoreVehicle(base.CoreAdvanced):
 		self.data["LINVEL"] = (0,0,0)
 		self.data["ANGVEL"] = (0,0,0)
 
-		self.linV = owner.getLinearVelocity(True)
 		self.motion = {"Force": self.createVector(), "Torque": self.createVector()}
 
 		self.addCollisionCallBack()
@@ -379,7 +378,6 @@ class CoreVehicle(base.CoreAdvanced):
 		camera.localPosition[2] = camLZ
 
 	def getInputs(self):
-		self.linV = self.objects["Root"].getLinearVelocity(True)
 		KB = keymap.BINDS
 
 		STRAFE = KB["VEH_STRAFERIGHT"].axis(True, clip=True) - KB["VEH_STRAFELEFT"].axis(True, clip=True)
@@ -617,7 +615,7 @@ class CoreAircraft(CoreVehicle):
 
 	LANDACTION = "AircraftRigLand"
 	LANDFRAMES = [0, 100]
-	AERO = {"POWER":1000, "HOVER":0, "LIFT":0.1, "TAIL":10}
+	AERO = {"POWER":1000, "HOVER":0, "LIFT":0.1, "TAIL":10, "DRAG":(1,1,1)}
 	HUDLAYOUT = LayoutAircraft
 
 	def defaultData(self):
@@ -633,38 +631,38 @@ class CoreAircraft(CoreVehicle):
 	def airDrag(self):
 
 		dampLin = 0.0
-		dampRot = (self.linV[1]*0.002)+0.4
+		dampRot = (self.objects["Root"].localLinearVelocity[1]*0.002)+0.4
 
 		if dampRot >= 0.7:
 			dampRot = 0.7
 
 		self.objects["Root"].setDamping(dampLin, dampRot)
 
-		DRAG_X = self.linV[0]*abs(self.linV[0])*1
-		DRAG_Y = self.linV[1]*abs(self.linV[1])*1
-		DRAG_Z = self.linV[2]*abs(self.linV[2])*1
-
-		self.objects["Root"].applyForce((-DRAG_X, -DRAG_Y, -DRAG_Z), True)
+		self.doDragForce()
 
 	def airLift(self):
 		owner = self.objects["Root"]
-		speed = self.linV.length
+		linV = owner.localLinearVelocity
+		speed = linV.length
 		grav = -owner.scene.gravity[2]
 
 		if speed > 0.1 and self.AERO["TAIL"] > 0:
-			axis = owner.getAxisVect(self.linV.normalized())
+			axis = owner.getAxisVect(linV.normalized())
 			factor = self.AERO["TAIL"]/speed
 			if factor > 1:
 				factor = 1
 			owner.alignAxisToVect(axis, 1, factor*0.5)
 
-		self.lift = (self.linV[1]**2)*self.AERO["LIFT"]
+		self.lift = (linV[1])*self.AERO["LIFT"]*owner.mass
 		mass = owner.mass*grav
 
 		if self.lift > mass:
 			self.lift = mass
 
 		owner.applyForce((0,0,self.lift), True)
+
+		owner["LIFT"] = self.lift
+		owner.addDebugProperty("LIFT", True)
 
 	def getEngineForce(self):
 		owner = self.objects["Root"]
@@ -709,6 +707,17 @@ class CoreAircraft(CoreVehicle):
 		hover = ( (base-(self.lift*normal)) + self.data["HOVER"][1] )
 
 		return power, hover
+
+	def doDragForce(self, drag=None):
+		mass = self.objects["Root"].mass*0.1
+		linV = self.objects["Root"].localLinearVelocity
+		if drag == None:
+			drag = self.AERO["DRAG"]
+		DRAG_X = linV[0]*drag[0]*mass
+		DRAG_Y = linV[1]*drag[1]*mass
+		DRAG_Z = linV[2]*drag[2]*mass
+
+		self.objects["Root"].applyForce((-DRAG_X, -DRAG_Y, -DRAG_Z), True)
 
 	def doLandingGear(self, init=False):
 		start, end = self.LANDFRAMES

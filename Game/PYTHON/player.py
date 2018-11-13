@@ -667,11 +667,11 @@ class CorePlayer(base.CoreAdvanced):
 		rayup = self.objects["WallRay"]
 		rayto = self.objects["WallRayTo"]
 
-		if rayto.get("XX", None) == None:
-			rayto["XX"] = owner.scene.addObject("Gimbal", rayto, 0)
-			rayto["XX"].setParent(rayto)
+		#if rayto.get("XX", None) == None:
+		#	rayto["XX"] = owner.scene.addObject("Gimbal", rayto, 0)
+		#	rayto["XX"].setParent(rayto)
 
-		guide = rayto["XX"]
+		#guide = rayto["XX"]
 
 		EDGEOBJ, EDGEPNT, EDGENRM = owner.rayCast(rayto, rayup, 3.0, "GROUND", 1, 1, 0)
 
@@ -679,7 +679,7 @@ class CorePlayer(base.CoreAdvanced):
 			if EDGEOBJ == None:
 				return None
 
-			guide.worldPosition = EDGEPNT
+		#	guide.worldPosition = EDGEPNT
 			angle = self.createVector(vec=[0,0,1]).angle(EDGENRM, 0)
 			angle = round(self.toDeg(angle), 2)
 
@@ -691,7 +691,7 @@ class CorePlayer(base.CoreAdvanced):
 		CHK = owner.rayCastTo(rayup, 0, "GROUND")
 
 		if EDGEOBJ != None and CHK == None:
-			guide.worldPosition = EDGEPNT
+		#	guide.worldPosition = EDGEPNT
 			angle = self.createVector(vec=[0,0,1]).angle(EDGENRM, 0)
 			angle = round(self.toDeg(angle), 2)
 			dist = EDGEPNT[2]-owner.worldPosition[2]
@@ -718,7 +718,7 @@ class CorePlayer(base.CoreAdvanced):
 					self.jump_state = "EDGE"
 
 		else:
-			guide.worldPosition = rayup.worldPosition.copy()-self.createVector(vec=[0,0,3])
+		#	guide.worldPosition = rayup.worldPosition.copy()-self.createVector(vec=[0,0,3])
 			if self.rayorder == "START":
 				self.rayorder = "GRAB"
 			elif self.jump_state == "EDGE":
@@ -734,22 +734,21 @@ class CorePlayer(base.CoreAdvanced):
 		offset = abs(self.objects["Rig"].localPosition[2])
 		gndbias = 0
 
-		if gndto.get("X", None) == None:
-			gndto["X"] = owner.scene.addObject("Gimbal", gndto, 0)
-			gndto["X"].setParent(gndto)
-			gndto["X"].localScale *= 0.5
+		#if gndto.get("X", None) == None:
+		#	gndto["X"] = owner.scene.addObject("Gimbal", gndto, 0)
+		#	gndto["X"].setParent(gndto)
+		#	gndto["X"].localScale *= 0.5
 
-		guide = gndto["X"]
+		#guide = gndto["X"]
 
 		if ray == None:
 			ray = (gndto, None, offset)
 
 		rayOBJ, rayPNT, rayNRM = owner.rayCast(ray[0], ray[1], ray[2]+0.3, "GROUND", 1, 1, 0)
 
-		self.gndraybias = offset
-
 		if rayOBJ == None:
-			guide.worldPosition = gndto.worldPosition
+		#	guide.worldPosition = gndto.worldPosition
+			self.gndraybias = offset
 
 			if simple == True:
 				return None
@@ -760,9 +759,10 @@ class CorePlayer(base.CoreAdvanced):
 		else:
 			ground = [rayOBJ, rayPNT, rayNRM]
 
-			guide.worldPosition = rayPNT
+		#	guide.worldPosition = rayPNT
 
 			if simple == True:
+				self.gndraybias = offset
 				return ground
 
 			self.groundhit = ground
@@ -926,7 +926,7 @@ class CorePlayer(base.CoreAdvanced):
 		if self.groundhit == None or self.jump_state not in ["NONE", "CROUCH", "JUMP"]:
 			dragX = owner.worldLinearVelocity[0]*1
 			dragY = owner.worldLinearVelocity[1]*1
-			dragZ = owner.worldLinearVelocity[2]*1
+			dragZ = owner.worldLinearVelocity[2]*0.5
 			owner.applyForce((-dragX, -dragY, -dragZ), False)
 			self.groundobj = None
 			return
