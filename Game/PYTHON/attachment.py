@@ -145,16 +145,15 @@ class CoreAttachment(base.CoreObject):
 		if cls.cls_dict.get(slot, None) == self:
 			del cls.cls_dict[slot]
 
-	def attachToSocket(self, obj=None, socket=None, offset=(0,0,0)):
+	def attachToSocket(self, obj=None, socket=None):
 		if socket == None:
 			return
 		if obj == None:
 			obj = self.objects["Root"]
 
 		obj.setParent(socket)
-		if offset == None:
-			print("OFFSET NONE:", self.NAME)
 		obj.localOrientation = self.createMatrix()
+
 		if socket == self.box:
 			obj.localPosition = self.OFFSET.copy()
 			obj.worldScale = self.SCALE.copy()
@@ -203,7 +202,7 @@ class CoreAttachment(base.CoreObject):
 		self.buildBox()
 
 		self.removeFromPlayer()
-		self.attachToSocket(owner, self.box, self.OFFSET)
+		self.attachToSocket(owner, self.box)
 
 		self.box.worldPosition = self.data["POS"]
 
@@ -227,11 +226,12 @@ class CoreAttachment(base.CoreObject):
 		if slot in [None, False]:
 			return
 
-	def checkStability(self, align=False, offset=1.0):
+	def checkStability(self, align=False, offset=None):
 		box = self.box
-		offset = 1
 		if self.box == None:
 			box = self.objects["Root"]
+		if offset == None:
+			offset = box.worldScale[2]
 
 		rayto = list(box.worldPosition)
 		rayto[2] -= 1
@@ -248,7 +248,7 @@ class CoreAttachment(base.CoreObject):
 	## STATE BOX ##
 	def ST_Box(self):
 		if self.box_timer == 0:
-			self.checkStability(offset=self.SCALE[2])
+			self.checkStability()
 		else:
 			self.box_timer -= 1
 

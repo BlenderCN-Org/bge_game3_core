@@ -49,10 +49,31 @@ class CorePowerup(att.CoreAttachment):
 		self.active_state = self.ST_Box
 
 		self.buildBox()
-		self.checkStability(offset=self.SCALE[2])
-		self.attachToSocket(owner, self.box, self.OFFSET)
+		self.attachToSocket(owner, self.box)
 
 		self.ST_Startup()
+
+	def attachToSocket(self, obj=None, socket=None):
+		if socket == None:
+			return
+		if obj == None:
+			obj = self.objects["Root"]
+
+		obj.setParent(socket)
+		obj.localOrientation = self.createMatrix()
+
+		if socket == self.box:
+			self.box.localScale = self.SCALE
+			obj.localPosition = self.OFFSET
+			obj.localScale = [1/self.SCALE[0], 1/self.SCALE[1], 1/self.SCALE[2]]
+		else:
+			obj.localPosition = (0,0,0)
+			obj.worldScale = (1,1,1)
+
+	## STATE BOX ##
+	def ST_Box(self):
+		if self.checkClicked(self.box) == True:
+			self.equipItem(self.box["RAYCAST"])
 
 
 class SimpleKey(CorePowerup):
