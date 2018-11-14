@@ -305,9 +305,9 @@ class CoreVehicle(base.CoreAdvanced):
 
 		## Toggle Orbit ##
 		if self.data["CAMERA"]["Orbit"] == None:
-			keymap.MOUSELOOK.center()
 
 			if keymap.BINDS["CAM_ORBIT"].tap() == True:
+				keymap.MOUSELOOK.center()
 				self.data["CAMERA"]["Orbit"] = self.CAMTHIRD["SLOW"]
 
 			#wp = self.objects["Root"].worldPosition
@@ -321,6 +321,7 @@ class CoreVehicle(base.CoreAdvanced):
 			self.objects["CamFirst"]["Rot"].applyRotation((Y,0,0), True)
 
 			if keymap.BINDS["CAM_ORBIT"].tap() == True:
+				keymap.MOUSELOOK.center()
 				self.data["CAMERA"]["Orbit"] = None
 				self.objects["CamThird"]["Cam"].timeOffset = self.CAMTHIRD["SLOW"]
 				self.objects["CamFirst"]["Loc"].localOrientation = self.createMatrix()
@@ -328,7 +329,7 @@ class CoreVehicle(base.CoreAdvanced):
 
 			else:
 				self.objects["CamThird"]["Cam"].timeOffset = self.data["CAMERA"]["Orbit"]
-				self.data["CAMERA"]["Orbit"] -= 1
+				self.data["CAMERA"]["Orbit"] -= self.data["CAMERA"]["Orbit"]*(1/self.CAMTHIRD["SLOW"])
 				if self.data["CAMERA"]["Orbit"] < 0:
 					self.data["CAMERA"]["Orbit"] = 0
 
@@ -379,6 +380,13 @@ class CoreVehicle(base.CoreAdvanced):
 
 	def getInputs(self):
 		KB = keymap.BINDS
+		X, Y = keymap.MOUSELOOK.axis()
+		X *= 10
+		if X > 1:
+			X = 1
+		Y *= 10
+		if Y > 1:
+			Y = 1
 
 		STRAFE = KB["VEH_STRAFERIGHT"].axis(True, clip=True) - KB["VEH_STRAFELEFT"].axis(True, clip=True)
 		POWER = KB["VEH_THROTTLEUP"].axis(True, clip=True) - KB["VEH_THROTTLEDOWN"].axis(True, clip=True)
@@ -708,9 +716,9 @@ class CoreAircraft(CoreVehicle):
 
 		return power, hover
 
-	def doDragForce(self, drag=None):
-		mass = self.objects["Root"].mass*0.1
+	def doDragForce(self, drag=None, scale=1.0):
 		linV = self.objects["Root"].localLinearVelocity
+		mass = abs(linV[1])
 		if drag == None:
 			drag = self.AERO["DRAG"]
 		DRAG_X = linV[0]*drag[0]*mass
