@@ -50,6 +50,7 @@ def SPAWN(cont):
 		return
 
 	if timer <= 30:
+		owner.worldScale = [1,1,1]
 		owner["TIMER"] = timer+1
 		return
 

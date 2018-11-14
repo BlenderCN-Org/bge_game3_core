@@ -118,6 +118,7 @@ def LOAD(owner):
 
 		if name != None:
 			cleanup.append(obj)
+			obj.worldScale = [1,1,1]
 
 			if obj.get("SPAWN", True) == True and obj.name not in LEVEL["SPAWN"]:
 				if name in scene.objectsInactive:
@@ -140,8 +141,8 @@ def LOAD(owner):
 		newobj = scene.addObject(drop["Object"], owner, 0)
 		newobj.worldPosition = drop["Data"]["POS"]
 		newobj.worldOrientation = drop["Data"]["ORI"]
-		if "SCL" in drop["Data"]:
-			newobj.worldScale = drop["Data"]["SCL"]
+		#if "SCL" in drop["Data"]:
+		#	newobj.worldScale = drop["Data"]["SCL"]
 		newobj["DICT"] = drop
 		print("CYBERSPACE:", drop["Object"])
 
