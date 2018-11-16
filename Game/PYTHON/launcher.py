@@ -21,19 +21,9 @@
 
 ## LAUNCHER ##
 
-import sys
-for i in sys.path:
-	print("PATH:", i)
-
 from bge import logic, render
 
-import PYTHON.settings as settings
-import PYTHON.keymap as keymap
-
-
-settings.checkWorldData(launcher=True)
-
-settings.SETGFX(logic.globalDict["GRAPHICS"], launcher=True)
+from game3 import settings, keymap
 
 
 def RUN(cont):
@@ -217,7 +207,7 @@ class LAUNCHER:
 		OWNER["scroll"] = int(-CAM.worldPosition[1])
 
 		if keymap.SYSTEM["SCREENSHOT"].tap() == True:
-			settings.triggerPrintScreen("Launcher")
+			settings.SCREENSHOT(True)
 
 	def EXECUTE(self):
 		self.history["ID"] = 0
@@ -374,7 +364,7 @@ def VSYNC(args=[], kwa=None):
 
 	logic.CLASS.NEWLINE("Vsync: "+str(logic.globalDict["GRAPHICS"]["Vsync"]), 2, 2, (1,1,1,1))
 
-	settings.SETGFX(launcher=True, save=True)
+	SaveJSON(logic.globalDict["DATA"]["GAMEPATH"]+"Graphics.cfg", logic.globalDict["GRAPHICS"])
 
 
 def DEBUG(args=[], kwa=None):
@@ -393,7 +383,7 @@ def DEBUG(args=[], kwa=None):
 	render.showProfile(False)
 	render.showProperties(debug[3] and debug[0])
 
-	settings.SETGFX(launcher=True, save=True)
+	SaveJSON(logic.globalDict["DATA"]["GAMEPATH"]+"Graphics.cfg", logic.globalDict["GRAPHICS"])
 
 
 def RESOLUTION(args=[], kwa=None):
@@ -409,12 +399,7 @@ def RESOLUTION(args=[], kwa=None):
 	if "f" in args:
 		logic.globalDict["GRAPHICS"]["Fullscreen"] ^= True
 		fs = logic.globalDict["GRAPHICS"]["Fullscreen"]
-		#X, Y = logic.globalDict["GRAPHICS"]["Resolution"]
-		#render.setFullScreen(fs)
-		#render.setWindowSize(X, Y)
 		logic.CLASS.NEWLINE("Fullscreen: "+str(fs)+" (Relaunch Required)", 2, 2, (1,1,1,1))
-		#settings.SETGFX(launcher=True, save=True)
-		#return
 
 	X = None
 	Y = None
@@ -458,7 +443,7 @@ def RESOLUTION(args=[], kwa=None):
 	logic.globalDict["GRAPHICS"]["Resolution"] = [X,Y]
 	logic.CLASS.NEWLINE("Resolution: "+str(X)+"x"+str(Y), 2, 2, (1,1,1,1))
 
-	settings.SETGFX(launcher=True, save=True)
+	SaveJSON(logic.globalDict["DATA"]["GAMEPATH"]+"Graphics.cfg", logic.globalDict["GRAPHICS"])
 
 
 def QUALITY(args=[], kwa=None):
@@ -486,7 +471,7 @@ def QUALITY(args=[], kwa=None):
 		logic.globalDict["GRAPHICS"]["Shaders"] = setting
 		logic.CLASS.NEWLINE("Quality: "+setting, 2, 2, (1,1,1,1))
 
-		settings.SETGFX(launcher=True, save=True)
+		SaveJSON(logic.globalDict["DATA"]["GAMEPATH"]+"Graphics.cfg", logic.globalDict["GRAPHICS"])
 
 
 def SAVE(args=[], kwa=None):
@@ -512,7 +497,7 @@ def SAVE(args=[], kwa=None):
 	settings.SaveJSON(path+name+"Profile.json", dict, "\t")
 	logic.CLASS.NEWLINE("Profile Saved!", 2, 2, (1,1,1,1))
 
-	settings.SETGFX(launcher=True, save=True)
+	SaveJSON(logic.globalDict["DATA"]["GAMEPATH"]+"Graphics.cfg", logic.globalDict["GRAPHICS"])
 
 
 def LOAD(args=[], kwa=None):
@@ -605,30 +590,18 @@ def PLAYER(args=[], kwa=None):
 
 	"""Change Player Class"""
 
-	PL = settings.config.LIST_CHARACTERS
-
 	if kwa != None:
 		if logic.CLASS.que[0] == "CLASS":
-			if kwa in PL:
+			if len(kwa) >= 1:
 				logic.globalDict["CURRENT"]["Player"] = kwa
 				return True
-			try:
-				if int(kwa) in range(len(PL)):
-					logic.globalDict["CURRENT"]["Player"] = PL[int(kwa)]
-					return True
-			except Exception:
-				return False
-
 			if kwa == "None":
 				logic.globalDict["CURRENT"]["Player"] = None
 				return True
 		return False
 
 	if len(args) == 1:
-		for i in range(len(PL)):
-			logic.CLASS.NEWLINE(str(i)+": "+PL[i], 1, 1, (1,1,1,1))
-		logic.CLASS.NEWLINE()
-		logic.CLASS.NEWLINE("Enter Name or Index...", 2, 1, (0.7,0.5,0.7,1))
+		logic.CLASS.NEWLINE("Enter Name of Character Object (Case Sensitive)", 2, 1, (0.7,0.5,0.7,1))
 
 		logic.CLASS.ENTRYLINE(["CLASS"])
 		logic.CLASS.prompt = PLAYER

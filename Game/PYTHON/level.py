@@ -1,59 +1,20 @@
-####
-# bge_game-3.0_template: Full python game structure for the Blender Game Engine
-# Copyright (C) 2018  DaedalusMDW @github.com (Daedalus_MDW @blenderartists.org)
-#
-# This file is part of bge_game-3.0_template.
-#
-#    bge_game-3.0_template is free software: you can redistribute it and/or modify
-#    it under the terms of the GNU General Public License as published by
-#    the Free Software Foundation, either version 3 of the License, or
-#    (at your option) any later version.
-#
-#    bge_game-3.0_template is distributed in the hope that it will be useful,
-#    but WITHOUT ANY WARRANTY; without even the implied warranty of
-#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-#    GNU General Public License for more details.
-#
-#    You should have received a copy of the GNU General Public License
-#    along with bge_game-3.0_template.  If not, see <http://www.gnu.org/licenses/>.
-#
-####
 
-## LEVEL FUNCTIONS ##
+
+## LEVEL MODULES ##
 
 
 from bge import logic, events, render
 
-import PYTHON.keymap as keymap
+from game3 import keymap, player, settings
 
 
 # Scene loader
-def SC_MANAGER(cont):
+def INIT(cont):
 
 	owner = cont.owner
 	scene = owner.scene
 
-	if owner.get("END", False) == True:
-		scene.end()
-		return
-
-	import PYTHON.settings as settings
-
-	if settings.checkWorldData() == False:
-		PATH = logic.expandPath("//../")
-		logic.startGame(PATH+"Launcher.blend")
-
-	else:
-		portal = logic.globalDict["DATA"]["Portal"]
-
-		if portal["Scene"] != None:
-			logic.addScene(portal["Scene"], False)
-
-		elif owner.get("SCENE", None) != None:
-			portal["Scene"] = owner["SCENE"]
-			logic.addScene(owner["SCENE"], False)
-
-		owner["END"] = True
+	player.SPAWN(cont)
 
 
 # Teleport
@@ -79,6 +40,9 @@ def TELEPORT(cont):
 		owner["HALO"]["AXIS"] = None
 
 	name = owner.get("OBJECT", "")
+
+	if "GROUND" in owner:
+		del owner["GROUND"]
 
 	for cls in owner["COLLIDE"]:
 		if cls == logic.PLAYERCLASS:
@@ -108,28 +72,27 @@ def DOOR(cont):
 	owner = cont.owner
 
 	ray = owner.get("RAYCAST", None)
-	player = None
+	cls = None
 
 	if  ray != None:
 		if keymap.BINDS["ACTIVATE"].tap():
-			player = ray
+			cls = ray
 
-	if player != None:
+	if cls != None:
 		gd = logic.globalDict
 		scn = owner.get("SCENE", None)
 		door = owner.get("OBJECT", owner.name)
 		map = owner.get("MAP", "")+".blend"
 		if map in gd["BLENDS"]:
-			import PYTHON.settings as settings
-			player.alignPlayer()
-			player.doUpdate()
+			#cls.alignPlayer()
 			gd["DATA"]["Portal"]["Door"] = door
 			gd["DATA"]["Portal"]["Scene"] = scn
+
 			settings.openWorldBlend(map)
-			#gd["CURRENT"]["Level"] = map
-			#blend = gd["DATA"]["GAMEPATH"]+"MAPS/"+map
-			#logic.startGame(blend)
 			owner["MAP"] = ""
+
+	if "GROUND" in owner:
+		del owner["GROUND"]
 
 	owner["RAYCAST"] = None
 
@@ -139,7 +102,7 @@ def ZONE(cont):
 
 	owner = cont.owner
 
-	player = None
+	cls = None
 
 	if "COLLIDE" not in owner:
 		owner["COLLIDE"] = []
@@ -147,23 +110,23 @@ def ZONE(cont):
 		owner["ZONE"] = False
 		owner["TIMER"] = 0
 
-	for cls in owner["COLLIDE"]:
-		if cls.PORTAL == True:
-			vehicle = cls.data.get("PORTAL", None)
+	for hit in owner["COLLIDE"]:
+		if hit.PORTAL == True:
+			vehicle = hit.data.get("PORTAL", None)
 			if vehicle == True and owner.get("VEHICLE", True) == False:
 				vehicle = False
 			if vehicle in [None, True]:
-				player = cls
-			if vehicle == False:
-				if cls not in owner["FAILS"]:
-					obj = cls.objects["Root"]
-					LV = obj.localLinearVelocity.copy()*-1
-					obj.localLinearVelocity = LV
-					owner["FAILS"].append(cls)
+				cls = hit
+			#if vehicle == False:
+			#	if hit not in owner["FAILS"]:
+			#		obj = hit.objects["Root"]
+			#		LV = obj.localLinearVelocity.copy()*-1
+			#		obj.localLinearVelocity = LV
+			#		owner["FAILS"].append(hit)
 
-	for cls in owner["FAILS"]:
-		if cls not in owner["COLLIDE"]:
-			owner["FAILS"].remove(cls)
+	#for hit in owner["FAILS"]:
+	#	if hit not in owner["COLLIDE"]:
+	#		owner["FAILS"].remove(hit)
 
 	if owner["TIMER"] > 120:
 		owner["TIMER"] = 200
@@ -172,33 +135,25 @@ def ZONE(cont):
 		owner["TIMER"] += 1
 		owner.color = (1, 0, 0, 0.5)
 
-	if player != None:
+	if cls != None:
 		if owner["TIMER"] == 200:
 			gd = logic.globalDict
 			scn = owner.get("SCENE", None)
 			map = owner.get("MAP", "")+".blend"
 			door = owner.get("OBJECT", owner.name)
 			if map in gd["BLENDS"]:
-				import PYTHON.settings as settings
-				player.doUpdate()
-				lp, lr = player.getTransformDiff(owner)
-				#root = player.objects["Root"]
-				#pnt = root.worldPosition-owner.worldPosition
-				#lp = owner.worldOrientation.inverted()*pnt
-				#lp = list(lp)
-				#dr = owner.worldOrientation.to_euler()
-				#pr = root.worldOrientation.to_euler()
-				#lr = [pr[0]-dr[0], pr[1]-dr[1], pr[2]-dr[2]]
+				lp, lr = cls.getTransformDiff(owner)
 				gd["DATA"]["Portal"]["Zone"] = [lp, lr]
 				gd["DATA"]["Portal"]["Door"] = door
 				gd["DATA"]["Portal"]["Scene"] = scn
+
 				settings.openWorldBlend(map)
-				#gd["CURRENT"]["Level"] = map
-				#blend = gd["DATA"]["GAMEPATH"]+"MAPS/"+map
-				#logic.startGame(blend)
 				owner["MAP"] = ""
 		else:
 			owner["TIMER"] = 0
+
+	if "GROUND" in owner:
+		del owner["GROUND"]
 
 	owner["COLLIDE"] = []
 
