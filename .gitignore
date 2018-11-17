@@ -6,6 +6,7 @@ __pycache__/
 # My filters
 *.db
 *.cfg
+*.blend
 TEXTURES
 MAPS
 FONTS

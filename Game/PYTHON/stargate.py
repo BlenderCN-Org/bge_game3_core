@@ -2,14 +2,28 @@
 
 from bge import logic
 
-import PYTHON.base as base
-import PYTHON.keymap as keymap
+from game3 import base, keymap
 
 
 if "STARGATE" not in base.LEVEL:
 	base.LEVEL["STARGATE"] = {}
 
-ADDRESS = base.settings.config.STARGATE_ADDRESS
+ADDRESS = {
+
+	"MILKYWAY":{
+		"1A:1B:1C:1D:1E:1F:1P": "Level 02",
+		"2A:2B:2C:2D:2E:2F:1P": "Level 01",
+		"1A:1B:1C:1D:1E:1F:1O:1P": "Midway",
+		"2A:2B:2C:2D:2E:2F:1O:1P": "Wizards"
+	},
+
+	"PEGASUS":{
+		"1A:1B:1C:1D:1E:1F:1P": "Atlantis Room",
+		"2A:2B:2C:2D:2E:2F:1P": "Village Game",
+		"1A:1B:1C:1D:1E:1F:1O:1P": "Midway",
+		"2A:2B:2C:2D:2E:2F:1O:1P": "Wizards"
+	}
+}
 
 
 class IrisControl(base.CoreObject):

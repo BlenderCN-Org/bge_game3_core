@@ -1,0 +1,12 @@
+
+LIBRARIES = [
+	"Game Assets"
+]
+
+SCREENSHOT_PATH = "SCREENSHOTS"
+
+LAUNCHER_BLEND = "Launcher"
+KEYMAP_BLEND = "Keymap"
+
+DO_STABILITY = True
+LOW_CLIP = -1000

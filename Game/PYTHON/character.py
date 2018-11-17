@@ -2,12 +2,10 @@
 
 from bge import logic
 
-import PYTHON.keymap as keymap
-import PYTHON.player as player
-import PYTHON.HUD as HUD
+from game3 import keymap, player, HUD
 
 
-class InventoryZFW(HUD.Inventory):
+class InventoryFlying(HUD.Inventory):
 
 	def ST_Startup(self):
 		self.objects["Items"].localPosition = (-10, -17, 0)
@@ -16,7 +14,7 @@ class InventoryZFW(HUD.Inventory):
 class LayoutRed(HUD.HUDLayout):
 
 	GROUP = "Core"
-	MODULES = [HUD.Stats, HUD.Aircraft, InventoryZFW]
+	MODULES = [HUD.Stats, HUD.Aircraft, InventoryFlying, HUD.Weapons]
 
 
 class RedPlayer(player.CorePlayer):
@@ -25,7 +23,8 @@ class RedPlayer(player.CorePlayer):
 	MESH = "Red"
 	CLASS = "Standard"
 	WP_TYPE = "MELEE"
-	STATS = {"SPEED":0.1, "JUMP":6}
+	STATS = {"SPEED":0.1, "JUMP":5}
+	HAND = {"MAIN":"Hand_L", "OFF":"Hand_R"}
 	INVENTORY = {"Back":"INV_JetPack"}
 	Z_OFF = 0.1
 	EYE_H = 1.658
@@ -40,7 +39,7 @@ class RedPlayer(player.CorePlayer):
 
 		keymap.MOUSELOOK.center()
 
-		self.objects["Root"].enableRigidBody()
+		self.setPhysicsType("RIGID")
 		self.objects["Root"].setDamping(0.8, 0.9)
 
 		if load == None:
@@ -53,7 +52,7 @@ class RedPlayer(player.CorePlayer):
 		self.objects["CamRot"].localOrientation = self.createMatrix(rot=(90,0,0))
 		self.objects["VertRef"].worldOrientation = self.objects["Root"].worldOrientation.copy()
 
-		logic.HUDCLASS.setControl(self, layout=LayoutRed)
+		logic.HUDCLASS.setControl(self, layout=LayoutRaptor)
 
 		self.jump_state = "FLYING"
 		self.data["CAMERA"]["Orbit"] = False
@@ -75,8 +74,8 @@ class RedPlayer(player.CorePlayer):
 		self.objects["VertRef"].localPosition = (0,0,0)
 		self.objects["CamRot"].localOrientation = self.createMatrix()
 
-		self.objects["Root"].disableRigidBody()
-		self.objects["Root"].setDamping(0.3, 0.3)
+		self.setPhysicsType("DYNAMIC")
+		self.objects["Root"].setDamping(0, 0)
 
 		logic.HUDCLASS.setControl(self)
 
@@ -144,10 +143,11 @@ class BluePlayer(player.CorePlayer):
 	MESH = "Blue"
 	CLASS = "Standard"
 	WP_TYPE = "MELEE"
-	STATS = {"SPEED":0.12, "JUMP":8}
+	STATS = {"SPEED":0.12, "JUMP":6}
 	INVENTORY = {"Shoulder_R": "WP_DemoStaff"}
 	Z_OFF = 0.2
 	EYE_H = 1.527
+	ACCEL = 15
 
 	def defaultData(self):
 		dict = {"WALLJUMPS":0}
@@ -188,7 +188,7 @@ class BluePlayer(player.CorePlayer):
 			wall = self.findWall()
 
 		if wall == True and owner.localLinearVelocity[2] > -4:
-			owner.setDamping(0.3, 0.3)
+			owner.setDamping(0, 0)
 			self.data["HUD"]["Target"] = None
 			self.data["WALLJUMPS"] = 0
 			self.rayorder = "NONE"
@@ -234,28 +234,9 @@ class BluePlayer(player.CorePlayer):
 	def ST_Hanging(self):
 		owner = self.objects["Root"]
 
-		edge = self.checkEdge(simple=True)
-		ground = self.checkGround(simple=True)
-		offset = self.EYE_H-0.67
+		super().ST_Hanging()
 
-		owner.applyForce((0,0,-1*owner.scene.gravity[2]), False)
-
-		self.jump_state = "NONE"
-
-		if edge != None:
-			self.getGroundPoint(edge[0])
-			self.groundhit = edge
-			owner.worldPosition[2] = edge[1][2]-offset
-
-		self.doAnim(NAME="EdgeClimb", FRAME=(0,0), MODE="LOOP", BLEND=5)
-
-		if keymap.BINDS["PLR_DUCK"].active() == True or edge == None or ground != None:
-			self.ST_EdgeFall_Set()
-
-		elif keymap.BINDS["PLR_JUMP"].tap() == True:
-			self.ST_EdgeClimb_Set()
-
-		elif keymap.BINDS["TOGGLEMODE"].tap() == True:
+		if keymap.BINDS["TOGGLEMODE"].tap() == True:
 			wall = self.findWall()
 			if wall == True:
 				self.ST_EdgeFall_Set()
@@ -268,8 +249,7 @@ class PurplePlayer(player.CorePlayer):
 	MESH = "Purple"
 	CLASS = "Standard"
 	WP_TYPE = "MELEE"
-	STATS = {"SPEED":0.09, "JUMP":5}
-	INVENTORY = {}
+	STATS = {"SPEED":0.09, "JUMP":4}
 	Z_OFF = 0.2
 	EYE_H = 1.515
 
@@ -319,10 +299,12 @@ class PurplePlayer(player.CorePlayer):
 			self.wave_from = owner.worldPosition.copy()
 
 			self.active_state = self.ST_Teleport
-			owner.suspendDynamics()
+			self.setPhysicsType("NONE")
 
 	def ST_Teleport(self):
 		owner = self.objects["Root"]
+
+		owner.worldLinearVelocity = (0,0,0)
 
 		if self.wave_timer != None:
 			fac = self.wave_timer/self.wave_dist
@@ -345,8 +327,8 @@ class PurplePlayer(player.CorePlayer):
 	def ST_Walking_Set(self):
 		self.objects["Character"].setVisible(True, True)
 		self.active_state = self.ST_Walking
-		self.objects["Root"].restoreDynamics()
-		self.objects["Root"].setLinearVelocity((0,0,0), True)
+		self.setPhysicsType("DYNAMIC")
+		self.objects["Root"].worldLinearVelocity = (0,0,0)
 
 	def getWaveTeleport(self):
 		owner = self.objects["Root"]

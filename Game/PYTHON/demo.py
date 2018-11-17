@@ -4,12 +4,7 @@
 
 from bge import logic
 
-import PYTHON.base as base
-import PYTHON.keymap as keymap
-
-import PYTHON.attachment as attachment
-import PYTHON.weapon as weapon
-import PYTHON.vehicle as vehicle
+from game3 import base, keymap, attachment, weapon, vehicle, door
 
 
 class JetPack(attachment.CoreAttachment):
@@ -169,7 +164,8 @@ class BasicSword(weapon.CoreWeapon):
 	def ST_Active(self):
 		if self.data["COOLDOWN"] == 0:
 			if keymap.BINDS["ATTACK_ONE"].tap() == True:
-				self.owning_player.doAnim(NAME="MeleeAttackR", FRAME=(0,45), LAYER=1)
+				hand = self.owning_player.HAND[self.HAND].split("_")[1]
+				self.owning_player.doAnim(NAME="MeleeAttack"+hand, FRAME=(0,45), LAYER=1)
 				self.data["COOLDOWN"] = 50
 		else:
 			self.data["COOLDOWN"] -= 1
@@ -271,4 +267,20 @@ class Buggy(vehicle.CoreCar):
 		for key in self.objects["WheelObj"]:
 			self.objects[key].worldPosition = self.objects["WheelObj"][key].worldPosition.copy()
 			self.objects["Rig"].channels[key].location = self.objects[key].localPosition.copy()
+
+
+class Swing(door.CoreDoor):
+
+	ANIM = {"OPEN":(0,60), "CLOSE":(60,0)}
+
+class Slide(door.CoreDoor):
+
+	ANIM = {"OPEN":(0,120), "CLOSE":(130,250)}
+
+class Blast(door.CoreDoor):
+
+	NAME = "Blast Door"
+	TIME = 60
+	ANIM = {"OPEN":(0,240), "CLOSE":(240,0)}
+
 
