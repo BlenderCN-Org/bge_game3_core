@@ -37,20 +37,14 @@ SC_CAM = SC_SCN.active_camera
 
 CURRENT = logic.globalDict["CURRENT"]
 
-if CURRENT["Level"] == None:
-	for obj in SC_SCN:
-		if obj.get("MAP", None) != None:
-			CURRENT["Level"] = spawnerobj.get("MAP", "None")+".blend"
-	del obj
-
-CUR_LVL = CURRENT["Level"]+SC_SCN.name
+CUR_LVL = str(CURRENT["Level"])+SC_SCN.name
 CUR_PRF = CURRENT["Profile"]
 CUR_PLR = CURRENT["Player"]
 
 PROFILE = logic.globalDict["PROFILES"][CUR_PRF]
 
 if CUR_LVL not in PROFILE["LVLData"]:
-	print("Initializing Level Data...")
+	print("Initializing Level Data...", CUR_LVL)
 	PROFILE["LVLData"][CUR_LVL] = {"SPAWN":[], "DROP":[], "CLIP":settings.config.LOW_CLIP, "PLAYER":{}}
 
 LEVEL = PROFILE["LVLData"][CUR_LVL]

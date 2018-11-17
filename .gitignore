@@ -8,6 +8,11 @@ __pycache__/
 *.cfg
 *.json
 *.blend
+*.7z
+*.zip
+demo
+DEMO
+SCRIPTS
 TEXTURES
 MAPS
 FONTS

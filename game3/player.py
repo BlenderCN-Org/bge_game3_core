@@ -49,6 +49,17 @@ def SPAWN(cont):
 		else:
 			portal["Scene"] = None
 
+	if base.CURRENT["Level"] == None and owner.get("MAP", None) != None:
+		base.CURRENT["Level"] = owner["MAP"]+".blend"
+		newmap = owner["MAP"]+".blend"+base.SC_SCN.name
+
+		if newmap not in base.PROFILE["LVLData"]:
+			print("Initializing Level Data...", newmap)
+			base.PROFILE["LVLData"][newmap] = {"SPAWN":[], "DROP":[], "CLIP":config.LOW_CLIP, "PLAYER":{}}
+
+		base.LEVEL = base.PROFILE["LVLData"][newmap]
+		del owner["MAP"]
+
 	if timer == None:
 		for libblend in config.LIBRARIES:
 			libblend = libblend+".blend"
