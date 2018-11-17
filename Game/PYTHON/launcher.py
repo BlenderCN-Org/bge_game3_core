@@ -59,7 +59,7 @@ class LAUNCHER:
 		vsync:        toggle vsync
 		debug:        toggle debug properties; cfg file [master, fps, stats, properties]"""
 
-	VERSION = "0.4.4"
+	VERSION = "0.5.0"
 	OFFSET = 1
 
 	def __init__(self, OWNER):
@@ -328,7 +328,6 @@ def RESUME(args=[], kwa=None):
 	#	return
 
 	settings.openWorldBlend(map)
-	#logic.startGame(logic.expandPath("//MAPS/"+map))
 	logic.CLASS.NEWLINE("LOADING...", 2, 2, (1,1,1,1))
 
 
@@ -336,7 +335,6 @@ def KEYMAP(args=[], kwa=None):
 	"""Open Keymap Utility"""
 
 	settings.openWorldBlend("KEYMAP")
-	#logic.startGame(logic.expandPath("//")+"Keymap.blend")
 
 
 def MOUSE(args=[], kwa=None):
@@ -364,7 +362,7 @@ def VSYNC(args=[], kwa=None):
 
 	logic.CLASS.NEWLINE("Vsync: "+str(logic.globalDict["GRAPHICS"]["Vsync"]), 2, 2, (1,1,1,1))
 
-	SaveJSON(logic.globalDict["DATA"]["GAMEPATH"]+"Graphics.cfg", logic.globalDict["GRAPHICS"])
+	settings.SaveJSON(logic.globalDict["DATA"]["GAMEPATH"]+"Graphics.cfg", logic.globalDict["GRAPHICS"])
 
 
 def DEBUG(args=[], kwa=None):
@@ -383,7 +381,7 @@ def DEBUG(args=[], kwa=None):
 	render.showProfile(False)
 	render.showProperties(debug[3] and debug[0])
 
-	SaveJSON(logic.globalDict["DATA"]["GAMEPATH"]+"Graphics.cfg", logic.globalDict["GRAPHICS"])
+	settings.SaveJSON(logic.globalDict["DATA"]["GAMEPATH"]+"Graphics.cfg", logic.globalDict["GRAPHICS"])
 
 
 def RESOLUTION(args=[], kwa=None):
@@ -443,7 +441,7 @@ def RESOLUTION(args=[], kwa=None):
 	logic.globalDict["GRAPHICS"]["Resolution"] = [X,Y]
 	logic.CLASS.NEWLINE("Resolution: "+str(X)+"x"+str(Y), 2, 2, (1,1,1,1))
 
-	SaveJSON(logic.globalDict["DATA"]["GAMEPATH"]+"Graphics.cfg", logic.globalDict["GRAPHICS"])
+	settings.SaveJSON(logic.globalDict["DATA"]["GAMEPATH"]+"Graphics.cfg", logic.globalDict["GRAPHICS"])
 
 
 def QUALITY(args=[], kwa=None):
@@ -471,7 +469,7 @@ def QUALITY(args=[], kwa=None):
 		logic.globalDict["GRAPHICS"]["Shaders"] = setting
 		logic.CLASS.NEWLINE("Quality: "+setting, 2, 2, (1,1,1,1))
 
-		SaveJSON(logic.globalDict["DATA"]["GAMEPATH"]+"Graphics.cfg", logic.globalDict["GRAPHICS"])
+		settings.SaveJSON(logic.globalDict["DATA"]["GAMEPATH"]+"Graphics.cfg", logic.globalDict["GRAPHICS"])
 
 
 def SAVE(args=[], kwa=None):
@@ -497,7 +495,7 @@ def SAVE(args=[], kwa=None):
 	settings.SaveJSON(path+name+"Profile.json", dict, "\t")
 	logic.CLASS.NEWLINE("Profile Saved!", 2, 2, (1,1,1,1))
 
-	SaveJSON(logic.globalDict["DATA"]["GAMEPATH"]+"Graphics.cfg", logic.globalDict["GRAPHICS"])
+	settings.SaveJSON(logic.globalDict["DATA"]["GAMEPATH"]+"Graphics.cfg", logic.globalDict["GRAPHICS"])
 
 
 def LOAD(args=[], kwa=None):

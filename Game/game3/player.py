@@ -27,20 +27,13 @@ from bge import logic
 from . import keymap, base, HUD, config
 
 
-for libblend in config.LIBRARIES:
-	libblend = libblend+".blend"
-	logic.LibLoad( base.DATA["GAMEPATH"]+"CONTENT\\"+libblend, "Scene", load_actions=True, verbose=False, load_scripts=True)
-
-BLACK = base.SC_SCN.addObject("GFX_Black", base.SC_CAM, 0)
-BLACK.setParent(base.SC_CAM)
-BLACK.color = (0, 0, 0, 1)
-
 
 def SPAWN(cont):
 	owner = cont.owner
-	scene = owner.scene
 	spawn = owner.get("SPAWN", True)
 	timer = owner.get("TIMER", None)
+
+	base.SC_SCN = owner.scene
 
 	if spawn == False:
 		#owner.endObject()
@@ -49,14 +42,18 @@ def SPAWN(cont):
 	portal = logic.globalDict["DATA"]["Portal"]
 
 	if portal["Scene"] != None:
-		if portal["Scene"] != scene.name:
-			print(scene.name)
-			scene.replace(portal["Scene"])
+		if portal["Scene"] != base.SC_SCN.name:
+			print(base.SC_SCN.name)
+			base.SC_SCN.replace(portal["Scene"])
+			return
 		else:
 			portal["Scene"] = None
-		return
 
 	if timer == None:
+		for libblend in config.LIBRARIES:
+			libblend = libblend+".blend"
+			logic.LibLoad( base.DATA["GAMEPATH"]+"CONTENT\\"+libblend, "Scene", load_actions=True, verbose=False, load_scripts=True)
+
 		owner.worldScale = [1,1,1]
 		owner["TIMER"] = 0+((config.UPBGE_FIX == False)*30)
 		logic.addScene("HUD", 1)
@@ -74,20 +71,17 @@ def SPAWN(cont):
 	else:
 		player = base.CURRENT["Player"]
 
-	if player not in scene.objectsInactive:
+	if player not in base.SC_SCN.objectsInactive:
 		player = "Actor"
 
 	if spawn == True:
 		base.CURRENT["Player"] = player
-		char = scene.addObject(player, owner, 0)
+		char = base.SC_SCN.addObject(player, owner, 0)
 		print("PLAYER:", player, char.worldPosition)
 		owner["SPAWN"] = None
 		return
 
 	elif spawn == None:
-		global BLACK
-		BLACK.endObject()
-		BLACK = None
 		owner["SPAWN"] = False
 
 
@@ -939,8 +933,8 @@ class CorePlayer(base.CoreAdvanced):
 		self.groundchk = False
 
 		if self.groundhit == None or self.jump_state not in ["NONE", "CROUCH", "JUMP"]:
-			dragX = owner.worldLinearVelocity[0]*1
-			dragY = owner.worldLinearVelocity[1]*1
+			dragX = owner.worldLinearVelocity[0]*0.75
+			dragY = owner.worldLinearVelocity[1]*0.75
 			dragZ = owner.worldLinearVelocity[2]*0.5
 			owner.applyForce((-dragX, -dragY, -dragZ), False)
 			self.groundobj = None
