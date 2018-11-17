@@ -6,12 +6,12 @@
 
 
 switch = [
-	{"NAME":"Sandstorm", "TIME":60, "COLOR":(0,0.5,1),
+	{"NAME":"Blue", "TIME":60, "COLOR":(0,0.5,1),
 		"LINE":"Took you long enough..."},
 
-	{"NAME":"Raptor", "TIME":60, "COLOR":(1,0,0),
+	{"NAME":"Red", "TIME":60, "COLOR":(1,0,0),
 		"LINE":"Now what?"},
 
-	{"NAME":"Wave Bender", "TIME":60, "COLOR":(0.67,0,1),
+	{"NAME":"Purple", "TIME":60, "COLOR":(0.67,0,1),
 		"LINE":"This is going to be awesome!"}
 ]
