@@ -12,10 +12,17 @@ from game3 import keymap, player, settings
 def INIT(cont):
 
 	owner = cont.owner
-	scene = owner.scene
 
-	player.SPAWN(cont)
+	#BLACK = base.SC_SCN.addObject("GFX_Black", base.SC_CAM, 0)
+	#BLACK.setParent(base.SC_CAM)
+	#BLACK.color = (0, 0, 0, 1)
 
+	status = player.SPAWN(cont)
+
+	#if status == "DONE":
+	#	global BLACK
+	#	BLACK.endObject()
+	#	BLACK = None
 
 # Teleport
 def TELEPORT(cont):

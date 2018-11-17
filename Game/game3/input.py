@@ -52,40 +52,6 @@ for JOYID in range(len(logic.joysticks)):
 			events.JOYBUTTONS[JOYID]["Hats"][HAT] = {"U":0, "D":0, "L":0, "R":0}
 
 
-## SAVE/LOAD ##
-def SaveBinds(binds, path, profile):
-	dict = {}
-	for key in binds:
-		if getattr(binds[key], "id", None) != None:
-			dict[key] = binds[key].getData()
-
-	name = path+profile+"Keymap.json"
-	file = open(name, "w")
-
-	json.dump(dict, file, indent="  ")
-
-	file.close()
-	print("NOTICE: Keybinds Saved...\n\t", name)
-
-def LoadBinds(binds, path, profile):
-	name = path+profile+"Keymap.json"
-	try:
-		file = open(name, "r")
-	except OSError:
-		print("ERROR: File not Found...\n\t", name)
-		return
-
-	dict = json.load(file)
-
-	file.close()
-
-	for key in binds:
-		if getattr(binds[key], "id", None) != None and key in dict:
-			binds[key].setData(dict[key])
-
-	print("NOTICE: Keybinds Loaded...\n\t", name)
-
-
 ## EXTRAS ##
 def ClipAxis(value):
 	LZ = 0.2
@@ -364,6 +330,13 @@ class MouseLook:
 			self.input = SPEED
 		if SMOOTH != None:
 			self.smoothing = int(SMOOTH)
+
+	def getData(self):
+		dict = {"Speed":self.input, "Smooth":self.smoothing}
+		return dict
+
+	def setData(self, dict):
+		self.updateSpeed(dict["Speed"], dict["Smooth"])
 
 	def center(self):
 		self.OLD_X = [0]*self.smoothing

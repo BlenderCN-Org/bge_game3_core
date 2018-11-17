@@ -45,6 +45,7 @@ class LAUNCHER:
 		load:         load profile data from file
 
 	Utilities:
+		mouse:        set mouse speed/smooth
 		keymap:       open the keymap editor
 
 	Game Commands:
@@ -77,7 +78,7 @@ class LAUNCHER:
 
 		self.STATS()
 		self.NEWLINE("Type 'help' for list of commands.  Use '-?' argument for info about a command.", 2, 1, (0.7,0.5,0.7,1))
-		#self.NEWLINE("WARNING: State System Being Revised, Expect Oddities...", 2, 1, (1.0,0.5,0.0,1))
+		#self.NEWLINE("WARNING: ...", 2, 1, (1.0,0.5,0.0,1))
 
 	def STATS(self):
 		gfx = logic.globalDict["GRAPHICS"]
@@ -176,8 +177,16 @@ class LAUNCHER:
 					if char == " ":
 						if self.index < 1:
 							return
-						elif self.line[self.index-1] == " ":
+						elif self.line[self.index-1] in [" ", "-"]:
 							return
+					if char == "-":
+						if self.index < 1:
+							return
+						if self.line[self.index-1] == "-":
+							return
+						if self.line[self.index-1] != " ":
+							self.line.insert(self.index, " ")
+							self.index += 1
 					if char not in ["", "_"]:
 						self.line.insert(self.index, char)
 						self.index += 1
@@ -346,10 +355,22 @@ def MOUSE(args=[], kwa=None):
 	current = logic.globalDict["CURRENT"]
 	profile = logic.globalDict["PROFILES"][current["Profile"]]
 
-	#if len(args) > 1:
-	#	split = args[1].split(" ")
-	#	if split[0] == "s":
-	#		profile["Settings"]
+	speed = None
+	smooth = None
+
+	if len(args) > 1:
+		for i in args:
+			if "s " in i:
+				speed = int(i.split(" ")[1])
+
+			if "i " in i:
+				smooth = int(i.split(" ")[1])
+
+		keymap.MOUSELOOK.updateSpeed(speed, smooth)
+		settings.SaveBinds()
+
+	logic.CLASS.NEWLINE("Speed: "+str(int(keymap.MOUSELOOK.input)), 1, 2, (1,1,1,1))
+	logic.CLASS.NEWLINE("Smooth: "+str(int(keymap.MOUSELOOK.smoothing)), 2, 2, (1,1,1,1))
 
 
 def VSYNC(args=[], kwa=None):

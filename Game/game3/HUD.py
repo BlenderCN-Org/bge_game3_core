@@ -674,6 +674,12 @@ class SceneManager:
 		if status == "Quit":
 			logic.endGame()
 
+		if status == "Keymap":
+			self.doBlackOut()
+			self.MENU.destroy()
+			self.active_state = None
+			base.settings.openWorldBlend("KEYMAP")
+
 		if status == "Launcher":
 			self.doBlackOut()
 			self.MENU.destroy()
@@ -690,8 +696,9 @@ class SceneManager:
 
 class MenuPause:
 
-	ITEMS = ["Resume", "Launcher", "Quit"]
+	ITEMS = ["Resume", "Keymap", "Launcher", "Quit"]
 	OBJECT = "UI_Menu_Item"
+	OFFSET = 2.5
 	FADE = 10
 	GREEN = base.mathutils.Vector([0.0, 0.8, 0.0, 1])
 	GRAY = base.mathutils.Vector([0.4, 0.4, 0.4, 1])
@@ -709,7 +716,9 @@ class MenuPause:
 				key = obj.name.replace("HUD.Menu.", "")
 				self.objects[key] = obj
 
-		self.objects["Items"].localPosition = (-5, 2.5, 0)
+		offset = (self.OFFSET*(len(self.ITEMS)/2))-(self.OFFSET/2)
+
+		self.objects["Items"].localPosition = (-5, offset, 0)
 		self.objects["Ray"].localPosition = (0, 0, 0)
 
 		self.objects["Cursor"].color = self.BLACK
@@ -748,7 +757,7 @@ class MenuPause:
 
 		obj.setParent(owner)
 		self.items.append(dict)
-		point.localPosition[1] -= 2.5
+		point.localPosition[1] -= self.OFFSET
 
 		return dict
 

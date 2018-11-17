@@ -38,8 +38,10 @@ SC_CAM = SC_SCN.active_camera
 CURRENT = logic.globalDict["CURRENT"]
 
 if CURRENT["Level"] == None:
-	spawnerobj = logic.getCurrentController().owner
-	CURRENT["Level"] = spawnerobj.get("MAP", "None")+".blend"
+	for obj in SC_SCN:
+		if obj.get("MAP", None) != None:
+			CURRENT["Level"] = spawnerobj.get("MAP", "None")+".blend"
+	del obj
 
 CUR_LVL = CURRENT["Level"]+SC_SCN.name
 CUR_PRF = CURRENT["Profile"]
@@ -55,24 +57,13 @@ LEVEL = PROFILE["LVLData"][CUR_LVL]
 
 DATA = logic.globalDict["DATA"]
 
+del CUR_LVL, CUR_PRF, CUR_PLR
+
 
 def LOAD(owner):
 	global CURRENT, LEVEL, DATA, PROFILE
 
 	scene = owner.scene
-
-	## Load Key Binds ##
-	profile = CURRENT["Profile"]
-	if "_" in profile:
-		profile = "Base"
-
-	keymap.input.LoadBinds(keymap.BINDS, DATA["GAMEPATH"], profile)
-
-	mouse_settings = PROFILE["Settings"].get("Mouse", None)
-	if mouse_settings != None:
-		keymap.MOUSELOOK.updateSpeed(mouse_settings["Speed"], mouse_settings["Smoothing"])
-	else:
-		PROFILE["Settings"]["Mouse"] = {"Speed":keymap.MOUSELOOK.input, "Smoothing":keymap.MOUSELOOK.smoothing}
 
 	## Ground Detector ##
 	for obj in scene.objects:

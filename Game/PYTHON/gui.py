@@ -6,7 +6,7 @@ from mathutils import Vector, Matrix
 
 from bge import logic, events, render
 
-from game3 import keymap, input, config
+from game3 import keymap, input, settings, config
 
 
 
@@ -30,14 +30,22 @@ def buildKeys(cont):
 	scene.objects["Profile"].text = "Profile:"
 	scene.objects["Name"].text = profile
 
-	if "_" in profile:
-		profile = "Base"
-
-	input.LoadBinds(keymap.BINDS, logic.globalDict["DATA"]["GAMEPATH"], profile)
-
 	owner["KEYLIST"] = []
 	owner["OBJECTS"] = []
 
+	## MouseLook Settings ##
+	obj = scene.addObject("LIST.KeyBinds.GROUP", owner, 0)
+	obj.text = "Mouse Look"
+	owner.worldPosition[1] -= 2
+	owner["OBJECTS"].append(obj)
+
+	obj = scene.addObject("LIST.MouseSetting", owner, 0)
+	obj["Class"] = MouseSettings(obj, keymap.MOUSELOOK)
+
+	owner.worldPosition[1] -= 4
+	owner["OBJECTS"].append(obj)
+
+	## KeyBind Settings ##
 	for key in keymap.BINDS:
 		cls = keymap.BINDS[key]
 		if getattr(cls, "id", None) != None:
@@ -57,8 +65,7 @@ def buildKeys(cont):
 			grp = split[1]
 
 		obj = scene.addObject("LIST.KeyBinds", owner, 0)
-		obj["Bind"] = cls
-		obj["Class"] = SetBinds(obj)
+		obj["Class"] = SetBinds(obj, cls)
 
 		owner.worldPosition[1] -= 2
 		owner["OBJECTS"].append(obj)
@@ -80,13 +87,13 @@ def manageKeys(cont):
 	cursor = scene.objects["Cursor"]
 	info = scene.objects["Info"]
 
-	cursor.localPosition[0] = (logic.mouse.position[0]-0.5)*camera.ortho_scale 
+	cursor.localPosition[0] = (logic.mouse.position[0]-0.5)*camera.ortho_scale
 	cursor.localPosition[1] = (logic.mouse.position[1]-0.5)*-camera.ortho_scale*keymap.MOUSELOOK.ratio
 	cursor.localPosition[2] = -2
 
 	if logic.FREEZE != None:
 		status = logic.FREEZE()
-		info.text = "Enter Valid Input... ESC to Cancel... SHIFT-ACCENT to Set 'None'..."
+		info.text = status
 		if status == "END":
 			logic.FREEZE = None
 		return
@@ -113,41 +120,155 @@ def manageKeys(cont):
 		rayOBJ["RAYCAST"] = True
 		split = rayOBJ.name.split(".")
 		if rayOBJ.name == "Back":
-			info.text = "Return to the Launcher"
-		if rayOBJ.name == "Quit":
-			info.text = "Exit the Utility"
-		if rayOBJ.name == "Save":
+			map = logic.globalDict["CURRENT"]["Level"]
+			if map == None or map not in logic.globalDict["BLENDS"]:
+				info.text = "Return to the Launcher"
+				if ms[events.LEFTMOUSE] == 1:
+					settings.openWorldBlend("LAUNCHER")
+			else:
+				info.text = "Return to Game"
+				if ms[events.LEFTMOUSE] == 1:
+					settings.openWorldBlend(map)
+
+		elif rayOBJ.name == "Save":
 			info.text = "Save the Current Configuration"
 			if ms[events.LEFTMOUSE] == 1:
-				profile = logic.globalDict["CURRENT"]["Profile"]
-				if "_" in profile:
-					profile = "Base"
+				settings.SaveBinds()
 
-				input.SaveBinds(keymap.BINDS, logic.globalDict["DATA"]["GAMEPATH"], profile)
+		elif rayOBJ.name == "Quit":
+			info.text = "Exit the Utility"
+			if ms[events.LEFTMOUSE] == 1:
+				logic.endGame()
 
-		if len(split) >= 3:
-			name = split[2]
-			if name == "KEY":
-				info.text = "Click to re-bind Keyboard Key"
-			if name == "DEV":
-				info.text = "Index of the Joystick to Use"
-			if name == "BUT":
-				info.text = "Joystick Button Index"
-			if name == "AXIS":
-				info.text = "Joystick Axis Index"
-			if name == "AXIS_TYPE":
-				info.text = "Axis Response Range, [^] Use Positive Range, [v] Use Negative Range, [<>] Use Full Range as 0-1."
-			if name == "AXIS_CURVE":
-				info.text = "Axis Type, Normal or Button Mode.  If Button Mode, Triggers as Key Press at 50%."
-			if name == "SWITCH":
-				info.text = "Switch the UI for Gamepad or Keyboard Config."
-			if "MOD_" in name:
-				info.text = "Set Shift/Ctrl/Alt Modifier Conditions.  Blue Requires Modifier to be Pressed, Red Requires Released, Gray Ignores."
+		else:
+			info.text = rayOBJ.get("DOCSTRING", "")
+
 	else:
 		info.text = ""
 
 	scene.objects["Save"]["RAYCAST"] = False
 
+
+class MouseSettings:
+
+	SLIDER = 8
+	MAX_SPEED = 100
+	MAX_SMOOTH = 144
+	COL_ACT = (0.0, 0.5, 1.0, 1)
+	COL_ON = (0.7, 0.7, 0.7, 1)
+	COL_OFF = (0.5, 0.5, 0.5, 1)
+
+	def __init__(self, owner, bind):
+		self.switch = False
+		self.axsv = None
+		self.bind = bind
+
+		self.objects = {"Root":owner}
+
+		for child in owner.childrenRecursive:
+			name = child.name.split(".")[2]
+			self.objects[name] = child
+
+		self.objects["SPEED"].localPosition[0] = self.getSpeedValue(slider=True)
+		self.objects["SMOOTH"].localPosition[0] = self.getSmoothValue(slider=True)
+		self.objects["SPEED_NAME"].text = "Speed"
+		self.objects["SMOOTH_NAME"].text = "Smooth"
+		self.objects["SPEED_VALUE"].text = self.getSpeedValue()
+		self.objects["SMOOTH_VALUE"].text = self.getSmoothValue()
+
+		self.objects["SPEED"]["DOCSTRING"] = "Mouselook Turn Rate"
+		self.objects["SMOOTH"]["DOCSTRING"] = "Number of Frames to Average Mouse Input"
+
+	def getSpeedValue(self, slider=False):
+		val = int(self.bind.input)
+		if slider == True:
+			val -= 1
+			return ((val/(self.MAX_SPEED-1))*self.SLIDER)+0.5
+		return str(val)
+
+	def getSmoothValue(self, slider=False):
+		val = int(self.bind.smoothing)
+		if slider == True:
+			return ((val/self.MAX_SMOOTH)*self.SLIDER)+0.5
+		if val < 1:
+			return "OFF"
+		return str(val)
+
+	def getSliderValue(self):
+		box = self.objects["BOX"]
+		scene = box.scene
+		camera = scene.active_camera
+		cursor = (logic.mouse.position[0]-0.5)*camera.ortho_scale
+		dist = (cursor+camera.worldPosition[0])-box.worldPosition[0]-0.5
+		val = (dist/self.SLIDER)
+		return val
+
+	def setSpeed(self):
+		if logic.mouse.events[events.LEFTMOUSE] != 2:
+			return "END"
+
+		obj = self.objects["SPEED"]
+		txt = self.objects["SPEED_VALUE"]
+
+		val = self.getSliderValue()
+		val = int(round(val*(self.MAX_SPEED), 0))
+
+		if val > self.MAX_SPEED:
+			val = self.MAX_SPEED
+		elif val < 1:
+			val = 1
+
+		self.bind.updateSpeed(SPEED=val)
+
+		obj.localPosition[0] = self.getSpeedValue(slider=True)
+		obj.color = self.COL_ACT
+		txt.text = self.getSpeedValue()
+
+		return "Default = 25" #obj["DOCSTRING"]
+
+	def setSmooth(self):
+		if logic.mouse.events[events.LEFTMOUSE] != 2:
+			return "END"
+
+		obj = self.objects["SMOOTH"]
+		txt = self.objects["SMOOTH_VALUE"]
+
+		val = self.getSliderValue()
+		val = int(round(val*self.MAX_SMOOTH, 0))
+
+		if val > self.MAX_SMOOTH:
+			val = self.MAX_SMOOTH
+		elif val < 0:
+			val = 0
+
+		self.bind.updateSpeed(SMOOTH=val)
+
+		obj.localPosition[0] = self.getSmoothValue(slider=True)
+		obj.color = self.COL_ACT
+		txt.text = self.getSmoothValue()
+
+		return "Default = 10" #obj["DOCSTRING"]
+
+	def RUN(self):
+		objects = self.objects
+		click = logic.mouse.events[events.LEFTMOUSE]
+
+		if self.objects["SPEED"]["RAYCAST"] == True:
+			self.objects["SPEED"].color = self.COL_ON
+			if click == 2:
+				logic.FREEZE = self.setSpeed
+		else:
+			self.objects["SPEED"].color = self.COL_OFF
+
+		if self.objects["SMOOTH"]["RAYCAST"] == True:
+			self.objects["SMOOTH"].color = self.COL_ON
+			if click == 2:
+				logic.FREEZE = self.setSmooth
+		else:
+			self.objects["SMOOTH"].color = self.COL_OFF
+
+		self.objects["SPEED"]["RAYCAST"] = False
+		self.objects["SMOOTH"]["RAYCAST"] = False
 
 class SetBinds:
 
@@ -166,11 +287,10 @@ class SetBinds:
 			return "~"
 		return str(arg)
 
-	def __init__(self, owner):
+	def __init__(self, owner, bind):
 		self.switch = False
 		self.axsv = None
-		self.bind = owner["Bind"]
-		bind = self.bind
+		self.bind = bind
 
 		self.objects = {"Root":owner}
 
@@ -190,6 +310,17 @@ class SetBinds:
 
 		self.objects["AXIS_TYPE"].localOrientation = self.getAxisTypeOri()
 		self.objects["AXIS_CURVE"].localOrientation = self.getAxisCurveOri()
+
+		self.objects["KEY"]["DOCSTRING"] = "Click to re-bind Keyboard Key"
+		self.objects["DEV"]["DOCSTRING"] = "Index of the Joystick to Use"
+		self.objects["BUT"]["DOCSTRING"] = "Joystick Button Index"
+		self.objects["AXIS"]["DOCSTRING"] = "Joystick Axis Index"
+		self.objects["AXIS_TYPE"]["DOCSTRING"] = "Axis Response Range, [^] Use Positive Range, [v] Use Negative Range, [<>] Use Full Range as 0-1."
+		self.objects["AXIS_CURVE"]["DOCSTRING"] = "Axis Type, Normal or Button Mode.  If Button Mode, Triggers as Key Press at 50%."
+		self.objects["SWITCH"]["DOCSTRING"] = "Switch the UI for Gamepad or Keyboard Config."
+		self.objects["MOD_SHIFT"]["DOCSTRING"] = "Set Shift Modifier Conditions.  Blue Requires Modifier to be Pressed, Red Requires Released, Gray Ignores."
+		self.objects["MOD_CTRL"]["DOCSTRING"] = "Set Ctrl Modifier Conditions.  Blue Requires Modifier to be Pressed, Red Requires Released, Gray Ignores."
+		self.objects["MOD_ALT"]["DOCSTRING"] = "Set Alt Modifier Conditions.  Blue Requires Modifier to be Pressed, Red Requires Released, Gray Ignores."
 
 	def getModifierColor(self, key):
 		modifiers = self.bind.modifiers
@@ -260,7 +391,7 @@ class SetBinds:
 				KEY = events.EventToString(x)
 				for m in ["SHIFT", "CTRL", "ALT"]:
 					if m in KEY:
-						return
+						return "Use S, C, A buttons to add a mod key!"
 
 		for y in logic.mouse.events:
 			if y not in [events.MOUSEX, events.MOUSEY]:
@@ -279,6 +410,8 @@ class SetBinds:
 			self.objects["KEY_VALUE"].text = self.bind.input_name
 			self.objects["KEY_VALUE"].color = (0.5, 0.5, 0.5, 1)
 			return "END"
+
+		return "Press Any Key... ESC to Cancel... TIDLE (~) to Set 'None'..."
 
 	def setJoyButton(self):
 		if logic.joysticks[self.bind.gamepad["Index"]] == None:
@@ -306,6 +439,8 @@ class SetBinds:
 				self.objects["BUT_VALUE"].text = self.getString(self.bind.gamepad["Button"])
 				self.objects["BUT_VALUE"].color = (0.7, 0.7, 0.7, 1)
 				return "END"
+
+		return "Press Button... ESC to Cancel... TIDLE (~) to Set 'None'..."
 
 	def setJoyAxis(self):
 		if logic.joysticks[self.bind.gamepad["Index"]] == None:
@@ -339,6 +474,8 @@ class SetBinds:
 				self.objects["AXIS_VALUE"].text = self.getString(self.bind.gamepad["Axis"])
 				self.objects["AXIS_VALUE"].color = (0.7, 0.7, 0.7, 1)
 				return "END"
+
+		return "Move Axis... ESC to Cancel... TIDLE (~) to Set 'None'..."
 
 	def RUN(self):
 		objects = self.objects
@@ -378,10 +515,13 @@ class SetBinds:
 					if key == "SWITCH":
 						if self.switch == False:
 							objects["BG"].localOrientation = self.ORI_FLIP
+							docs = "Switch the UI for Keyboard Config."
 							self.switch = True
 						else:
 							objects["BG"].localOrientation = self.ORI_CLR
+							docs = "Switch the UI for Gamepad Config."
 							self.switch = False
+						self.objects["SWITCH"]["DOCSTRING"] = docs
 
 			elif ray == False:
 				if key in txt_list:

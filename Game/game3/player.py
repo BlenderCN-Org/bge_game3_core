@@ -159,9 +159,9 @@ class CorePlayer(base.CoreAdvanced):
 		char["DEBUG1"] = ""
 		char["DEBUG2"] = ""
 		char["RAYTEXT"] = ""
-		#char.addDebugProperty("DEBUG1", True)
-		#char.addDebugProperty("DEBUG2", True)
-		#char.addDebugProperty("RAYTEXT", True)
+		char.addDebugProperty("DEBUG1", True)
+		char.addDebugProperty("DEBUG2", True)
+		char.addDebugProperty("RAYTEXT", True)
 
 		keymap.MOUSELOOK.center()
 

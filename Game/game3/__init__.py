@@ -10,6 +10,7 @@ sys.path.append(GAMEPATH)
 for i in sys.path:
 	print("PATH:", i)
 
+## NO VIEWPORT PLAYER ##
 try:
 	import bpy
 	logic.endGame()
@@ -17,6 +18,7 @@ try:
 except ImportError:
 	pass
 
+## CHECK VERSION ##
 from . import settings, config
 
 try:
@@ -32,10 +34,15 @@ except Exception:
 	config.UPBGE_FIX = False
 	config.MOUSE_FIX = False
 
-print("\n\t...game3 core init...\n")
 
+## SETUP DATA ##
 settings.checkWorldData(GAMEPATH)
 settings.applyGraphics()
+
+settings.LoadBinds()
+
+print("\n\t...game3 core init...\n")
+
 
 from bge import logic
 logic.UPDATELIST = []

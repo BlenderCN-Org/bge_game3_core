@@ -53,6 +53,53 @@ def LoadJSON(name):
 	return dict
 
 
+def SaveBinds():
+	path = logic.globalDict["DATA"]["GAMEPATH"]
+	profile = logic.globalDict["CURRENT"]["Profile"]
+	if "_" in profile:
+		profile = "Base"
+
+	binds = keymap.BINDS
+	dict = {}
+
+	for key in binds:
+		if getattr(binds[key], "getData", None) != None:
+			dict[key] = binds[key].getData()
+
+	dict["MOUSELOOK"] = keymap.MOUSELOOK.getData()
+
+	name = path+profile+"Keymap.json"
+
+	SaveJSON(name, dict)
+
+	print("NOTICE: Keybinds Saved...\n\t", name)
+
+
+def LoadBinds():
+	path = logic.globalDict["DATA"]["GAMEPATH"]
+	profile = logic.globalDict["CURRENT"]["Profile"]
+	if "_" in profile:
+		profile = "Base"
+
+	name = path+profile+"Keymap.json"
+
+	binds = keymap.BINDS
+	dict = LoadJSON(name)
+
+	if dict == None:
+		print("ERROR: File not Found...\n\t", name)
+		return
+
+	for key in binds:
+		if getattr(binds[key], "setData", None) != None and key in dict:
+			binds[key].setData(dict[key])
+
+	if "MOUSELOOK" in dict:
+		keymap.MOUSELOOK.setData(dict["MOUSELOOK"])
+
+	print("NOTICE: Keybinds Loaded...\n\t", name)
+
+
 def openWorldBlend(map):
 	gd = logic.globalDict
 
