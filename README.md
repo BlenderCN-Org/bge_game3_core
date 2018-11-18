@@ -1,19 +1,16 @@
-# bge_game-3.0_template  
-Full python game structure for the Blender Game Engine. UPBGE not supported currently due to a bug with the globalDict.  
+# bge_game3_core
+Full python game structure for the Blender Game Engine. This is the core, link or clone this into your project.  
 
 ## Latest Releases  
 https://github.com/DaedalusMDW/bge_game-3.0_template/releases  
 
-if you dont have blender installed, but want to try the demo, extract [Launcher 2.74 64bit EXE](https://drive.google.com/open?id=1-M0wZVFYV8kEPJY8vmHdeshL-o5kiNxh) to the Game folder.  
 
+## DEMO Content  
+Coming Soon... a new repository with gui, demo content, and examples.  
 
-### DEMO Content  
-If you want working demo content, go to the ~[Demo zip on Google Drive]()~ and download there.  
-
-## Linking to your repositry  
-todo
-
+## Suggestions? Comments?
 blenderartists.org thread:  
 https://blenderartists.org/t/an-intro-to-my-project-game-3-0/1116376  
+*please no bug reports, thats what the issue tracker is for!*
 
 Proposals, forks, branches and other such things are welcome.
