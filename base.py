@@ -465,7 +465,7 @@ class CoreAdvanced(CoreObject):
 	HUDLAYOUT = None
 
 	def doScreenshot(self):
-		settings.SCREENSHOT(True)
+		logic.globalDict["SCREENSHOT"]["Trigger"] = True
 
 	def loadInventory(self, owner):
 		scene = owner.scene

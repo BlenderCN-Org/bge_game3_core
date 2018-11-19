@@ -248,12 +248,8 @@ def applyGraphics():
 		print("\tShaders HIGH\n\tAnisotrpic x16\n\tMipmap FAR")
 
 
-def SCREENSHOT(trigger=None):
+def SCREENSHOT():
 	screen = logic.globalDict["SCREENSHOT"]
-
-	if trigger != None:
-		screen["Trigger"] = trigger
-		return
 
 	path = ospath.normpath(logic.globalDict["DATA"]["GAMEPATH"]+config.SCREENSHOT_PATH)+"\\"
 
