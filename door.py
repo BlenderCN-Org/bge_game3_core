@@ -138,11 +138,10 @@ class CoreDoor(base.CoreObject):
 
 		for key in panel:
 			obj = panel[key]
-			if stop == True:
+			self.doAnim(obj, obj.name, frame)
+			self.doAnim(OBJECT=obj, SET=self.data["FRAME"])
+			if stop == True or set == True:
 				self.doAnim(OBJECT=obj, STOP=True)
-			else:
-				self.doAnim(obj, obj.name, frame)
-				self.doAnim(OBJECT=obj, SET=self.data["FRAME"])
 
 	def checkPanelAction(self, state):
 		if self.data["FRAME"] == self.ANIM[state][1]:

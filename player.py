@@ -43,22 +43,24 @@ def SPAWN(cont):
 
 	if portal["Scene"] != None:
 		if portal["Scene"] != base.SC_SCN.name:
-			print(base.SC_SCN.name)
+			base.CURRENT["Level"] == None
+			print(base.SC_SCN.name, portal["Scene"])
 			base.SC_SCN.replace(portal["Scene"])
 			return
-		else:
-			portal["Scene"] = None
 
+	portal["Scene"] = base.SC_SCN.name
+
+	newmap = "None"+base.SC_SCN.name
 	if base.CURRENT["Level"] == None and owner.get("MAP", None) != None:
 		base.CURRENT["Level"] = owner["MAP"]+".blend"
 		newmap = owner["MAP"]+".blend"+base.SC_SCN.name
-
-		if newmap not in base.PROFILE["LVLData"]:
-			print("Initializing Level Data...", newmap)
-			base.PROFILE["LVLData"][newmap] = {"SPAWN":[], "DROP":[], "CLIP":config.LOW_CLIP, "PLAYER":{}}
-
-		base.LEVEL = base.PROFILE["LVLData"][newmap]
 		del owner["MAP"]
+
+	if newmap not in base.PROFILE["LVLData"]:
+		print("Initializing Level Data...", newmap)
+		base.PROFILE["LVLData"][newmap] = {"SPAWN":[], "DROP":[], "CLIP":config.LOW_CLIP, "PLAYER":{}}
+	base.LEVEL = base.PROFILE["LVLData"][newmap]
+
 
 	if timer == None:
 		for libblend in config.LIBRARIES:

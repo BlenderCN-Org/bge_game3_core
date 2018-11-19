@@ -43,11 +43,11 @@ CUR_PLR = CURRENT["Player"]
 
 PROFILE = logic.globalDict["PROFILES"][CUR_PRF]
 
-if CUR_LVL not in PROFILE["LVLData"]:
-	print("Initializing Level Data...", CUR_LVL)
-	PROFILE["LVLData"][CUR_LVL] = {"SPAWN":[], "DROP":[], "CLIP":settings.config.LOW_CLIP, "PLAYER":{}}
+#if CUR_LVL not in PROFILE["LVLData"]:
+#	print("Initializing Level Data...", CUR_LVL)
+#	PROFILE["LVLData"][CUR_LVL] = {"SPAWN":[], "DROP":[], "CLIP":settings.config.LOW_CLIP, "PLAYER":{}}
 
-LEVEL = PROFILE["LVLData"][CUR_LVL]
+LEVEL = None #PROFILE["LVLData"][CUR_LVL]
 
 DATA = logic.globalDict["DATA"]
 
