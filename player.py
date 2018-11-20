@@ -418,7 +418,7 @@ class CorePlayer(base.CoreAdvanced):
 			self.objects["CamRot"].localPosition[id] = x
 
 		self.objects["WallRayTo"].localPosition = (0, self.WALL_DIST, 0)
-		self.objects["WallRay"].localPosition = (0, self.WALL_DIST, self.EDGE_H-self.GND_H+0.5)
+		self.objects["WallRay"].localPosition = (0, self.WALL_DIST, self.EDGE_H-self.GND_H+0.3)
 
 	def setCameraFOV(self, fov=None):
 		if fov == None:
@@ -683,7 +683,7 @@ class CorePlayer(base.CoreAdvanced):
 
 		if WALLOBJ != None:
 			if simple != None:
-				return WALLOBJ
+				return WALLOBJ, WALLPNT, WALLNRM
 			if z == False:
 				WALLNRM[2] = 0
 				WALLNRM.normalize()
@@ -694,8 +694,6 @@ class CorePlayer(base.CoreAdvanced):
 		else:
 			if simple != None:
 				return None
-
-		self.checkEdge()
 
 		return angle, WALLNRM
 
@@ -710,7 +708,7 @@ class CorePlayer(base.CoreAdvanced):
 
 		#guide = rayto["XX"]
 
-		EDGEOBJ, EDGEPNT, EDGENRM = owner.rayCast(rayto, rayup, self.EDGE_H+0.8, "GROUND", 1, 1, 0)
+		EDGEOBJ, EDGEPNT, EDGENRM = owner.rayCast(rayto, rayup, self.EDGE_H+0.6, "GROUND", 1, 1, 0)
 
 		if simple == True:
 			if EDGEOBJ == None:
@@ -755,7 +753,7 @@ class CorePlayer(base.CoreAdvanced):
 					self.jump_state = "EDGE"
 
 		else:
-		#	guide.worldPosition = rayup.worldPosition.copy()-self.createVector(vec=[0,0,self.EDGE_H+0.8])
+		#	guide.worldPosition = rayup.worldPosition.copy()-self.createVector(vec=[0,0,self.EDGE_H+0.6])
 			if self.rayorder == "START":
 				self.rayorder = "GRAB"
 			elif self.jump_state == "EDGE":
@@ -1037,10 +1035,11 @@ class CorePlayer(base.CoreAdvanced):
 		owner = self.objects["Root"]
 		char = self.objects["Character"]
 
+		cr_fac = 1-(self.crouch*0.04)
+
 		ground, angle, slope = self.checkGround()
 
 		owner.setDamping(0, 0)
-		cr_fac = 1-(self.crouch*0.04)
 
 		if ground != None:
 			#owner.applyForce((0,0,-1*scene.gravity[2]), False)
@@ -1050,6 +1049,14 @@ class CorePlayer(base.CoreAdvanced):
 			if ground[0].getPhysicsId() != 0:
 				impulse = scene.gravity*owner.mass*0.1
 				ground[0].applyImpulse(ground[1], impulse, False)
+
+			point = ground[1][2]+2
+			dist = abs(point-owner.worldPosition[2])
+			chkwall = (self.checkWall(axis=(0,0,1), simple=dist)!=None)
+			if keymap.BINDS["PLR_DUCK"].active() == True:
+				chkwall = True
+		else:
+			chkwall = False
 
 		if self.motion["Move"].length > 0.01:
 			move = self.motion["Move"].normalized()
@@ -1063,8 +1070,7 @@ class CorePlayer(base.CoreAdvanced):
 		self.checkStability()
 		self.weaponManager()
 
-		dist = abs((ground[1][2]+2)-owner.worldPosition[2])
-		if keymap.BINDS["PLR_DUCK"].active() != True and self.checkWall(axis=(0,0,1), simple=dist) == None:
+		if chkwall == False:
 			self.doPlayerAnim("IDLE")
 			if self.crouch <= 0:
 				self.crouch = 0
@@ -1091,6 +1097,8 @@ class CorePlayer(base.CoreAdvanced):
 		move = self.motion["Move"].normalized()
 
 		ground, angle, slope = self.checkGround()
+
+		self.checkEdge()
 
 		owner.setDamping(0, 0)
 
