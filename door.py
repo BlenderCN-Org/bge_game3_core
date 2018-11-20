@@ -128,20 +128,28 @@ class CoreDoor(base.CoreObject):
 	def doPanelAction(self, state, set=False, stop=False):
 		panel = self.objects["Panel"]
 		frame = (self.ANIM[state][0], self.ANIM[state][1])
+		offset = 1
+
+		if self.ANIM[state][0] < self.ANIM[state][1]:
+			offset = 1
+		elif self.ANIM[state][0] > self.ANIM[state][1]:
+			offset = -1
 
 		if set == True or stop == True:
 			self.data["FRAME"] = self.ANIM[state][1]
-		elif self.ANIM[state][0] < self.ANIM[state][1]:
-			self.data["FRAME"] += 1
-		elif self.ANIM[state][0] > self.ANIM[state][1]:
-			self.data["FRAME"] -= 1
+		else:
+			self.data["FRAME"] += offset
 
 		for key in panel:
 			obj = panel[key]
-			self.doAnim(obj, obj.name, frame)
-			self.doAnim(OBJECT=obj, SET=self.data["FRAME"])
-			if stop == True or set == True:
+			if stop == True:
 				self.doAnim(OBJECT=obj, STOP=True)
+			elif set == True:
+				self.doAnim(obj, obj.name, (frame[1], frame[1]))
+			else:
+				frame = (frame[0]-(offset*5), frame[1]+(offset*5))
+				self.doAnim(obj, obj.name, frame)
+				self.doAnim(OBJECT=obj, SET=self.data["FRAME"])
 
 	def checkPanelAction(self, state):
 		if self.data["FRAME"] == self.ANIM[state][1]:
