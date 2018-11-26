@@ -42,12 +42,15 @@ def START(cont):
 
 	logic.LibLoad( base.DATA["GAMEPATH"]+"CONTENT\\Game Assets HUD.blend", "Scene", load_actions=True, verbose=False, load_scripts=True)
 
-	#logic.HUDCLASS.doBlackOut()
-
 
 def RUN(cont):
 	if logic.HUDCLASS != None and logic.PLAYERCLASS != None:
-		logic.HUDCLASS.RUN()
+		try:
+			logic.HUDCLASS.RUN()
+		except Exception as ex:
+			logic.HUDCLASS.setControl(None, None)
+			print("FATAL RUNTIME ERROR:", cont.owner.name)
+			print("\t", ex)
 
 
 class CoreHUD(base.CoreObject):
@@ -412,8 +415,11 @@ class Inventory(CoreHUD):
 				break
 
 			obj["Icon"].localPosition[1] = plr.data["INVENTORY"].index(dict)*-2
-			obj["Stat"].localScale[0] = -1+(data["HUD"]["Stat"]/100)
+			obj["Stat"].localScale[0] = 1-(data["HUD"]["Stat"]/100)
+			#obj["Stat"].color[1] = 1-(data["HUD"]["Stat"]/100)
 			obj["Text"].text = str(data["HUD"]["Text"])
+
+			#obj["Icon"].worldOrientation = obj["Icon"].scene.active_camera.worldOrientation
 
 			if data["ENABLE"] == False:
 				obj["Icon"].color = (0.5, 0.5, 0.5, 1)
@@ -458,7 +464,7 @@ class Inventory(CoreHUD):
 		statobj.setParent(iconobj)
 		textobj.setParent(iconobj)
 
-		statobj.localPosition = (1,-1,1)
+		statobj.localPosition = (1,0,1)
 		statobj.localScale = (0,1,1)
 		statobj.color = (0, 0, 0, 0.5)
 		textobj.localPosition = (0,0,0)
@@ -533,6 +539,7 @@ class Aircraft(CoreHUD):
 
 	def ST_Active(self, plr):
 		root = plr.objects["Root"]
+
 		glbZ = self.createVector(vec=[0,0,1])
 
 		## Roll ##
@@ -563,7 +570,7 @@ class Aircraft(CoreHUD):
 class HUDLayout:
 
 	GROUP = "Core"
-	MODULES = [Stats, Interact, Inventory, Weapons]
+	MODULES = []
 
 	def __init__(self):
 		self.modlist = []
@@ -587,19 +594,18 @@ class LayoutCinema(HUDLayout):
 
 class SceneManager:
 
-	def __init__(self, plr):
+	def __init__(self):
 		self.active_state = self.ST_Wait
 		self.active_layout = None
+		self.custom_layout = None
+		self.control = None
+		self.blackobj = "QUE"
 		self.MENU = None
 
-		self.start_check = True
-		self.blackobj = None
-
-		self.setControl(plr)
 		self.doLoad()
 
 	def doLoad(self):
-		if self not in logic.UPDATELIST and self.active_state != None:
+		if self not in logic.UPDATELIST and base.SC_HUD != None:
 			logic.UPDATELIST.append(self)
 
 	def doUpdate(self):
@@ -619,9 +625,14 @@ class SceneManager:
 		self.custom_layout = layout
 		self.active_state = self.ST_Wait
 
-	def doBlackOut(self):
-		self.blackobj = base.SC_HUD.addObject("HUD.Black", base.SC_HUD.active_camera, 0)
-		self.blackobj.applyMovement((0,0,-4), False)
+	def doBlackOut(self, add=True):
+		if add == True:
+			self.blackobj = base.SC_HUD.addObject("HUD.Black", base.SC_HUD.active_camera, 0)
+			self.blackobj.applyMovement((0,0,-4), False)
+
+		else:
+			self.blackobj.endObject()
+			self.blackobj = None
 
 	def doSceneSuspend(self):
 		self.MENU = MenuPause()
@@ -647,17 +658,16 @@ class SceneManager:
 				self.active_layout = self.custom_layout()
 				self.custom_layout = None
 
-				if self.start_check == False:
-					self.active_layout.RUN(plr)
+				if self.blackobj == "QUE":
+					self.doBlackOut(True)
 				else:
-					self.start_check = False
+					self.active_layout.RUN(plr)
 
 			self.active_state = self.ST_HUD
 
 	def ST_HUD(self):
 		if self.blackobj != None:
-			self.blackobj.endObject()
-			self.blackobj = None
+			self.doBlackOut(False)
 
 		self.active_layout.RUN(self.control)
 
@@ -692,6 +702,8 @@ class SceneManager:
 	def RUN(self):
 		if self.active_state != None:
 			self.active_state()
+		else:
+			print("HUD - NONE")
 
 
 class MenuPause:

@@ -134,7 +134,7 @@ def RUN(cont):
 		owner["Class"].RUN()
 	except Exception as ex:
 		print("FATAL RUNTIME ERROR:", owner.name)
-		print("	", ex)
+		print("\t", ex)
 		if owner.scene.active_camera in owner.childrenRecursive:
 			owner.scene.active_camera = SC_CAM
 		owner.endObject()

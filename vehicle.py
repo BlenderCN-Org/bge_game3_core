@@ -703,14 +703,15 @@ class CoreAircraft(CoreVehicle):
 
 		return power, hover
 
-	def doDragForce(self, drag=None, scale=1.0):
+	def doDragForce(self, drag=None, scale=None):
 		linV = self.objects["Root"].localLinearVelocity
-		mass = abs(linV[1])
+		if scale == None:
+			scale = abs(linV[1])
 		if drag == None:
 			drag = self.AERO["DRAG"]
-		DRAG_X = linV[0]*drag[0]*mass
-		DRAG_Y = linV[1]*drag[1]*mass
-		DRAG_Z = linV[2]*drag[2]*mass
+		DRAG_X = linV[0]*drag[0]*scale
+		DRAG_Y = linV[1]*drag[1]*scale
+		DRAG_Z = linV[2]*drag[2]*scale
 
 		self.objects["Root"].applyForce((-DRAG_X, -DRAG_Y, -DRAG_Z), True)
 

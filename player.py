@@ -36,8 +36,7 @@ def SPAWN(cont):
 	base.SC_SCN = owner.scene
 
 	if spawn == False:
-		#owner.endObject()
-		return
+		return "DONE"
 
 	## SET SCENE ##
 	portal = logic.globalDict["DATA"]["Portal"]
@@ -47,7 +46,7 @@ def SPAWN(cont):
 			base.CURRENT["Level"] = None
 			print(base.SC_SCN.name, portal["Scene"])
 			base.SC_SCN.replace(portal["Scene"])
-			return
+			return "SCENE"
 
 	portal["Scene"] = base.SC_SCN.name
 
@@ -72,10 +71,11 @@ def SPAWN(cont):
 		owner.worldScale = [1,1,1]
 		owner["TIMER"] = 0+((config.UPBGE_FIX == False)*30)
 		logic.addScene("HUD", 1)
-		return
-	elif timer <= 30 or base.SC_HUD == None:
+		return "LIBLOAD"
+
+	elif timer <= 30:
 		owner["TIMER"] += 1
-		return
+		return "TIMER"
 
 	## SPAWN ##
 	if "CLIP" in owner:
@@ -94,10 +94,25 @@ def SPAWN(cont):
 		char = base.SC_SCN.addObject(player, owner, 0)
 		print("PLAYER:", player, char.worldPosition)
 		owner["SPAWN"] = None
-		return
+		return "SPAWN"
 
 	elif spawn == None:
 		owner["SPAWN"] = False
+		return "DONE"
+
+	return "WAIT"
+
+
+
+class ActorLayout(HUD.HUDLayout):
+
+	GROUP = "Core"
+	MODULES = [
+		HUD.Stats,	# Health Bars
+		HUD.Interact,	# Target and Text
+		HUD.Inventory,	# Number Slots and Side Icons
+		HUD.Weapons	# Top Center Indicator
+		]
 
 
 class CorePlayer(base.CoreAdvanced):
@@ -113,17 +128,16 @@ class CorePlayer(base.CoreAdvanced):
 	JUMP = 6
 	ACCEL = 30
 	SLOPE = 60
-	OFFSET = (0, 0, 0.2)
+	OFFSET = (0, 0, 0)
 	EYE_H = 1.6
 	GND_H = 1.0
 	EDGE_H = 2.0
 	WALL_DIST = 0.4
-	CAM_ALIGN = False #Strafe style
+	CAM_ALIGN = False
 	CAM_RANGE = (1,6)
 	CAM_ZOOM = 4
 	CAM_FOV = 90
-	#STATS = {}
-	HUDLAYOUT = HUD.HUDLayout
+	HUDLAYOUT = ActorLayout
 
 	def __init__(self):
 		scene = base.SC_SCN
@@ -180,9 +194,6 @@ class CorePlayer(base.CoreAdvanced):
 			if key not in self.data:
 				self.data[key] = dict[key]
 
-		#for stat in self.STATS:
-		#	self.data[stat] = self.STATS[stat]
-
 		char["Class"] = self
 		char["DEBUG1"] = ""
 		char["DEBUG2"] = ""
@@ -198,6 +209,7 @@ class CorePlayer(base.CoreAdvanced):
 
 		if logic.PLAYERCLASS == None:
 			logic.PLAYERCLASS = self
+			logic.HUDCLASS = HUD.SceneManager()
 
 			portal = base.LOAD(char)
 
@@ -220,7 +232,7 @@ class CorePlayer(base.CoreAdvanced):
 				self.setCamera()
 				self.setPhysicsType()
 
-			logic.HUDCLASS = HUD.SceneManager(self)
+				logic.HUDCLASS.setControl(self)
 
 		self.ST_Startup()
 
@@ -889,6 +901,11 @@ class CorePlayer(base.CoreAdvanced):
 		if height == None:
 			height = self.data["JUMP"]
 
+		align = owner.worldLinearVelocity.copy()
+		align[2] = 0
+		if align.length > 0.01 and self.data["CAMERA"]["Strafe"] == False:
+			self.alignPlayer(axis=align)
+
 		owner.worldLinearVelocity[0] *= move
 		owner.worldLinearVelocity[1] *= move
 
@@ -1035,6 +1052,9 @@ class CorePlayer(base.CoreAdvanced):
 		owner = self.objects["Root"]
 		char = self.objects["Character"]
 
+		owner.localScale[2] = 0.25
+		char.localScale[2] = 4
+
 		cr_fac = 1-(self.crouch*0.04)
 
 		ground, angle, slope = self.checkGround()
@@ -1053,8 +1073,10 @@ class CorePlayer(base.CoreAdvanced):
 			point = ground[1][2]+2
 			dist = abs(point-owner.worldPosition[2])
 			chkwall = (self.checkWall(axis=(0,0,1), simple=dist)!=None)
-			if keymap.BINDS["PLR_DUCK"].active() == True:
+			if keymap.BINDS["PLR_DUCK"].active() == True or self.crouch == 10:
 				chkwall = True
+				if keymap.BINDS["PLR_DUCK"].released() == True:
+					chkwall = False
 		else:
 			chkwall = False
 
