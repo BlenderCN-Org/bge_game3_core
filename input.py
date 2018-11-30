@@ -316,9 +316,10 @@ class KeyBase:
 ## Mouse Look Base Class ##
 class MouseLook:
 
-	def __init__(self, SPEED, SMOOTH=10):
+	def __init__(self, SPEED=25, SMOOTH=10, TURN=0.05, RAMP=10):
 		self.getScreenRatio()
 		self.updateSpeed(SPEED, SMOOTH)
+		self.setTurnRate(TURN, RAMP)
 		self.center()
 
 	def getScreenRatio(self):
@@ -331,21 +332,49 @@ class MouseLook:
 		if SMOOTH != None:
 			self.smoothing = int(SMOOTH)
 
+	def setTurnRate(self, turn=None, ramp=None):
+		self.ts_input = [0]*3
+		if turn != None:
+			self.ts_rate = turn
+		if ramp != None:
+			self.ts_ramp = ramp
+
 	def getData(self):
-		dict = {"Speed":self.input, "Smooth":self.smoothing}
+		dict = {
+			"Speed":self.input,
+			"Smooth":self.smoothing,
+			"TurnRate":self.ts_rate,
+			"TurnRamp":self.ts_ramp
+			}
 		return dict
 
 	def setData(self, dict):
-		self.updateSpeed(dict["Speed"], dict["Smooth"])
+		self.updateSpeed(dict.get("Speed", None), dict.get("Smooth", None))
+		self.setTurnRate(dict.get("TurnRate", None), dict.get("TurnRamp", None))
 
 	def center(self):
 		self.OLD_X = [0]*self.smoothing
 		self.OLD_Y = [0]*self.smoothing
+		self.ts_input = [0]*3
 
 		logic.mouse.position = (0.5, 0.5)
 		self.skip = True
 
-	def axis(self, ui=False):
+	def turn(self, look):
+		turn = [0]*2
+		look = Vector(look)
+
+		for i in [0,1]:
+			if self.ts_ramp < 1 or look.length == 0:
+				self.ts_input[i] = look[i]
+			else:
+				diff = (look[i]-self.ts_input[i])
+				self.ts_input[i] += diff/self.ts_ramp
+			turn[i] = self.ts_input[i]*self.ts_rate
+
+		return turn
+
+	def axis(self, look=None, ui=False):
 		if self.skip == True:
 			self.skip = False
 			logic.mouse.position = (0.5, 0.5)
@@ -390,6 +419,11 @@ class MouseLook:
 
 		X = msX*(self.input*0.1)
 		Y = msY*(self.input*0.1)*self.ratio
+
+		if look != None:
+			tsX, tsY = self.turn(look)
+			X += tsX
+			Y += tsY
 
 		logic.mouse.position = (0.5, 0.5)
 

@@ -201,6 +201,8 @@ class CoreVehicle(base.CoreAdvanced):
 
 		if pos[0] < 0:
 			obj.localScale = (-1,1,1)
+		else:
+			obj.localScale = (1,1,1)
 
 		self.vehicle_constraint.addWheel(obj, (pos[0], pos[1], -pos[2]), (0,0,-1), (-1,0,0), setup["LENGTH"], dict["RADIUS"], True)
 
@@ -638,15 +640,7 @@ class CoreAircraft(CoreVehicle):
 	def airLift(self):
 		owner = self.objects["Root"]
 		linV = owner.localLinearVelocity
-		speed = linV.length
 		grav = -owner.scene.gravity[2]
-
-		if speed > 0.1 and self.AERO["TAIL"] > 0:
-			axis = owner.getAxisVect(linV.normalized())
-			factor = self.AERO["TAIL"]/speed
-			if factor > 1:
-				factor = 1
-			owner.alignAxisToVect(axis, 1, factor*0.5)
 
 		self.lift = (linV[1])*self.AERO["LIFT"]*owner.mass
 		mass = owner.mass*grav

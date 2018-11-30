@@ -27,9 +27,9 @@ from bge import logic
 from . import keymap, base, HUD, config
 
 
-
 def SPAWN(cont):
 	owner = cont.owner
+
 	spawn = owner.get("SPAWN", True)
 	timer = owner.get("TIMER", None)
 
@@ -65,11 +65,11 @@ def SPAWN(cont):
 	## LIBLOAD ##
 	if timer == None:
 		for libblend in config.LIBRARIES:
-			libblend = libblend+".blend"
-			logic.LibLoad( base.DATA["GAMEPATH"]+"CONTENT\\"+libblend, "Scene", load_actions=True, verbose=False, load_scripts=True)
+			libblend = base.DATA["GAMEPATH"]+"CONTENT\\"+libblend+".blend"
+			logic.LibLoad(libblend, "Scene", load_actions=True, verbose=False, load_scripts=True)
 
 		owner.worldScale = [1,1,1]
-		owner["TIMER"] = 0+((config.UPBGE_FIX == False)*30)
+		owner["TIMER"] = (config.UPBGE_FIX == False)*25
 		logic.addScene("HUD", 1)
 		return "LIBLOAD"
 
@@ -595,14 +595,13 @@ class CorePlayer(base.CoreAdvanced):
 		self.setCameraFOV(camdata["FOV"][1])
 
 		if camdata["Orbit"] == True:
-			X, Y = keymap.MOUSELOOK.axis()
 			ts = (camdata["FOV"][1]/self.CAM_FOV)**2
+			look = [self.motion["Rotate"][2], self.motion["Rotate"][0]]
 
-			rx = ((self.motion["Rotate"][2]*0.03) + X)*ts
-			ry = ((self.motion["Rotate"][0]*0.03) + Y)*ts
+			X, Y = keymap.MOUSELOOK.axis(look)
 
-			self.objects["VertRef"].applyRotation((0, 0, rx), True)
-			self.objects["CamRot"].applyRotation((ry, 0, 0), True)
+			self.objects["VertRef"].applyRotation((0, 0, X*ts), True)
+			self.objects["CamRot"].applyRotation((Y*ts, 0, 0), True)
 
 	def doCameraCollision(self):
 		margin = 1
@@ -1011,9 +1010,9 @@ class CorePlayer(base.CoreAdvanced):
 		self.groundchk = False
 
 		if self.groundhit == None or self.jump_state not in ["NONE", "CROUCH", "JUMP"]:
-			dragX = owner.worldLinearVelocity[0]*0.75
-			dragY = owner.worldLinearVelocity[1]*0.75
-			dragZ = owner.worldLinearVelocity[2]*0.5
+			dragX = owner.worldLinearVelocity[0]*0.67
+			dragY = owner.worldLinearVelocity[1]*0.67
+			dragZ = owner.worldLinearVelocity[2]*0.33
 			owner.applyForce((-dragX, -dragY, -dragZ), False)
 			self.groundobj = None
 			return

@@ -48,7 +48,7 @@ def RUN(cont):
 		try:
 			logic.HUDCLASS.RUN()
 		except Exception as ex:
-			logic.HUDCLASS.setControl(None, None)
+			logic.HUDCLASS = None #.setControl(None, None)
 			print("FATAL RUNTIME ERROR:", cont.owner.name)
 			print("\t", ex)
 
@@ -522,8 +522,10 @@ class Speedometer(CoreHUD):
 	def ST_Active(self, plr):
 		root = plr.objects["Root"]
 		refY = plr.data["HUD"].get("Forward", (0,1,0))
-		speed = abs(root.localLinearVelocity*self.createVector(vec=refY))*2.237
+		vec = root.localLinearVelocity*self.createVector(vec=refY)
+		speed = abs(vec)*2.237
 		self.objects["Text"].text = str(round(speed))
+		self.objects["Units"].text = "Mph"
 		if speed > 130:
 			speed = 130
 		self.objects["Speed"].localOrientation = self.createMatrix(rot=[0,0,-speed], deg=True)

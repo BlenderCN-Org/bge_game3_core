@@ -131,13 +131,15 @@ def LOAD(owner):
 def RUN(cont):
 	owner = cont.owner
 	try:
-		owner["Class"].RUN()
+		if owner.get("Class", None) != None:
+			owner["Class"].RUN()
 	except Exception as ex:
 		print("FATAL RUNTIME ERROR:", owner.name)
 		print("\t", ex)
-		if owner.scene.active_camera in owner.childrenRecursive:
-			owner.scene.active_camera = SC_CAM
-		owner.endObject()
+		del owner["Class"]
+		#if owner.scene.active_camera in owner.childrenRecursive:
+		#	owner.scene.active_camera = SC_CAM
+		#owner.endObject()
 
 class CoreObject:
 
