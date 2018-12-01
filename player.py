@@ -743,6 +743,12 @@ class CorePlayer(base.CoreAdvanced):
 			dist = EDGEPNT[2]-owner.worldPosition[2]
 			offset = self.EDGE_H-self.GND_H
 
+			if self.rayorder == "END":
+				ledge = (EDGEPNT[2]-offset)-owner.worldPosition[2]
+				if abs(ledge) > 0.11:
+					self.rayorder = "NONE"
+
+			## Vault ##
 			if dist > -1 and dist < 0.3: # and self.jump_state == "NONE":
 				if self.motion["Move"].length > 0.01 and keymap.BINDS["PLR_JUMP"].tap() == True:
 					if self.jump_state == "NONE" and dist < -0.5:
@@ -753,6 +759,7 @@ class CorePlayer(base.CoreAdvanced):
 						self.jump_state = "FALLING"
 						self.doAnim(NAME="Jumping", FRAME=(0,20), PRIORITY=2, MODE="PLAY", BLEND=10)
 
+			## Ledge Grab ##
 			if owner.localLinearVelocity[2] < 0 and self.rayorder == "GRAB" and self.jump_state == "FALLING":
 				if angle > self.SLOPE or abs(dist-offset) > 0.1:
 					self.rayorder = "GRAB"
@@ -765,6 +772,8 @@ class CorePlayer(base.CoreAdvanced):
 
 		else:
 		#	guide.worldPosition = rayup.worldPosition.copy()-self.createVector(vec=[0,0,self.EDGE_H+0.6])
+			if self.rayorder == "END":
+				self.rayorder = "NONE"
 			if self.jump_state == "EDGE":
 				self.rayorder = "NONE"
 				self.jump_state = "FALLING"
@@ -1273,17 +1282,22 @@ class CorePlayer(base.CoreAdvanced):
 		owner.worldLinearVelocity = (0,0,0)
 
 		if self.checkGround(simple=True) == None:
-
-			ray = (self.objects["WallRayTo"], self.objects["WallRay"], 3)
-			edge = self.checkGround(simple=True, ray=ray)
 			offset = self.EDGE_H-self.GND_H
+
+			ray = (self.objects["WallRayTo"], self.objects["WallRay"], 0.3)
+			edge = self.checkGround(simple=True, ray=ray)
+
+			if edge != None:
+				if abs(owner.worldPosition[2]-(edge[1][2]-offset)) > 0.1:
+					edge = None
+
 			rayfrom = owner.worldPosition+self.createVector(vec=(0,0,offset-0.05))
 			rayto = rayfrom.copy()+owner.getAxisVect((0,1,0))
 
 			TROBJ, TRPNT, TRNRM = owner.rayCast(rayto, rayfrom, self.WALL_DIST+0.3, "GROUND", 1, 1, 0)
 
 			X = 0
-			if TROBJ != None and self.jump_state == "HANGING":
+			if TROBJ != None and self.jump_state == "HANGING" and edge != None:
 				TRNRM[2] = 0
 				TRNRM.normalize()
 				owner.worldPosition = TRPNT+(TRNRM*(self.WALL_DIST-0.05))
@@ -1307,8 +1321,12 @@ class CorePlayer(base.CoreAdvanced):
 		else:
 			edge = None
 
-		if keymap.BINDS["PLR_DUCK"].active() == True or edge == None:
+		if edge == None:
 			self.ST_EdgeFall_Set()
+
+		if keymap.BINDS["PLR_DUCK"].active() == True:
+			self.ST_EdgeFall_Set()
+			self.rayorder = "END"
 
 		elif keymap.BINDS["PLR_JUMP"].tap() == True:
 			self.ST_EdgeClimb_Set()
@@ -1371,7 +1389,7 @@ class CorePlayer(base.CoreAdvanced):
 			self.active_state = self.ST_Walking
 
 	def ST_EdgeFall_Set(self):
-		self.rayorder = "END"
+		self.rayorder = "NONE"
 		self.jump_state = "FALLING"
 		self.jump_timer = 0
 		self.doAnim(STOP=True)
