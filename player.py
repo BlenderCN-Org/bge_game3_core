@@ -1016,7 +1016,7 @@ class CorePlayer(base.CoreAdvanced):
 		owner = self.objects["Root"]
 		self.groundchk = False
 
-		if self.groundhit == None or self.jump_state not in ["NONE", "CROUCH", "JUMP"]:
+		if self.groundhit == None or self.jump_state not in ["NONE", "CROUCH", "JUMP", "HANGING"]:
 			dragX = owner.worldLinearVelocity[0]*0.67
 			dragY = owner.worldLinearVelocity[1]*0.67
 			dragZ = owner.worldLinearVelocity[2]*0.33
