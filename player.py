@@ -765,9 +765,7 @@ class CorePlayer(base.CoreAdvanced):
 
 		else:
 		#	guide.worldPosition = rayup.worldPosition.copy()-self.createVector(vec=[0,0,self.EDGE_H+0.6])
-			if self.rayorder == "START":
-				self.rayorder = "GRAB"
-			elif self.jump_state == "EDGE":
+			if self.jump_state == "EDGE":
 				self.rayorder = "NONE"
 				self.jump_state = "FALLING"
 
@@ -800,7 +798,7 @@ class CorePlayer(base.CoreAdvanced):
 				return None
 
 			if self.rayorder == "NONE":
-				self.rayorder = "START"
+				self.rayorder = "GRAB"
 
 		else:
 			ground = [rayOBJ, rayPNT, rayNRM]
@@ -1260,6 +1258,7 @@ class CorePlayer(base.CoreAdvanced):
 	def ST_Hanging_Set(self):
 		#self.objects["Root"].setDamping(1.0, 1.0)
 		self.objects["Root"].worldLinearVelocity = (0,0,0)
+		self.objects["Root"].worldPosition = self.rayorder[0]
 
 		self.jump_state = "NONE"
 		self.jump_timer = 0
@@ -1273,13 +1272,24 @@ class CorePlayer(base.CoreAdvanced):
 
 		owner.worldLinearVelocity = (0,0,0)
 
-		self.jump_state = "NONE"
-
 		if self.checkGround(simple=True) == None:
 
 			ray = (self.objects["WallRayTo"], self.objects["WallRay"], 3)
 			edge = self.checkGround(simple=True, ray=ray)
-			offset = self.EYE_H-0.67
+			offset = self.EDGE_H-self.GND_H
+			rayfrom = owner.worldPosition+self.createVector(vec=(0,0,offset-0.05))
+			rayto = rayfrom.copy()+owner.getAxisVect((0,1,0))
+
+			TROBJ, TRPNT, TRNRM = owner.rayCast(rayto, rayfrom, self.WALL_DIST+0.3, "GROUND", 1, 1, 0)
+
+			X = 0
+			if TROBJ != None and self.jump_state == "HANGING":
+				TRNRM[2] = 0
+				TRNRM.normalize()
+				owner.worldPosition = TRPNT+(TRNRM*(self.WALL_DIST-0.05))
+				X = self.motion["Move"][0]*0.01
+				owner.localLinearVelocity[0] = X*60
+				self.alignPlayer(0.5, axis=-TRNRM)
 
 			if edge != None:
 				self.groundhit = edge
@@ -1287,7 +1297,12 @@ class CorePlayer(base.CoreAdvanced):
 
 				owner.worldPosition[2] = edge[1][2]-offset
 
-			self.doAnim(NAME="EdgeClimb", FRAME=(0,0), MODE="LOOP", BLEND=5)
+				self.jump_state = "HANGING"
+
+			if abs(X) > 0.001:
+				self.doAnim(NAME="EdgeTR", FRAME=(1,60), MODE="LOOP", BLEND=10)
+			else:
+				self.doAnim(NAME="EdgeClimb", FRAME=(0,0), MODE="LOOP", BLEND=5)
 
 		else:
 			edge = None
@@ -1356,7 +1371,7 @@ class CorePlayer(base.CoreAdvanced):
 			self.active_state = self.ST_Walking
 
 	def ST_EdgeFall_Set(self):
-		self.rayorder = "NONE"
+		self.rayorder = "END"
 		self.jump_state = "FALLING"
 		self.jump_timer = 0
 		self.doAnim(STOP=True)
