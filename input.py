@@ -101,21 +101,35 @@ class KeyBase:
 		self.autoDevice()
 
 	def autoDevice(self):
+		modkey = []
+		for m in ["SHIFT", "CTRL", "ALT"]:
+			modkey.append("LEFT"+m+"KEY")
+			modkey.append("RIGHT"+m+"KEY")
+
 		if self.input == None:
 			self.device = logic.keyboard
 			self.isWheel = False
+			self.isModkey = False
+
+		elif self.input_name in modkey:
+			self.device = logic.keyboard
+			self.isWheel = False
+			self.isModkey = True
 
 		elif self.input_name in ["LEFTMOUSE", "MIDDLEMOUSE", "RIGHTMOUSE"]:
 			self.device = logic.mouse
 			self.isWheel = False
+			self.isModkey = False
 
 		elif self.input_name in ["WHEELDOWNMOUSE", "WHEELUPMOUSE", "MOUSEX", "MOUSEY"]:
 			self.device = logic.mouse
 			self.isWheel = True
+			self.isModkey = False
 
 		else:
 			self.device = logic.keyboard
 			self.isWheel = False
+			self.isModkey = False
 
 	def updateGamepad(self, **kwargs):
 		for kw in kwargs:
@@ -222,6 +236,9 @@ class KeyBase:
 		return False
 
 	def checkModifiers(self):
+		if self.isModkey == True:
+			return True
+
 		KEYBOARD = logic.keyboard.events
 		ACTIVE = logic.KX_INPUT_ACTIVE
 
