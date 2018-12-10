@@ -100,7 +100,7 @@ def LoadBinds():
 	print("NOTICE: Keybinds Loaded...\n\t", name)
 
 
-def openWorldBlend(map):
+def openWorldBlend(map, scn=None):
 	gd = logic.globalDict
 
 	gd["TRAVELING"] = True
@@ -110,6 +110,7 @@ def openWorldBlend(map):
 		blend = config.KEYMAP_BLEND+".blend"
 	else:
 		gd["CURRENT"]["Level"] = map
+		gd["CURRENT"]["Scene"] = scn
 		blend = "MAPS\\"+map
 
 	for cls in logic.UPDATELIST:
@@ -145,7 +146,7 @@ def GenerateGlobalDict(path):
 	logic.globalDict["PROFILES"]["__guest__"] = GenerateProfileData()
 
 	logic.globalDict["BLENDS"] = logic.getBlendFileList(path+"MAPS")
-	logic.globalDict["DATA"] = {"GAMEPATH":path, "Portal":{"Door":None, "Vehicle":None, "Zone":None, "Scene":None}}
+	logic.globalDict["DATA"] = {"GAMEPATH":path, "Portal":{"Door":None, "Vehicle":None, "Zone":None}}
 	logic.globalDict["CURRENT"] = {"Profile":"__guest__", "Level":None, "Player":None, "Scene":None}
 	logic.globalDict["GRAPHICS"] = GenerateGraphicsData()
 	logic.globalDict["TRAVELING"] = False

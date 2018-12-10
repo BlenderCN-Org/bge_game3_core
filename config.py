@@ -10,3 +10,5 @@ KEYMAP_BLEND = "Keymap"
 
 DO_STABILITY = True
 LOW_CLIP = -1000
+
+DEFAULT_PLAYER = "Actor"

@@ -41,14 +41,14 @@ def SPAWN(cont):
 	## SET SCENE ##
 	portal = logic.globalDict["DATA"]["Portal"]
 
-	if portal["Scene"] != None:
-		if portal["Scene"] != base.SC_SCN.name:
+	if base.CURRENT["Scene"] != None:
+		if base.CURRENT["Scene"] != base.SC_SCN.name:
 			base.CURRENT["Level"] = None
-			print(base.SC_SCN.name, portal["Scene"])
-			base.SC_SCN.replace(portal["Scene"])
+			print(base.SC_SCN.name, base.CURRENT["Scene"])
+			base.SC_SCN.replace(base.CURRENT["Scene"])
 			return "SCENE"
 
-	portal["Scene"] = base.SC_SCN.name
+	base.CURRENT["Scene"] = base.SC_SCN.name
 
 	## LEVEL DATA ##
 	if base.CURRENT["Level"] == None and owner.get("MAP", None) != None:
@@ -82,12 +82,12 @@ def SPAWN(cont):
 		base.LEVEL["CLIP"] = owner["CLIP"]
 
 	if base.CURRENT["Player"] == None:
-		player = owner.get("PLAYER", "Actor")
+		player = owner.get("PLAYER", config.DEFAULT_PLAYER)
 	else:
 		player = base.CURRENT["Player"]
 
 	if player not in base.SC_SCN.objectsInactive:
-		player = "Actor"
+		player = config.DEFAULT_PLAYER
 
 	if spawn == True:
 		base.CURRENT["Player"] = player
@@ -135,7 +135,9 @@ class CorePlayer(base.CoreAdvanced):
 	WALL_DIST = 0.4
 	CAM_ALIGN = False
 	CAM_RANGE = (1,6)
-	CAM_ZOOM = 4
+	CAM_STEPS = 5
+	CAM_ZOOM = 2
+	CAM_MIN = 0.2
 	CAM_FOV = 90
 	HUDLAYOUT = ActorLayout
 
@@ -175,8 +177,10 @@ class CorePlayer(base.CoreAdvanced):
 		self.data = {"HEALTH":100, "ENERGY":100, "RECHARGE":0.1,
 			"SPEED":self.SPEED, "JUMP":self.JUMP, "RUN":True}
 
+		steps = (self.CAM_RANGE[1]-self.CAM_RANGE[0])/self.CAM_STEPS
+		dist = (steps*self.CAM_ZOOM)+self.CAM_RANGE[0]
 		self.data["CAMERA"] = {"State":3, "Orbit":True, "Strafe":self.CAM_ALIGN,
-			"Zoom":self.CAM_ZOOM, "Dist":self.CAM_ZOOM, "Range":self.CAM_RANGE,
+			"Zoom":self.CAM_ZOOM, "Dist":dist, "Range":self.CAM_RANGE,
 			"FOV":[self.CAM_FOV, 90], "ZR":[0,1,0], "XR":0}
 
 		self.data["HUD"] = {"Text":"", "Color":(0,0,0,0.5), "Target":None, "Locked":None}
@@ -556,22 +560,25 @@ class CorePlayer(base.CoreAdvanced):
 				camdata["FOV"][0] = self.CAM_FOV
 
 		else:
-			camdata["Dist"] += (camdata["Zoom"]-camdata["Dist"])*0.1
+			steps = (camdata["Range"][1]-camdata["Range"][0])/self.CAM_STEPS
+			dist = (steps*camdata["Zoom"])+camdata["Range"][0]
+			camdata["Dist"] += (dist-camdata["Dist"])*0.1
 
 			## Set Camera Zoom ##
-			if keymap.BINDS["ZOOM_IN"].tap() == True and camdata["Zoom"] > camdata["Range"][0]:
+			if keymap.BINDS["ZOOM_IN"].tap() == True and camdata["Zoom"] > 0: #camdata["Range"][0]:
 				camdata["Zoom"] -= 1
 
-			elif keymap.BINDS["ZOOM_OUT"].tap() == True and camdata["Zoom"] < camdata["Range"][1]:
+			elif keymap.BINDS["ZOOM_OUT"].tap() == True and camdata["Zoom"] < self.CAM_STEPS: #camdata["Range"][1]:
 				camdata["Zoom"] += 1
+
+			#if camdata["Zoom"] == 0:
+			#	camdata["FOV"][0] = 60
+			#else:
+			#	camdata["FOV"][0] = self.CAM_FOV
 
 			## Toggle ##
 			if self.motion["Move"].length < 0.01 and self.jump_state == "NONE":
 				if keymap.BINDS["TOGGLECAM"].tap() == True:
-					camdata["State"] = 1
-					camdata["FOV"][0] = 60
-				if camdata["Zoom"] == 0:
-					camdata["Zoom"] = 1
 					camdata["State"] = 1
 					camdata["FOV"][0] = 60
 
@@ -631,8 +638,8 @@ class CorePlayer(base.CoreAdvanced):
 			camLY = rayto.localPosition[1]+margin
 			camLZ = rayto.localPosition[2]-(margin*height)
 
-		if camLZ < 0.2:
-			camLZ = 0.2
+		if camLZ < self.CAM_MIN:
+			camLZ = self.CAM_MIN
 
 		camera.localPosition[0] = camLX
 		camera.localPosition[1] = camLY
@@ -749,11 +756,11 @@ class CorePlayer(base.CoreAdvanced):
 					self.rayorder = "NONE"
 
 			## Vault ##
-			if dist > -1 and dist < 0.3: # and self.jump_state == "NONE":
+			if dist > -0.5 and dist < 0.3: # and self.jump_state == "NONE":
 				if self.motion["Move"].length > 0.01 and keymap.BINDS["PLR_JUMP"].tap() == True:
 					if self.jump_state == "NONE" and dist < -0.5:
 						pass
-					elif owner.localLinearVelocity.length > -0.01:
+					elif owner.localLinearVelocity.length > -0.01 and self.jump_state in ["NONE","FALLING"]:
 						self.motion["Accel"] = 0
 						owner.worldPosition = [EDGEPNT[0], EDGEPNT[1], EDGEPNT[2]+1]
 						self.jump_state = "FALLING"
@@ -814,12 +821,13 @@ class CorePlayer(base.CoreAdvanced):
 
 		#	guide.worldPosition = rayPNT
 
+			if self.jump_state != "NONE":
+				if owner.worldPosition[2]-rayPNT[2] > self.gndraybias:
+					ground = None
+
 			if simple == True:
 				self.gndraybias = offset
 				return ground
-
-			self.groundhit = ground
-			self.getGroundPoint(rayOBJ)
 
 			angle = owner.getAxisVect((0,0,1)).angle(rayNRM, 0)
 			angle = round(self.toDeg(angle), 2)
@@ -827,18 +835,18 @@ class CorePlayer(base.CoreAdvanced):
 
 			if angle > self.SLOPE:
 				ground = None
-			if self.jump_state != "NONE":
-				if owner.worldPosition[2]-rayPNT[2] > self.gndraybias:
-					ground = None
 
-			if ground != None:
-				if angle > 5:
-					rayNRM[2] = 0
-					rayNRM = rayNRM.normalized()
-					dot = owner.getAxisVect((0,1,0)).angle(rayNRM, 0)/1.571
-					slope = 1-(abs(dot-1)*((angle/90)))
+		if ground != None:
+			if angle > 5 and angle < 90:
+				rayNRM[2] = 0
+				rayNRM = rayNRM.normalized()
+				dot = owner.getAxisVect((0,1,0)).angle(rayNRM, 0)/1.571
+				slope = 1-(abs(dot-1)*((angle/90)))
+
+			self.getGroundPoint(rayOBJ)
 
 			self.rayorder = "NONE"
+
 			self.groundhit = ground
 			self.gndraybias += ((offset+gndbias)-self.gndraybias)*0.2
 
@@ -1209,7 +1217,7 @@ class CorePlayer(base.CoreAdvanced):
 					self.jump_timer = 0
 					self.jump_state = "NONE"
 
-			elif self.jump_state in ["FALLING", "A_JUMP", "B_JUMP"] and owner.localLinearVelocity[2] < 2:
+			elif self.jump_state in ["FALLING", "A_JUMP", "B_JUMP", "NO_AIR"] and owner.localLinearVelocity[2] < 2:
 				#owner.setDamping(0, 0)
 				self.jump_timer = 0
 				self.jump_state = "NONE"
@@ -1269,7 +1277,7 @@ class CorePlayer(base.CoreAdvanced):
 		self.objects["Root"].worldLinearVelocity = (0,0,0)
 		self.objects["Root"].worldPosition = self.rayorder[0]
 
-		self.jump_state = "NONE"
+		self.jump_state = "HANG_INIT"
 		self.jump_timer = 0
 		self.motion["Accel"] = 0
 		self.data["HUD"]["Target"] = None
@@ -1358,7 +1366,7 @@ class CorePlayer(base.CoreAdvanced):
 
 		owner.worldLinearVelocity = (0,0,0)
 
-		offset = self.EYE_H-0.67
+		offset = self.EDGE_H-self.GND_H
 		time = 60
 		fac = self.jump_timer/time
 

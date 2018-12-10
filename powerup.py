@@ -97,7 +97,7 @@ class CorePowerup(attachment.CoreAttachment):
 			self.equipItem(self.box["RAYCAST"])
 
 
-class SimpleKey(CorePowerup):
+class CoreKey(CorePowerup):
 
 	SCALE = (0.1, 0.2, 0.05)
 	OFFSET = (0,0,0)
