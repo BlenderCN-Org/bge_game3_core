@@ -151,6 +151,9 @@ class Compass(CoreHUD):
 		rdif = look.rotation_difference(vg)
 		rdif = rdif.to_matrix()
 
+		if vg.length < 0.1:
+			rdif = self.createMatrix()
+
 		cp_comp.localOrientation = rdif
 
 		if vd < 300:
