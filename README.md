@@ -6,7 +6,8 @@ https://github.com/DaedalusMDW/bge_game-3.0_template/releases
 
 
 ## DEMO Content  
-Coming Soon... a new repository with gui, demo content, and examples.  
+https://github.com/DaedalusMDW/bge_game3_demo
+Here is a repository with gui, demo content, and examples. This is a great place to learn how to use the core.  
 
 ## Suggestions? Comments?
 blenderartists.org thread:  
