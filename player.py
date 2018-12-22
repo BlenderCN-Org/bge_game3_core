@@ -111,7 +111,8 @@ class ActorLayout(HUD.HUDLayout):
 		HUD.Stats,	# Health Bars
 		HUD.Interact,	# Target and Text
 		HUD.Inventory,	# Number Slots and Side Icons
-		HUD.Weapons	# Top Center Indicator
+		HUD.Weapons,	# Top Center Indicator
+		HUD.Compass
 		]
 
 
@@ -123,7 +124,7 @@ class CorePlayer(base.CoreAdvanced):
 	CLASS = "Standard"
 	HAND = {"MAIN":"Hand_R", "OFF":"Hand_L"}
 	WP_TYPE = "RANGED"
-	SLOTS = {"ONE":"Hip_L", "TWO":"Hip_R", "FOUR":"Shoulder_L", "FIVE":"Back", "SIX":"Shoulder_R"}
+	SLOTS = {"FIVE":"Back"}
 	SPEED = 0.1
 	JUMP = 6
 	ACCEL = 30

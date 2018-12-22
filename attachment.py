@@ -60,7 +60,7 @@ class CoreAttachment(base.CoreObject):
 		self.active_post = []
 
 		self.data = self.defaultData()
-		self.data["HUD"] = {"Color":(1,1,1,1), "Stat":0, "Text":""}
+		self.data["HUD"] = {"Color":(1,1,1,1), "Stat":100, "Text":""}
 		self.data["ENABLE"] = self.ENABLE
 		self.data["COOLDOWN"] = 0
 

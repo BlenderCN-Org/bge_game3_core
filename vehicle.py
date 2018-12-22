@@ -352,7 +352,7 @@ class CoreVehicle(base.CoreAdvanced):
 
 		hyp = (dist+margin)**2 + ((dist+margin)*height)**2
 
-		rayOBJ, rayPNT, rayNRM = self.objects["Root"].rayCast(rayto, rayfrom, hyp**0.5, "GROUND", 0, 0, 0)
+		rayOBJ, rayPNT, rayNRM = self.objects["Root"].rayCast(rayto, rayfrom, hyp**0.5, "GROUND", 1, 1, 0)
 
 		camLX = 0.0
 		camLY = -dist

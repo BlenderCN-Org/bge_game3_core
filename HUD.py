@@ -120,33 +120,42 @@ class Compass(CoreHUD):
 	OBJECT = "Compass"
 
 	def ST_Startup(self):
+		oldcam = base.SC_HUD.active_camera
+		base.SC_HUD.active_camera = self.objects["Cam"]
 		RES = logic.globalDict["GRAPHICS"]["Resolution"]
+		self.objects["Cam"].useViewport = True
 		self.objects["Cam"].setViewport(0, 0, RES[0], RES[1])
-		self.compass = None
+		base.SC_HUD.active_camera = oldcam
 
-	def ST_Active(self):
+	def destroy(self):
+		self.objects["Cam"].useViewport = False
+		self.objects["Root"].endObject()
+		self.objects["Root"] = None
+
+	def ST_Active(self, plr):
+		root = plr.objects["Root"]
+
 		cp_comp = self.objects["Direction"]
 		cp_dist = self.objects["Distance"]
 
-		if self.compass == None:
-			target = [0, 10000, 0]
-		else:
-			target = self.compass
+		target = plr.data["HUD"].get("Compass", None)
 
-		if base.SC_SCN.active_camera.parent != None:
-			origin = base.SC_SCN.active_camera.parent
-			vd, vg, vl = origin.getVectTo(target)
-			vl = [vl[0], vl[1], vl[2]]
-		else:
-			origin = base.SC_SCN.active_camera
-			vd, vg, vl = origin.getVectTo(target)
-			vl = [vl[0], vl[2]*-1, vl[1]]
+		if target == None:
+			target = [0, 0, 0]
 
-		cp_comp.alignAxisToVect(vl, 1, 0.3)
-		cp_comp.alignAxisToVect((0,0,1), 2, 1.0)
+		vd, vg, vl = root.getVectTo(target)
 
-		if vd < 800:
-			cp_dist.color[1] = 1-(((vd*0.00125)*0.8)+0.2)
+		look = base.SC_SCN.active_camera.getAxisVect((0,0,-1))
+		look[2] = 0
+		vg[2] = 0
+		rdif = look.rotation_difference(vg)
+		rdif = rdif.to_matrix()
+
+		cp_comp.localOrientation = rdif
+
+		if vd < 300:
+			vd = (1-(vd/300))**3
+			cp_dist.color[1] = vd
 		else:
 			cp_dist.color[1] = 0
 
@@ -187,7 +196,7 @@ class Annotation(CoreHUD):
 		child = obj.children["UI_Annotation"+name]
 		return child
 
-	def ST_Active(self):
+	def ST_Active(self, plr):
 		fade = False
 		if self.textlist != None:
 			OBJ = self.objects["List"]
@@ -322,7 +331,7 @@ class Weapons(CoreHUD):
 
 		mode = self.objects["Mode"]
 		wpid = self.objects["ID"]
-		stat = self.objects["Stat"]
+		stat = self.objects["Text"]
 
 		type = weap["CURRENT"]+str(weap["ACTIVE"]!="NONE")
 
@@ -353,7 +362,7 @@ class Weapons(CoreHUD):
 			SLOT = wheel["LIST"][ID]
 
 			wpid.text = str(ID)
-			stat.text = str(plr.cls_dict[SLOT].data["HUD"]["Stat"])
+			stat.text = str(plr.cls_dict[SLOT].data["HUD"]["Text"])
 
 		else:
 			wpid.text = "000"
@@ -386,8 +395,8 @@ class Inventory(CoreHUD):
 	def ST_Active(self, plr):
 		gc = []
 
-		for slot in plr.data["INVSLOT"]:
-			dict = plr.data["INVSLOT"][slot]
+		for slot in plr.cls_dict: #plr.data["INVSLOT"]:
+			dict = plr.cls_dict[slot].objects["Root"]["DICT"] #plr.data["INVSLOT"][slot]
 
 			if self.itemdict.get(slot, None) == None:
 				name = dict["Object"]
@@ -414,7 +423,12 @@ class Inventory(CoreHUD):
 				gc.append(slot)
 				break
 
-			obj["Icon"].localPosition[1] = plr.data["INVENTORY"].index(dict)*-2
+			if dict in plr.data["INVENTORY"]:
+				pos = plr.data["INVENTORY"].index(dict)
+			elif dict in plr.data["WEAPONS"]:
+				pos = plr.data["WEAPONS"].index(dict)+len(plr.data["INVENTORY"])+0.25
+
+			obj["Icon"].localPosition[1] = pos*-2
 			obj["Stat"].localScale[0] = 1-(data["HUD"]["Stat"]/100)
 			#obj["Stat"].color[1] = 1-(data["HUD"]["Stat"]/100)
 			obj["Text"].text = str(data["HUD"]["Text"])
