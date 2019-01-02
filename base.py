@@ -351,6 +351,9 @@ class CoreObject:
 			OBJECT.setActionFrame(SET, LAYER)
 			return
 
+		if CHECK == "FRAME":
+			ACTCHK = OBJECT.getActionFrame(LAYER)
+			return ACTCHK
 		if CHECK == True:
 			ACTCHK = OBJECT.isPlayingAction(LAYER)
 			return ACTCHK

@@ -149,7 +149,10 @@ class Compass(CoreHUD):
 		look[2] = 0
 		vg[2] = 0
 		rdif = look.rotation_difference(vg)
-		rdif = rdif.to_matrix()
+		rdif = rdif.to_euler()
+		rdif[0] = 0
+		rdif[1] = 0
+		rdif.to_matrix()
 
 		if vg.length < 0.1:
 			rdif = self.createMatrix()
