@@ -163,6 +163,7 @@ class CorePlayer(base.CoreAdvanced):
 		self.jump_timer = 0
 		self.crouch = 0
 		self.rayorder = "NONE"
+		self.lastaction = [None,0]
 
 		self.rayhit = None
 		self.rayvec = None
@@ -965,10 +966,12 @@ class CorePlayer(base.CoreAdvanced):
 
 		if action == "JUMP":
 			self.doAnim(NAME="Jumping", FRAME=(0,20), PRIORITY=2, MODE="PLAY", BLEND=10)
+			self.lastaction = [action, 0]
 			return
 
 		if action == "FALLING":
 			self.doAnim(NAME="Jumping", FRAME=(40,40), PRIORITY=3, MODE="LOOP", BLEND=blend)
+			self.lastaction = [action, 0]
 			return
 
 		if action == "IDLE":
@@ -978,23 +981,44 @@ class CorePlayer(base.CoreAdvanced):
 					invck = -5
 
 			self.doAnim(NAME="Jumping", FRAME=(0+invck,0+invck), PRIORITY=3, MODE="LOOP", BLEND=blend)
+			self.lastaction = [action, 0]
 			return
 
 		move = action.split(".")
 
+		if "STAIR" in move:
+			stair = ".Stairs"
+		else:
+			stair = ""
+
+		setframe = 0
+
 		if move[0] == "FORWARD":
 			if "WALK" in move:
 				self.doAnim(NAME="Walking", FRAME=(0,59), PRIORITY=3, MODE="LOOP", BLEND=blend)
+				setframe = 59
 			else:
-				self.doAnim(NAME="Running", FRAME=(0,39), PRIORITY=3, MODE="LOOP", BLEND=blend)
+				self.doAnim(NAME="Running"+stair, FRAME=(0,39), PRIORITY=3, MODE="LOOP", BLEND=blend)
+				setframe = 39
 
 		elif move[0] == "BACKWARD":
 			if "WALK" in move:
 				self.doAnim(NAME="Walking", FRAME=(59,0), PRIORITY=3, MODE="LOOP", BLEND=blend)
+				setframe = 59
 			else:
-				self.doAnim(NAME="Running", FRAME=(39,0), PRIORITY=3, MODE="LOOP", BLEND=blend)
+				self.doAnim(NAME="Running"+stair, FRAME=(39,0), PRIORITY=3, MODE="LOOP", BLEND=blend)
+				setframe = 39
+
 		else:
+			self.lastaction = ["IDLE", 0]
 			self.doPlayerAnim("IDLE")
+			return
+
+		if self.lastaction[0] != action:
+			self.lastaction[0] = action
+			self.doAnim(SET=self.lastaction[1]*setframe)
+		if setframe != 0:
+			self.lastaction[1] = self.doAnim(CHECK="FRAME")/setframe
 
 	def doCrouch(self, state):
 		self.motion["Accel"] = 0
@@ -1186,6 +1210,9 @@ class CorePlayer(base.CoreAdvanced):
 								action = "STRAFE_R"
 							if move[0] < -0.5 and abs(move[1]) < 0.5:
 								action = "STRAFE_L"
+
+					if angle > 37:
+						action = action+".STAIR"
 
 					self.doMovement((move[0], move[1], 0), mx, strafe)
 
