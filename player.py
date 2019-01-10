@@ -129,17 +129,17 @@ class CorePlayer(base.CoreAdvanced):
 	JUMP = 6
 	ACCEL = 30
 	SLOPE = 60
+	MOVERUN = True
+	SIDESTEP = False
 	OFFSET = (0, 0, 0)
 	EYE_H = 1.6
 	GND_H = 1.0
 	EDGE_H = 2.0
 	WALL_DIST = 0.4
-	CAM_ALIGN = False
 	CAM_RANGE = (1,6)
 	CAM_STEPS = 5
 	CAM_ZOOM = 2
 	CAM_MIN = 0.2
-	CAM_FOV = 90
 	HUDLAYOUT = ActorLayout
 
 	def __init__(self):
@@ -157,8 +157,11 @@ class CorePlayer(base.CoreAdvanced):
 		self.active_state = self.ST_Walking
 		self.active_post = [self.PS_Recharge, self.PS_GroundTrack]
 
-		self.gndraybias = self.GND_H #abs(self.objects["Rig"].localPosition[2])
+		self.gndraybias = self.GND_H
 		self.wallraydist = self.WALL_DIST
+		self.wallrayto = self.createVector(vec=(0, self.WALL_DIST, 0))
+		self.wallrayup = self.createVector(vec=(0, self.WALL_DIST, self.EDGE_H-self.GND_H+0.3))
+
 		self.jump_state = "NONE"
 		self.jump_timer = 0
 		self.crouch = 0
@@ -177,11 +180,11 @@ class CorePlayer(base.CoreAdvanced):
 		self.motion = {"Move":self.createVector(2), "Rotate":self.createVector(3), "Climb":0, "Accel":0}
 
 		self.data = {"HEALTH":100, "ENERGY":100, "RECHARGE":0.1,
-			"SPEED":self.SPEED, "JUMP":self.JUMP, "RUN":True}
+			"SPEED":self.SPEED, "JUMP":self.JUMP, "RUN":self.MOVERUN}
 
 		steps = (self.CAM_RANGE[1]-self.CAM_RANGE[0])/self.CAM_STEPS
 		dist = (steps*self.CAM_ZOOM)+self.CAM_RANGE[0]
-		self.data["CAMERA"] = {"State":3, "Orbit":True, "Strafe":self.CAM_ALIGN,
+		self.data["CAMERA"] = {"State":3, "Orbit":True, "Strafe":self.SIDESTEP,
 			"Zoom":self.CAM_ZOOM, "Dist":dist, "Range":self.CAM_RANGE,
 			"FOV":[self.CAM_FOV, 90], "ZR":[0,1,0], "XR":0}
 
@@ -258,9 +261,7 @@ class CorePlayer(base.CoreAdvanced):
 				pos = self.createVector(vec=zone[0])
 				pos = portal.worldPosition+(portal.worldOrientation*pos)
 
-				dr = portal.worldOrientation.to_euler()
-				ori = (zone[1][0]+dr[0], zone[1][1]+dr[1], zone[1][2]+dr[2])
-				ori = self.createMatrix(rot=ori, deg=False)
+				ori = ori*self.createMatrix(mat=zone[1])
 
 			owner.worldPosition = pos
 			owner.worldOrientation = ori
@@ -434,9 +435,6 @@ class CorePlayer(base.CoreAdvanced):
 				x = -1*x
 
 			self.objects["CamRot"].localPosition[id] = x
-
-		self.objects["WallRayTo"].localPosition = (0, self.WALL_DIST, 0)
-		self.objects["WallRay"].localPosition = (0, self.WALL_DIST, self.EDGE_H-self.GND_H+0.3)
 
 	def setCameraFOV(self, fov=None):
 		if fov == None:
@@ -687,7 +685,6 @@ class CorePlayer(base.CoreAdvanced):
 
 	def checkWall(self, z=True, axis=None, simple=None, prop="GROUND"):
 		owner = self.objects["Root"]
-		rayto = self.objects["WallRayTo"]
 
 		if axis == None:
 			axis = owner.getAxisVect((0,1,0))
@@ -719,14 +716,14 @@ class CorePlayer(base.CoreAdvanced):
 
 	def checkEdge(self, simple=False):
 		owner = self.objects["Root"]
-		rayup = self.objects["WallRay"]
-		rayto = self.objects["WallRayTo"]
+		rayup = self.getWorldSpace(owner, self.wallrayup)
+		rayto = self.getWorldSpace(owner, self.wallrayto)
 
-		#if rayto.get("XX", None) == None:
-		#	rayto["XX"] = owner.scene.addObject("Gimbal", rayto, 0)
-		#	rayto["XX"].setParent(rayto)
+		#if owner.get("XX", None) == None:
+		#	owner["XX"] = owner.scene.addObject("Gimbal", owner, 0)
+		#	owner["XX"].setParent(owner)
 
-		#guide = rayto["XX"]
+		#guide = owner["XX"]
 
 		EDGEOBJ, EDGEPNT, EDGENRM = owner.rayCast(rayto, rayup, self.EDGE_H+0.6, "GROUND", 1, 1, 0)
 
@@ -780,7 +777,7 @@ class CorePlayer(base.CoreAdvanced):
 					self.jump_state = "EDGE"
 
 		else:
-		#	guide.worldPosition = rayup.worldPosition.copy()-self.createVector(vec=[0,0,self.EDGE_H+0.6])
+		#	guide.worldPosition = rayup-self.createVector(vec=[0,0,self.EDGE_H+0.6])
 			if self.rayorder == "END":
 				self.rayorder = "NONE"
 			if self.jump_state == "EDGE":
@@ -789,19 +786,12 @@ class CorePlayer(base.CoreAdvanced):
 
 	def checkGround(self, simple=False, ray=None):
 		owner = self.objects["Root"]
-		gndto = self.objects["GroundRay"]
 		ground = None
 		angle = 0
 		slope = 1.0
 		offset = self.GND_H
+		gndto = owner.getAxisVect((0,0,-1))+owner.worldPosition
 		gndbias = 0
-
-		#if gndto.get("X", None) == None:
-		#	gndto["X"] = owner.scene.addObject("Gimbal", gndto, 0)
-		#	gndto["X"].setParent(gndto)
-		#	gndto["X"].localScale *= 0.5
-
-		#guide = gndto["X"]
 
 		if ray == None:
 			ray = (gndto, None, offset)
@@ -809,7 +799,6 @@ class CorePlayer(base.CoreAdvanced):
 		rayOBJ, rayPNT, rayNRM = owner.rayCast(ray[0], ray[1], ray[2]+0.3, "GROUND", 1, 1, 0)
 
 		if rayOBJ == None:
-		#	guide.worldPosition = gndto.worldPosition
 			self.gndraybias = offset
 
 			if simple == True:
@@ -821,19 +810,19 @@ class CorePlayer(base.CoreAdvanced):
 		else:
 			ground = [rayOBJ, rayPNT, rayNRM]
 
-		#	guide.worldPosition = rayPNT
-
-			if self.jump_state != "NONE":
-				if owner.worldPosition[2]-rayPNT[2] > self.gndraybias:
-					ground = None
-
-			if simple == True:
-				self.gndraybias = offset
-				return ground
-
 			angle = owner.getAxisVect((0,0,1)).angle(rayNRM, 0)
 			angle = round(self.toDeg(angle), 2)
 			gndbias = (angle/90)*0.3
+
+			if self.jump_state != "NONE":
+				if owner.worldPosition[2]-rayPNT[2] > offset+gndbias:
+					ground = None
+				else:
+					self.gndraybias = offset+gndbias
+
+			if simple == True:
+				self.gndraybias = offset+gndbias
+				return ground
 
 			if angle > self.SLOPE:
 				ground = None
@@ -900,6 +889,10 @@ class CorePlayer(base.CoreAdvanced):
 
 				if RAYOBJ.get("RAYNAME", None) != None:
 					self.data["HUD"]["Text"] = RAYOBJ["RAYNAME"]
+
+		if self.groundhit != None:
+			if "RAYFOOT" in self.groundhit[0]:
+				self.groundhit[0]["RAYFOOT"] = self
 
 		self.data["HUD"]["Color"] = RAYCOLOR
 		self.data["HUD"]["Target"] = RAYTARGPOS
@@ -1320,7 +1313,7 @@ class CorePlayer(base.CoreAdvanced):
 		if self.checkGround(simple=True) == None:
 			offset = self.EDGE_H-self.GND_H
 
-			ray = (self.objects["WallRayTo"], self.objects["WallRay"], 0.3)
+			ray = (self.getWorldSpace(owner, self.wallrayto), self.getWorldSpace(owner, self.wallrayup), 0.3)
 			edge = self.checkGround(simple=True, ray=ray)
 
 			if edge != None:

@@ -157,6 +157,7 @@ class CoreObject:
 
 		self.objects = {"Root":owner}
 
+		self.dict = owner["DICT"]
 		self.data = self.defaultData()
 
 		self.active_pre = []
@@ -213,7 +214,9 @@ class CoreObject:
 			vec = [fill]*int(size)
 		return mathutils.Vector(vec)
 
-	def createMatrix(self, rot=None, deg=True, mirror=""):
+	def createMatrix(self, rot=None, deg=True, mirror="", mat=None):
+		if mat != None:
+			return mathutils.Matrix(mat)
 		if rot != None:
 			if deg == True:
 				rot = [math.radians(rot[0]), math.radians(rot[1]), math.radians(rot[2])]
@@ -282,18 +285,18 @@ class CoreObject:
 		if self.UPDATE == False:
 			return
 
-		if owner["DICT"]["Data"] == None:
-			owner["DICT"]["Data"] = self.data
+		if self.dict["Data"] == None:
+			self.dict["Data"] = self.data
 			self.data["ACTIVE_STATE"] = self.active_state.__name__
 			self.saveWorldPos()
 		else:
-			self.data = owner["DICT"]["Data"]
+			self.data = self.dict["Data"]
 			self.active_state = getattr(self, self.data["ACTIVE_STATE"])
 
 		global LEVEL
-		if "Add" in owner["DICT"]:
-			LEVEL["SPAWN"].append(owner["DICT"]["Add"])
-			del owner["DICT"]["Add"]
+		if "Add" in self.dict:
+			LEVEL["SPAWN"].append(self.dict["Add"])
+			del self.dict["Add"]
 
 		if self not in logic.UPDATELIST:
 			logic.UPDATELIST.append(self)
@@ -304,8 +307,18 @@ class CoreObject:
 		self.saveWorldPos()
 
 		global LEVEL
-		if self.UPDATE == True and owner["DICT"] not in LEVEL["DROP"]:
-			LEVEL["DROP"].append(owner["DICT"])
+		if self.UPDATE == True and self.dict not in LEVEL["DROP"]:
+			LEVEL["DROP"].append(self.dict)
+
+	def getLocalSpace(self, obj, pnt):
+		lp = pnt - obj.worldPosition
+		lp = obj.worldOrientation.inverted()*lp
+		return lp
+
+	def getWorldSpace(self, obj, pnt):
+		wp = obj.worldOrientation*pnt
+		wp = wp + obj.worldPosition
+		return wp
 
 	def getTransformDiff(self, obj):
 		root = self.objects["Root"]
@@ -314,9 +327,10 @@ class CoreObject:
 		lp = obj.worldOrientation.inverted()*pnt
 		lp = [lp[0], lp[1], lp[2]]
 
-		dr = obj.worldOrientation.to_euler()
-		pr = root.worldOrientation.to_euler()
-		lr = [pr[0]-dr[0], pr[1]-dr[1], pr[2]-dr[2]]
+		dr = obj.worldOrientation#.to_euler()
+		pr = root.worldOrientation#.to_euler()
+		#lr = [pr[0]-dr[0], pr[1]-dr[1], pr[2]-dr[2]]
+		lr = self.matTuple(dr.inverted()*pr)
 
 		return lp, lr
 
@@ -439,16 +453,26 @@ class CoreObject:
 
 	## RUN ##
 	def runPre(self):
+		gc = []
 		for run in self.active_pre:
-			run()
+			st = run()
+			if st == "REMOVE":
+				gc.append(run)
+		for i in gc:
+			self.active_pre.remove(i)
 
 	def runStates(self):
 		self.active_state()
 		self.data["ACTIVE_STATE"] = self.active_state.__name__
 
 	def runPost(self):
+		gc = []
 		for run in self.active_post:
-			run()
+			st = run()
+			if st == "REMOVE":
+				gc.append(run)
+		for i in gc:
+			self.active_post.remove(i)
 
 	def RUN(self):
 		self.runPre()
@@ -463,6 +487,15 @@ class CoreAdvanced(CoreObject):
 	WP_SOCKETS = []
 	INVENTORY = {}
 	SLOTS = {}
+
+	CAM_RANGE = (2,10)
+	CAM_HEIGHT = 0.1
+	CAM_STEPS = 3
+	CAM_MIN = 1
+	CAM_ZOOM = 2
+	CAM_SLOW = 0
+	CAM_FOV = 90
+
 	HUDLAYOUT = None
 
 	def doScreenshot(self):
@@ -471,9 +504,6 @@ class CoreAdvanced(CoreObject):
 	def loadInventory(self, owner):
 		scene = owner.scene
 
-		#wpfb = self.WeaponFallback(self)
-		#self.cls_dict = {"__Fallback_WP":wpfb}
-		#self.active_pre.append(wpfb.RUN)
 		self.cls_dict = {}
 		self.active_weapon = None
 
@@ -491,8 +521,6 @@ class CoreAdvanced(CoreObject):
 
 		if self.data["WPDATA"]["ACTIVE"] == "ACTIVE":
 			type = self.data["WPDATA"]["CURRENT"]
-			#if self.data["WPDATA"]["WHEEL"][type]["ID"] == -1:
-			#	self.active_weapon = None #wpfb
 
 		char = self.objects.get("Character", None)
 		if char == None:
