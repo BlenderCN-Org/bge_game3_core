@@ -516,24 +516,21 @@ class CorePlayer(base.CoreAdvanced):
 
 		for slot in self.data["SLOTS"]:
 			key = self.data["SLOTS"][slot]
-			if slot in self.data["INVSLOT"] and keymap.BINDS[key].tap() == True:
-				dict = self.data["INVSLOT"][slot]
+			if slot in self.cls_dict and keymap.BINDS[key].tap() == True:
+				cls = self.cls_dict[slot]
 				if keymap.SYSTEM["ALT"].checkModifiers() == True:
-					dict["Data"]["POS"] = self.getDropPoint()
-					dict["Equiped"] = "DROP"
+					cls.dropItem(self.getDropPoint())
 				else:
-					dict["Data"]["ENABLE"] ^= True
+					cls.stateSwitch(run=True)
 
 		if keymap.BINDS["SUPER_DROP"].tap() == True:
 			WPDROP = self.getDropPoint()
-			for dict in self.data["INVENTORY"]:
-				dict["Data"]["POS"] = WPDROP.copy()
-				dict["Equiped"] = "DROP"
+			for slot in list(self.data["INVSLOT"].keys()):
+				self.cls_dict[slot].dropItem(WPDROP)
 				WPDROP[2] += 2
-			#for dict in self.data["WEAPONS"]:
-			#	dict["Data"]["POS"] = WPDROP.copy()
-			#	dict["Equiped"] = "DROP"
-			#	WPDROP[2] += 2
+			for slot in list(self.data["WEAPSLOT"].keys()):
+				self.cls_dict[slot].dropItem(WPDROP)
+				WPDROP[2] += 2
 
 		if keymap.SYSTEM["SCREENSHOT"].tap() == True:
 			self.doScreenshot()
