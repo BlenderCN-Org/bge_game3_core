@@ -54,6 +54,7 @@ class CorePowerup(attachment.CoreAttachment):
 		self.active_state = self.ST_Box
 		self.active_post = []
 
+		self.dict = owner["DICT"]
 		self.data = self.defaultData()
 
 		self.SCALE = [self.SCALE[0], self.SCALE[1], self.SCALE[2]]
