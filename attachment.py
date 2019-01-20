@@ -55,13 +55,13 @@ class CoreAttachment(base.CoreObject):
 		self.owning_slot = None
 		self.owning_player = None
 
-		self.active_pre = []
-		self.active_state = self.ST_Box
-		self.active_post = []
+		self.defaultStates()
 
+		self.dict = owner["DICT"]
 		self.data = self.defaultData()
+
 		self.data["HUD"] = {"Color":(1,1,1,1), "Stat":100, "Text":""}
-		self.data["ENABLE"] = self.ENABLE
+		self.data["ENABLE"] = None #self.ENABLE
 		self.data["COOLDOWN"] = 0
 
 		self.SCALE = self.createVector(size=3, fill=self.SCALE)
@@ -78,9 +78,14 @@ class CoreAttachment(base.CoreObject):
 		self.ST_Startup()
 
 		if owner["DICT"]["Equiped"] not in [None, False, "DROP"]:
-			self.equipItem(owner["RAYCAST"])
+			self.equipItem(owner["RAYCAST"], load=True)
 		else:
-			self.dropItem()
+			self.dropItem(load=True)
+
+	def defaultStates(self):
+		self.active_pre = []
+		self.active_state = self.ST_Box
+		self.active_post = []
 
 	def saveWorldPos(self):
 		obj = self.box
@@ -93,10 +98,10 @@ class CoreAttachment(base.CoreObject):
 	def buildBox(self):
 		owner = self.objects["Root"]
 
-		if owner["DICT"]["Equiped"] == None:
+		if self.dict["Equiped"] == None:
 			box = owner.scene.addObject(self.GFXBOX["Mesh"], owner, 0)
 			box.color = self.COLOR
-			owner["DICT"]["Equiped"] = None
+			self.dict["Equiped"] = None
 		else:
 			box = owner.scene.addObject(self.GFXDROP["Mesh"], owner, 0)
 			if self.GFXDROP["Halo"] == True:
@@ -105,7 +110,7 @@ class CoreAttachment(base.CoreObject):
 				#halo.color = self.COLOR
 				halo["LOCAL"] = True
 				halo["AXIS"] = None
-			owner["DICT"]["Equiped"] = False
+			self.dict["Equiped"] = False
 
 		#box.localScale = self.SCALE
 		box["RAYCAST"] = None
@@ -116,29 +121,27 @@ class CoreAttachment(base.CoreObject):
 		return box
 
 	def assignToPlayer(self):
-		owner = self.objects["Root"]
 		slot = self.owning_slot
 		cls = self.owning_player
 
-		if owner["DICT"] not in cls.data["INVENTORY"]:
-			cls.data["INVENTORY"].append(owner["DICT"])
+		if self.dict not in cls.data["INVENTORY"]:
+			cls.data["INVENTORY"].append(self.dict)
 
-		cls.data["INVSLOT"][slot] = owner["DICT"]
+		cls.data["INVSLOT"][slot] = self.dict
 
 		cls.cls_dict[slot] = self
 
 	def removeFromPlayer(self):
-		owner = self.objects["Root"]
 		slot = self.owning_slot
 		cls = self.owning_player
 
 		if cls == None:
 			return
 
-		if owner["DICT"] in cls.data["INVENTORY"]:
-			cls.data["INVENTORY"].remove(owner["DICT"])
+		if self.dict in cls.data["INVENTORY"]:
+			cls.data["INVENTORY"].remove(self.dict)
 
-		if cls.data["INVSLOT"].get(slot, None) == owner["DICT"]:
+		if cls.data["INVSLOT"].get(slot, None) == self.dict:
 			del cls.data["INVSLOT"][slot]
 
 		if cls.cls_dict.get(slot, None) == self:
@@ -160,9 +163,9 @@ class CoreAttachment(base.CoreObject):
 			obj.localPosition = (0,0,0)
 			obj.worldScale = (1,1,1)
 
-	def equipItem(self, cls):
+	def equipItem(self, cls, load=False):
 		owner = self.objects["Root"]
-		slot = owner["DICT"]["Equiped"]
+		slot = self.dict["Equiped"]
 
 		for inv in self.SLOTS:
 			if inv in cls.objects["INV"] and slot in [None, False, "DROP"]:
@@ -187,14 +190,24 @@ class CoreAttachment(base.CoreObject):
 			self.box.endObject()
 			self.box = None
 
-		owner["DICT"]["Equiped"] = slot
+		self.dict["Equiped"] = slot
 
 		if self in logic.UPDATELIST:
 			logic.UPDATELIST.remove(self)
 
-	def dropItem(self):
+		if self.data["ENABLE"] == None:
+			if self.ENABLE == True:
+				self.stateSwitch(True, run=True, force=True)
+			else:
+				self.data["ENABLE"] = False
+
+	def dropItem(self, pos=None, load=False):
 		cls = self.owning_player
 		owner = self.objects["Root"]
+
+		if load == False:
+			self.dict["Equiped"] = "DROP"
+			self.ST_Stop()
 
 		owner.alignAxisToVect((0,0,1), 2, 1.0)
 
@@ -203,6 +216,8 @@ class CoreAttachment(base.CoreObject):
 		self.removeFromPlayer()
 		self.attachToSocket(owner, self.box)
 
+		if pos != None:
+			self.data["POS"] = list(pos)
 		self.box.worldPosition = self.data["POS"]
 
 		self.active_state = self.ST_Box
@@ -214,7 +229,7 @@ class CoreAttachment(base.CoreObject):
 
 	def moveItem(self):
 		owner = self.objects["Root"]
-		slot = owner["DICT"]["Equiped"]
+		slot = self.dict["Equiped"]
 		cls = owning_player
 
 		for inv in self.SLOTS:
@@ -244,6 +259,30 @@ class CoreAttachment(base.CoreObject):
 			if obj != None:
 				box.worldPosition[2] = pnt[2]+(offset*0.5)
 
+	def stateSwitch(self, state=None, run=False, force=False):
+		if state == None:
+			if self.data["ENABLE"] == True:
+				state = False
+			else:
+				state = True
+		elif state != True:
+			state = False
+
+		if force == False:
+			if self.box != None or self.data["COOLDOWN"] != 0 or self.data["ENABLE"] == state:
+				return False
+
+		if state == True:
+			self.active_state = self.ST_Enable
+		else:
+			self.active_state = self.ST_Stop
+		self.data["ENABLE"] = state
+
+		if run == True:
+			self.active_state()
+
+		return True
+
 	## STATE BOX ##
 	def ST_Box(self):
 		if self.box_timer == 0:
@@ -256,13 +295,16 @@ class CoreAttachment(base.CoreObject):
 
 	## STATE TRIGGER ##
 	def ST_Enable(self):
-		pass
+		self.active_state = self.ST_Active
 
 	def ST_Stop(self):
+		self.active_state = self.ST_Idle
+
+	## STATES ##
+	def ST_Idle(self):
 		pass
 
-	## STATE IDLE ##
-	def ST_Idle(self):
+	def ST_Active(self):
 		pass
 
 	def RUN(self):
@@ -273,19 +315,8 @@ class CoreAttachment(base.CoreObject):
 		self.runStates()
 		self.runPost()
 		self.clearRayProps()
-		self.stateSwitcher()
-
-	def stateSwitcher(self):
-		owner = self.objects["Root"]
-		state = owner["DICT"]["Equiped"]
-
-		if state == "DROP":
-			self.ST_Stop()
-			self.dropItem()
 
 	def clearRayProps(self):
-		owner = self.objects["Root"]
-
 		if self.box != None:
 			self.box["RAYCAST"] = None
 

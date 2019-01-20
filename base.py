@@ -160,9 +160,7 @@ class CoreObject:
 		self.dict = owner["DICT"]
 		self.data = self.defaultData()
 
-		self.active_pre = []
-		self.active_state = self.ST_Disabled
-		self.active_post = []
+		self.defaultStates()
 
 		self.checkGhost(owner)
 		self.findObjects(owner)
@@ -170,13 +168,25 @@ class CoreObject:
 
 		self.ST_Startup()
 
-	def findObjects(self, obj):
+	def defaultStates(self):
+		self.active_pre = []
+		self.active_state = self.ST_Disabled
+		self.active_post = []
+
+	def defaultData(self):
+		return {}
+
+	def findObjects(self, obj, ground=None):
 		dict = self.objects
 		group = []
 		list = []
 
 		for child in obj.childrenRecursive:
-			self.checkGhost(child)
+			if ground == True:
+				child["GROUND"] = True
+			elif ground == None:
+				self.checkGhost(child)
+
 			split = child.name.split(".")
 			name = None
 
@@ -275,9 +285,6 @@ class CoreObject:
 		self.data["POS"] = self.vecTuple(obj.worldPosition)
 		self.data["ORI"] = self.matTuple(obj.worldOrientation)
 		self.data["SCL"] = self.vecTuple(obj.worldScale)
-
-	def defaultData(self):
-		return {}
 
 	def doLoad(self):
 		owner = self.objects["Root"]
@@ -488,12 +495,13 @@ class CoreAdvanced(CoreObject):
 	INVENTORY = {}
 	SLOTS = {}
 
-	CAM_RANGE = (2,10)
+	CAM_RANGE = (4,16)
 	CAM_HEIGHT = 0.1
 	CAM_STEPS = 3
+	CAM_ZOOM = 10
 	CAM_MIN = 1
-	CAM_ZOOM = 2
-	CAM_SLOW = 0
+	CAM_ORBIT = True
+	CAM_SLOW = 10
 	CAM_FOV = 90
 
 	HUDLAYOUT = None
@@ -574,6 +582,8 @@ class CoreAdvanced(CoreObject):
 		for mode in weap["WHEEL"]:
 			if len(weap["WHEEL"][mode]["LIST"]) >= 1:
 				modes.append(mode)
+			else:
+				weap["WHEEL"][mode]["ID"] = -1
 
 		if len(modes) >= 1:
 			if weap["CURRENT"] == "NONE":
@@ -624,7 +634,7 @@ class CoreAdvanced(CoreObject):
 
 				if self.active_weapon != self.cls_dict[slot]:
 					if weap["TIMER"] == 10:
-						check = self.active_weapon.doSheath()
+						check = self.active_weapon.stateSwitch(False)
 						if check == True:
 							weap["TIMER"] = 0
 							weap["ACTIVE"] = "SWITCH"
@@ -634,12 +644,13 @@ class CoreAdvanced(CoreObject):
 
 				## STATE PASSIVE ##
 				if keymap.BINDS["SHEATH"].tap() == True:
-					check = self.active_weapon.doSheath()
+					check = self.active_weapon.stateSwitch(False)
 					if check == True:
 						weap["TIMER"] = 0
 						weap["ACTIVE"] = "NONE"
 
 			else:
+				weap["TIMER"] = 0
 				weap["ACTIVE"] = "NONE"
 
 		elif weap["ACTIVE"] == "SWITCH":
@@ -648,7 +659,7 @@ class CoreAdvanced(CoreObject):
 				slot = dict["LIST"][dict["ID"]]
 				self.active_weapon = self.cls_dict[slot]
 
-				check = self.active_weapon.doDraw()
+				check = self.active_weapon.stateSwitch(True)
 
 				if check == True:
 					weap["TIMER"] = 0
@@ -664,7 +675,7 @@ class CoreAdvanced(CoreObject):
 
 			else:
 				weap["TIMER"] = 0
-				self.active_weapon.doSheath()
+				self.active_weapon.stateSwitch(False)
 
 
 		#char = self.objects.get("Character", None)

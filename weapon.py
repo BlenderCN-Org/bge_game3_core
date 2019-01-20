@@ -35,17 +35,21 @@ class CoreWeapon(attachment.CoreAttachment):
 	COLOR = (0,1,0,1)
 	TYPE = "RANGED"
 	HAND = "MAIN"
-	WAIT = 20
+	WAIT = 40
+
+	def defaultStates(self):
+		self.active_pre = []
+		self.active_state = self.ST_Box
+		self.active_post = []
 
 	def assignToPlayer(self):
-		owner = self.objects["Root"]
 		slot = self.owning_slot
 		cls = self.owning_player
 
-		if owner["DICT"] not in cls.data["WEAPONS"]:
-			cls.data["WEAPONS"].append(owner["DICT"])
+		if self.dict not in cls.data["WEAPONS"]:
+			cls.data["WEAPONS"].append(self.dict)
 
-		cls.data["WEAPSLOT"][slot] = owner["DICT"]
+		cls.data["INVSLOT"][slot] = self.dict
 
 		if slot not in cls.data["WPDATA"]["WHEEL"][self.TYPE]["LIST"]:
 			cls.data["WPDATA"]["WHEEL"][self.TYPE]["LIST"].append(slot)
@@ -59,70 +63,68 @@ class CoreWeapon(attachment.CoreAttachment):
 			self.doPlayerAnim("LOOP")
 
 	def removeFromPlayer(self):
-		owner = self.objects["Root"]
 		slot = self.owning_slot
 		cls = self.owning_player
 
 		if cls == None:
 			return
 
-		if owner["DICT"] in cls.data["WEAPONS"]:
-			cls.data["WEAPONS"].remove(owner["DICT"])
+		if self.dict in cls.data["WEAPONS"]:
+			cls.data["WEAPONS"].remove(self.dict)
 
-		if cls.data["WEAPSLOT"].get(slot, None) == owner["DICT"]:
-			del cls.data["WEAPSLOT"][slot]
+		if cls.data["INVSLOT"].get(slot, None) == self.dict:
+			del cls.data["INVSLOT"][slot]
 
-		if slot in cls.data["WPDATA"]["WHEEL"][self.TYPE]["LIST"]:
-			cls.data["WPDATA"]["WHEEL"][self.TYPE]["LIST"].remove(slot)
+		weap = cls.data["WPDATA"]["WHEEL"][self.TYPE]
+
+		if slot in weap["LIST"]:
+			weap["LIST"].remove(slot)
+
+		if weap["ID"] >= len(weap["LIST"]):
+			weap["ID"] = len(weap["LIST"])-1
+		if weap["ID"] == -1:
+			cls.data["WPDATA"]["CURRENT"] = "NONE"
 
 		if cls.cls_dict.get(slot, None) == self:
 			del cls.cls_dict[slot]
-
-	def doDraw(self):
-		if self.box == None and self.data["ENABLE"] == False and self.data["COOLDOWN"] == 0:
-			self.data["ENABLE"] = True
-			self.ST_Draw_Set()
-			return True
-		return False
-
-	def doSheath(self):
-		if self.box == None and self.data["ENABLE"] == True and self.data["COOLDOWN"] == 0:
-			self.ST_Sheath_Set()
-			return True
-		return False
 
 	def doPlayerAnim(self, frame=0):
 		plr = self.owning_player
 		anim = self.TYPE+plr.HAND[self.HAND]+self.owning_slot
 		start = 0
-		end = 20
+		end = 40
+		lyr = 1+(self.HAND=="OFF")
 
 		if frame == "LOOP":
-			plr.doAnim(NAME=anim, FRAME=(end,end), LAYER=1, PRIORITY=2, MODE="LOOP")
+			plr.doAnim(NAME=anim, FRAME=(end,end), LAYER=lyr, PRIORITY=2, MODE="LOOP")
+		elif frame == "STOP":
+			plr.doAnim(LAYER=lyr, STOP=True)
 		elif type(frame) is int:
-			plr.doAnim(NAME=anim, FRAME=(start,end), LAYER=1)
-			frame = (frame/self.WAIT)*end
+			plr.doAnim(NAME=anim, FRAME=(start,end), LAYER=lyr)
+			fac = (frame/self.WAIT)
 			if frame < 0:
-				frame = end+frame
-			plr.doAnim(LAYER=1, SET=frame)
+				fac = 1+fac
+			plr.doAnim(LAYER=lyr, SET=fac*end)
+
+	def getEffectValue(self):
+		scale = -1
+
+		if self.active_state in [self.ST_Stop, self.ST_Enable]:
+			fac = (self.data["COOLDOWN"]/self.WAIT)
+			if fac < 0:
+				fac = 1+fac
+
+			scale = (fac*2)-1
+
+		return scale
 
 	def ST_Startup(self):
 		self.data["HUD"]["Stat"] = 100
 		self.data["HUD"]["Text"] = ""
 
-	## STATE TRIGGER ##
-	def ST_Enable(self):
-		self.active_state = self.ST_Active
-
-	def ST_Stop(self):
-		self.active_state = self.ST_Idle
-
 	## STATE TRANSITION ##
-	def ST_Draw_Set(self):
-		self.active_state = self.ST_Draw
-
-	def ST_Draw(self, load=False):
-		if self.data["COOLDOWN"] == 0:
+	def ST_Enable(self):
+		if self.data["COOLDOWN"] == int(self.WAIT*0.5):
 			hand = self.owning_player.HAND[self.HAND]
 			hand = self.owning_player.objects["SKT"][hand]
 			self.attachToSocket(self.objects["Mesh"], hand)
@@ -130,42 +132,24 @@ class CoreWeapon(attachment.CoreAttachment):
 		self.data["COOLDOWN"] += 1
 		self.doPlayerAnim(self.data["COOLDOWN"])
 
-		if self.data["COOLDOWN"] == self.WAIT or load == True:
+		if self.data["COOLDOWN"] == self.WAIT:
 			self.doPlayerAnim("LOOP")
 			self.data["COOLDOWN"] = 0
-			self.ST_Enable()
+			self.active_state = self.ST_Active
 
-	def ST_Sheath_Set(self):
-		self.active_state = self.ST_Sheath
-
-	def ST_Sheath(self):
+	def ST_Stop(self):
 		self.data["COOLDOWN"] -= 1
 		self.doPlayerAnim(self.data["COOLDOWN"])
 
-		if self.data["COOLDOWN"] == -self.WAIT:
+		if self.data["COOLDOWN"] == int(-self.WAIT*0.5) or self.dict["Equiped"] == "DROP":
 			self.attachToSocket(self.objects["Mesh"], self.objects["Socket"])
-			self.owning_player.doAnim(LAYER=1, STOP=True)
+
+		if self.data["COOLDOWN"] == -self.WAIT or self.dict["Equiped"] == "DROP":
+			self.doPlayerAnim("STOP")
 			self.owning_player.active_weapon = None
-			self.data["ENABLE"] = False
 			self.data["COOLDOWN"] = 0
-			self.ST_Stop()
+			self.data["ENABLE"] = False
+			self.active_state = self.ST_Idle
 
-	## STATE TYPES ##
-	def ST_Active(self):
-		pass
-
-	def ST_Idle(self):
-		pass
-
-	def stateSwitcher(self):
-		owner = self.objects["Root"]
-		state = owner["DICT"]["Equiped"]
-
-		if state == "DROP":
-			if self.active_state == self.ST_Idle:
-				self.ST_Stop()
-				self.dropItem()
-			else:
-				owner["DICT"]["Equiped"] = True
 
 

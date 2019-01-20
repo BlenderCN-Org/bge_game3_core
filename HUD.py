@@ -39,18 +39,19 @@ def START(cont):
 		base.SC_SCN.post_draw.remove(settings.SCREENSHOT)
 
 	print("Loading HUD...")
+	base.LEVEL["HUDData"] = {}
 
 	logic.LibLoad( base.DATA["GAMEPATH"]+"CONTENT\\Game Assets HUD.blend", "Scene", load_actions=True, verbose=False, load_scripts=True)
 
 
 def RUN(cont):
 	if logic.HUDCLASS != None and logic.PLAYERCLASS != None:
-		try:
-			logic.HUDCLASS.RUN()
-		except Exception as ex:
-			logic.HUDCLASS = None #.setControl(None, None)
-			print("FATAL RUNTIME ERROR:", cont.owner.name)
-			print("\t", ex)
+		#try:
+		logic.HUDCLASS.RUN()
+		#except Exception as ex:
+		#	logic.HUDCLASS = None #.setControl(None, None)
+		#	print("FATAL RUNTIME ERROR:", cont.owner.name)
+		#	print("\t", ex)
 
 
 class CoreHUD(base.CoreObject):
@@ -65,6 +66,11 @@ class CoreHUD(base.CoreObject):
 		self.objects = {"Root":owner}
 
 		self.data = self.defaultData()
+
+		if self.OBJECT not in base.LEVEL["HUDData"]:
+			base.LEVEL["HUDData"][self.OBJECT] = self.data
+		else:
+			self.data = base.LEVEL["HUDData"][self.OBJECT]
 
 		self.active_pre = []
 		self.active_state = self.ST_Active
@@ -119,6 +125,10 @@ class Compass(CoreHUD):
 
 	OBJECT = "Compass"
 
+	def defaultData(self):
+		dict = {"Target":(0,0,0), "Map":None, "Scene":None}
+		return dict
+
 	def ST_Startup(self):
 		oldcam = base.SC_HUD.active_camera
 		base.SC_HUD.active_camera = self.objects["Cam"]
@@ -132,16 +142,17 @@ class Compass(CoreHUD):
 		self.objects["Root"].endObject()
 		self.objects["Root"] = None
 
+	#def getDoorTarget(self, map):
+	#	for obj in base.SC_SCN.objects:
+	#		if "MAP" in obj:
+
 	def ST_Active(self, plr):
 		root = plr.objects["Root"]
 
 		cp_comp = self.objects["Direction"]
 		cp_dist = self.objects["Distance"]
 
-		target = plr.data["HUD"].get("Compass", None)
-
-		if target == None:
-			target = [0, 0, 0]
+		target = self.data["Target"]
 
 		vd, vg, vl = root.getVectTo(target)
 
@@ -342,16 +353,15 @@ class Weapons(CoreHUD):
 		type = weap["CURRENT"]+str(weap["ACTIVE"]!="NONE")
 
 		if self.weaptype != type:
+			self.weaptype = type
 			if "NONE" in type:
 				self.objects["Root"].setVisible(False, True)
 			else:
 				self.objects["Root"].setVisible(True, True)
 			if "MELEE" in type:
 				mode.worldOrientation = self.createMatrix(mirror="XZ")
-				self.weaptype = type
 			if "RANGED" in type:
 				mode.worldOrientation = self.createMatrix()
-				self.weaptype = type
 
 			if weap["ACTIVE"] == "NONE":
 				mode.color = (0.4, 0.4, 0.4, 0.5)
@@ -401,8 +411,8 @@ class Inventory(CoreHUD):
 	def ST_Active(self, plr):
 		gc = []
 
-		for slot in plr.cls_dict: #plr.data["INVSLOT"]:
-			dict = plr.cls_dict[slot].objects["Root"]["DICT"] #plr.data["INVSLOT"][slot]
+		for slot in plr.cls_dict:
+			dict = plr.cls_dict[slot].dict
 
 			if self.itemdict.get(slot, None) == None:
 				name = dict["Object"]
