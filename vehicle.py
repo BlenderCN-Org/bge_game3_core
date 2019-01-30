@@ -24,50 +24,69 @@
 
 from bge import logic, constraints
 
-from . import base, keymap, HUD
+from . import base, keymap, HUD, viewport
 
 
 class CoreVehicle(base.CoreAdvanced):
 
 	NAME = "Vehicle"
 	PORTAL = True
-	SPAWN = (-1, 0, 0)
-	PLAYERACTION = "SeatLow"
 
-	CAMFIRST = {"POS":(0,0,0)}
-	CAMTHIRD = {"DIST":10, "ZRATIO":0.1, "MIN":1, "SLOW":10, "RANGE":(4, 16)}
+	WH_OBJECT = "Wheel.None"  # wheel contsraint object
+	WH_MESH = None            # Visual wheel object
+	WH_RADIUS = 0.2           # Wheel radius
+	WH_COLOR = None
 
-	WHEELOBJECT = {"MESH":"Wheel.Small", "RADIUS":0.2, "COLOR":(1,1,1,1)}
-	WHEELSETUP = {"FRONT":1, "REAR":-1, "WIDTH":1, "HEIGHT":0.25, "LENGTH":0.25}
-	WHEELCONFIG = {"ROLL":0.1, "SPRING":50, "DAMPING":10, "FRICTION":5}
+	WH_FRONT = 1      # Forward axle offset
+	WH_REAR = -1      # Backward axle offset
+	WH_WIDTH = 1      # Axle width
+	WH_HEIGHT = 0.25  # Axle Z offset
+
+	VEH_LENGTH = 0.25  # Suspension length
+
+	VEH_ROLL = 0.1
+	VEH_SPRING = 50
+	VEH_DAMPING = 10
+	VEH_FRICTION = 5
+
+	WHEELS = {
+		"Wheel_FR": {"STEER":True},
+		"Wheel_FL": {"LEFT":True, "SCALE":True},
+		"Wheel_RR": {"REAR":True},
+		"Wheel_RL": {"REAR":True, "LEFT":True, "SCALE":True} }
+
+	SEATS = {
+		"Seat_1": {"NAME":"Driver", "DOOR":"Door_1", "CAMERA":None, "ACTION":"SeatLow", "VISIBLE":True, "SPAWN":[-2,0,0]} }
 
 	def __init__(self):
 		owner = logic.getCurrentController().owner
 
 		owner["Class"] = self
 
-		owner["RAYCAST"] = owner.get("RAYCAST", None)
 		owner["RAYNAME"] = self.NAME
 
-		spawn = base.SC_SCN.addObject("Vehicle.Spawn", owner, 0)
-		spawn.setParent(owner)
-		spawn.localPosition = self.SPAWN
-
-		self.objects = {"Root":owner, "Wheels":[], "Spawn":spawn}
+		self.objects = {"Root":owner}
 
 		self.active_pre = []
 		self.active_state = self.ST_Idle
-		self.active_post = []
+		self.active_post = [self.PS_SuspensionRig]
 
-		self.driving_player = None
+		self.driving_player = owner.get("RAYCAST", None)
+		self.driving_seat = None
 
 		self.vehicle_constraint = None
+		self.wheel_id = []
+		self.id_range = []
+		self.wheelobj = {}
+		self.seatobj = {}
+		self.doorobj = {}
 		self.cid = 999
 
+		self.dict = owner["DICT"]
 		self.data = self.defaultData()
+
 		self.data["HEALTH"] = 100
 		self.data["ENERGY"] = 100
-		self.data["CAMERA"] = {"State":3, "Orbit":None, "Dist":self.CAMTHIRD["DIST"], "Zoom":self.CAMTHIRD["DIST"]}
 		self.data["HUD"] = {"Text":"", "Color":(0,0,0,0.5), "Target":None}
 		self.data["PORTAL"] = False
 		self.data["LINVEL"] = (0,0,0)
@@ -77,16 +96,15 @@ class CoreVehicle(base.CoreAdvanced):
 
 		self.addCollisionCallBack()
 
-		self.createCamera()
 		self.checkGhost(owner)
-		self.findObjects(owner)
+		self.findObjects(owner, ground=False)
+		self.findSeats()
 		self.doLoad()
 		self.createVehicle()
 		self.ST_Startup()
 		self.doPortal()
 
 		self.loadInventory(owner)
-		self.doCameraCollision()
 
 	def doPortal(self):
 		owner = self.objects["Root"]
@@ -107,9 +125,8 @@ class CoreVehicle(base.CoreAdvanced):
 				pos = self.createVector(vec=zone[0])
 				pos = portal.worldPosition+(portal.worldOrientation*pos)
 
-				dr = portal.worldOrientation.to_euler()
-				ori = (zone[1][0]+dr[0], zone[1][1]+dr[1], zone[1][2]+dr[2])
-				ori = self.createMatrix(rot=ori, deg=False)
+				ori = self.createMatrix(mat=zone[1])
+				ori = owner.worldOrientation*ori
 
 				owner.worldPosition = pos
 				owner.worldOrientation = ori
@@ -120,6 +137,9 @@ class CoreVehicle(base.CoreAdvanced):
 			base.DATA["Portal"]["Door"] = None
 			base.DATA["Portal"]["Zone"] = None
 			base.DATA["Portal"]["Vehicle"] = None
+
+			self.driving_seat = self.data["ACTIVE_SEAT"]
+
 			self.ST_Active_Set()
 
 	def doUpdate(self):
@@ -128,35 +148,19 @@ class CoreVehicle(base.CoreAdvanced):
 		self.data["LINVEL"] = self.vecTuple(owner.localLinearVelocity)
 		self.data["ANGVEL"] = self.vecTuple(owner.localAngularVelocity)
 
+		self.data["ACTIVE_SEAT"] = self.driving_seat
+
 		if self.driving_player != None:
 			self.data["PORTAL"] = True
 			base.LEVEL["PLAYER"]["POS"] = self.vecTuple(owner.worldPosition)
 			base.LEVEL["PLAYER"]["ORI"] = self.matTuple(owner.worldOrientation)
-			base.DATA["Portal"]["Vehicle"] = owner["DICT"]
+			base.DATA["Portal"]["Vehicle"] = self.dict
 
 		else:
 			self.saveWorldPos()
 
-			if self.UPDATE == True and owner["DICT"] not in base.LEVEL["DROP"]:
-				base.LEVEL["DROP"].append(owner["DICT"])
-
-	def createCamera(self):
-		owner = self.objects["Root"]
-		scene = owner.scene
-
-		third = scene.addObject("Vehicle.CamThird.Loc", owner, 0)
-		third.setParent(owner)
-		third.localPosition = (0,0,0)
-
-		for child in third.childrenRecursive:
-			if child.name.split(".")[2] == "Cam":
-				child.timeOffset = 0
-
-		first = scene.addObject("Vehicle.CamFirst.Loc", owner, 0)
-		first.setParent(owner)
-		first.localPosition = self.CAMFIRST["POS"]
-
-		self.cam_slow = []
+			if self.UPDATE == True and self.dict not in base.LEVEL["DROP"]:
+				base.LEVEL["DROP"].append(self.dict)
 
 	def getConstraint(self):
 		owner = self.objects["Root"]
@@ -172,57 +176,150 @@ class CoreVehicle(base.CoreAdvanced):
 
 		return vehicle
 
+	def findSeats(self):
+		for key in self.SEATS:
+			dict = self.SEATS[key]
+			seat = self.objects.get(key, None)
+			door = self.objects.get(dict.get("DOOR", None), None)
+			if seat != None:
+				self.seatobj[key] = seat
+			if door != None:
+				name = dict.get("NAME", key)
+				door["RAYNAME"] = self.NAME+": "+name
+				door["RAYCAST"] = door.get("RAYCAST", None)
+				self.doorobj[key] = door
+
+		owner = self.objects["Root"]
+		if len(self.seatobj) == 0 or len(self.doorobj) == 0:
+			owner["RAYCAST"] = owner.get("RAYCAST", None)
+			self.seatobj["."] = owner
+			self.doorobj["."] = owner
+
 	def createVehicle(self):
 		self.vehicle_constraint = self.getConstraint()
 
-		setup = self.WHEELSETUP
-
-		self.addWheel((setup["WIDTH"], setup["FRONT"], setup["HEIGHT"]))
-		self.addWheel((-setup["WIDTH"], setup["FRONT"], setup["HEIGHT"]))
-		self.addWheel((setup["WIDTH"], setup["REAR"], setup["HEIGHT"]))
-		self.addWheel((-setup["WIDTH"], setup["REAR"], setup["HEIGHT"]))
+		for w in self.WHEELS:
+			self.addWheel(w, self.WHEELS[w])
 
 	def removeVehicle(self):
 		constraints.removeConstraint(self.cid)
 
-		for wheel in self.objects["Wheels"]:
-			wheel.endObject()
+		for w in self.wheelobj:
+			self.wheelobj[w].endObject()
 
 		self.vehicle_constraint = None
-		self.objects["Wheels"] = []
+		self.wheel_id = []
+		self.id_range = []
+		self.wheelobj = {}
 		self.cid = 999
 
-	def addWheel(self, pos):
-		dict = self.WHEELOBJECT
-		setup = self.WHEELSETUP
-		config = self.WHEELCONFIG
+	def addWheel(self, w, dict={}):
+		id = len(self.wheel_id)
 
-		obj = base.SC_SCN.addObject(dict["MESH"], self.objects["Root"], 0)
+		R = 0
+		S = 1
+		X = self.WH_WIDTH
+		Y = self.WH_FRONT
 
-		if pos[0] < 0:
-			obj.localScale = (-1,1,1)
-		else:
-			obj.localScale = (1,1,1)
+		obj = base.SC_SCN.addObject(self.WH_OBJECT, self.objects["Root"], 0)
 
-		self.vehicle_constraint.addWheel(obj, (pos[0], pos[1], -pos[2]), (0,0,-1), (-1,0,0), setup["LENGTH"], dict["RADIUS"], True)
+		if dict.get("LEFT", False) == True:
+			X = -X
+		if dict.get("CENTER", False) == True:
+			X = 0
+		if dict.get("REAR", False) == True:
+			Y = self.WH_REAR
+		if dict.get("ROTATE", False) == True:
+			R = 180
+		if dict.get("SCALE", False) == True:
+			S = -1
 
-		id = len(self.objects["Wheels"])
+		if self.WH_MESH != None:
+			msh = base.SC_SCN.addObject(self.WH_MESH, self.objects["Root"], 0)
+			msh.setParent(obj)
+			msh.localPosition = self.createVector()
+			msh.localOrientation = self.createMatrix(rot=(0,0,R))
+			msh.localScale = (S,1,1)
+			if self.WH_COLOR != None:
+				msh.color = self.WH_COLOR
 
-		self.vehicle_constraint.setRollInfluence(config["ROLL"], id)
-		self.vehicle_constraint.setSuspensionStiffness(config["SPRING"], id)
-		self.vehicle_constraint.setSuspensionDamping(config["DAMPING"], id)
-		self.vehicle_constraint.setTyreFriction(config["FRICTION"], id)
-		self.vehicle_constraint.setSuspensionCompression(0.0, id)
+		pos = dict.get("POS", [X, Y, -self.WH_HEIGHT])
+		length = dict.get("LENGTH", self.VEH_LENGTH)
+		radius = dict.get("RADIUS", self.WH_RADIUS)
 
-		obj.color = dict.get("COLOR", obj.color)
+		self.vehicle_constraint.addWheel(obj, pos, (0,0,-1), (-1,0,0), length, radius, True)
 
-		self.objects["Wheels"].append(obj)
+		self.vehicle_constraint.setRollInfluence(self.VEH_ROLL, id)
+		self.vehicle_constraint.setSuspensionStiffness(self.VEH_SPRING, id)
+		self.vehicle_constraint.setSuspensionDamping(self.VEH_DAMPING, id)
+		self.vehicle_constraint.setTyreFriction(self.VEH_FRICTION, id)
+		self.vehicle_constraint.setSuspensionCompression(0, id)
+
+		self.wheel_id.append(w)
+		self.id_range.append(id)
+		self.wheelobj[w] = obj
+
 		return obj
+
+	def getWheelId(self, wheel, key):
+		if wheel == key or wheel == None:
+			return True
+		elif wheel == "FRONT" and "REAR" not in self.WHEELS[key]:
+			return True
+		elif wheel == "REAR" and "REAR" in self.WHEELS[key]:
+			return True
+		return False
+
+	def setWheelSteering(self, value, wheel=None, all=False):
+		if self.vehicle_constraint == None:
+			return
+
+		for i in self.id_range:
+			key = self.wheel_id[i]
+			check = False
+			steer = 0
+			if self.getWheelId(wheel, key) == True:
+				check = True
+				steer = value
+			if all == True or check == True:
+				self.vehicle_constraint.setSteeringValue(steer, i)
+
+	def setWheelPower(self, value, wheel=None, all=False):
+		if self.vehicle_constraint == None:
+			return
+
+		for i in self.id_range:
+			key = self.wheel_id[i]
+			check = False
+			power = 0
+			if self.getWheelId(wheel, key) == True:
+				check = True
+				power = value
+			if all == True or check == True:
+				self.vehicle_constraint.applyEngineForce(power, i)
+
+	def setWheelBrake(self, value, wheel=None, all=False):
+		if self.vehicle_constraint == None:
+			return
+
+		for i in self.id_range:
+			key = self.wheel_id[i]
+			check = False
+			brake = 0
+			if self.getWheelId(wheel, key) == True:
+				check = True
+				brake = value
+			if all == True or check == True:
+				self.vehicle_constraint.applyBraking(brake, i)
+
+	def assignCamera(self):
+		viewport.setCamera(self)
+		viewport.setParent(self.objects["Root"])
 
 	def hideObject(self):
 		self.objects["Root"].setVisible(False, True)
-		for wheel in self.objects["Wheels"]:
-			wheel.setVisible(False, True)
+		for w in self.wheelobj:
+			self.wheelobj[w].setVisible(False, True)
 
 	def alignObject(self, offset=0.5, velocity=True):
 		owner = self.objects["Root"]
@@ -235,14 +332,18 @@ class CoreVehicle(base.CoreAdvanced):
 			return True
 		return False
 
-	def setPlayerVisibility(self, seat, vis=None):
-		if self.driving_player == None:
+	def setPlayerVisibility(self, vis=None):
+		if self.driving_player == None or self.driving_seat == None:
 			return
-		if vis == None:
-			if self.data["CAMERA"]["State"] == 1:
-				vis = False
-			else:
-				vis = True
+
+		seat = self.seatobj[self.driving_seat]
+
+		if self.driving_seat == ".":
+			vis = False
+			seat = self.driving_player.objects["Character"]
+		elif vis == None:
+			dict = self.SEATS[self.driving_seat]
+			vis = dict.get("VISIBLE", True)
 			
 		for child in seat.childrenRecursive:
 			if child == self.driving_player.objects["Mesh"]:
@@ -250,160 +351,40 @@ class CoreVehicle(base.CoreAdvanced):
 			else:
 				child.setVisible(False, False)
 
-	def setCamera(self, CAM=0):
-		self.objects["CamThird"]["Cam"].timeOffset = self.CAMTHIRD["SLOW"]
-		self.objects["CamFirst"]["Loc"].localOrientation = self.createMatrix()
-		self.objects["CamFirst"]["Rot"].localOrientation = self.createMatrix()
-		self.data["CAMERA"]["Dist"] = self.data["CAMERA"]["Zoom"]
-
-		if CAM == 0:
-			CAM = self.data["CAMERA"]["State"]
-
-		if CAM == 3:
-			base.SC_SCN.active_camera = self.objects["CamThird"]["Cam"]
-			self.setPlayerVisibility(self.objects["Seat"]["1"], True)
-			#self.objects["Seat"]["1"].setVisible(True, True)
-			self.data["CAMERA"]["State"] = 3
-
-		elif CAM == 1:
-			base.SC_SCN.active_camera = self.objects["CamFirst"]["Cam"]
-			self.setPlayerVisibility(self.objects["Seat"]["1"], False)
-			#self.objects["Seat"]["1"].setVisible(False, True)
-			self.data["CAMERA"]["State"] = 1
-
-	def doCameraState(self):
-		camdata = self.data["CAMERA"]
-
-		if self.data["CAMERA"]["State"] == 1:
-			if keymap.BINDS["TOGGLECAM"].tap() == True:
-				self.setCamera(3)
-
-		elif self.data["CAMERA"]["State"] == 3:
-			if keymap.BINDS["TOGGLECAM"].tap() == True:
-				self.setCamera(1)
-
-		## Set Camera Zoom ##
-		camdata["Dist"] += (camdata["Zoom"]-camdata["Dist"])*0.1
-
-		if keymap.BINDS["ZOOM_IN"].tap() == True and camdata["Zoom"] > self.CAMTHIRD["RANGE"][0]:
-			camdata["Zoom"] -= 1
-
-		elif keymap.BINDS["ZOOM_OUT"].tap() == True and camdata["Zoom"] < self.CAMTHIRD["RANGE"][1]:
-			camdata["Zoom"] += 1
-
-		## Slow Cam ##
-		#if self.CAMTHIRD["SLOW"] > 1:
-		#	self.cam_slow.append(self.objects["Root"].worldOrientation.copy())
-		#	if len(self.cam_slow) > abs(self.CAMTHIRD["SLOW"]):
-		#		self.cam_slow.pop(0)
-		#	self.objects["CamThird"]["Loc"].worldOrientation = self.cam_slow[0]
-
-
-		## Toggle Orbit ##
-		if self.data["CAMERA"]["Orbit"] == None:
-
-			if keymap.BINDS["CAM_ORBIT"].tap() == True:
-				keymap.MOUSELOOK.center()
-				self.data["CAMERA"]["Orbit"] = self.CAMTHIRD["SLOW"]
-
-			#wp = self.objects["Root"].worldPosition
-			#wv = self.objects["Root"].worldLinearVelocity
-			#self.objects["CamThird"]["Loc"] = wp-(wv*0.05)
-
-		else:
-			X, Y = keymap.MOUSELOOK.axis()
-
-			self.objects["CamFirst"]["Loc"].applyRotation((0,0,X), True)
-			self.objects["CamFirst"]["Rot"].applyRotation((Y,0,0), True)
-
-			if keymap.BINDS["CAM_ORBIT"].tap() == True:
-				keymap.MOUSELOOK.center()
-				self.data["CAMERA"]["Orbit"] = None
-				self.objects["CamThird"]["Cam"].timeOffset = self.CAMTHIRD["SLOW"]
-				self.objects["CamFirst"]["Loc"].localOrientation = self.createMatrix()
-				self.objects["CamFirst"]["Rot"].localOrientation = self.createMatrix()
-
-			else:
-				self.objects["CamThird"]["Cam"].timeOffset = self.data["CAMERA"]["Orbit"]
-				self.data["CAMERA"]["Orbit"] -= self.data["CAMERA"]["Orbit"]*(1/self.CAMTHIRD["SLOW"])
-				if self.data["CAMERA"]["Orbit"] < 0:
-					self.data["CAMERA"]["Orbit"] = 0
-
-			self.objects["CamThird"]["Loc"].localOrientation = self.objects["CamFirst"]["Loc"].localOrientation.copy()
-			self.objects["CamThird"]["Rot"].localOrientation = self.objects["CamFirst"]["Rot"].localOrientation.copy()
-
-			#wp = self.objects["Root"].worldPosition
-			#self.objects["CamThird"]["Loc"] = wp
-
-	def doCameraCollision(self):
-		camdata = self.data["CAMERA"]
-		setup = self.CAMTHIRD
-		objects = self.objects["CamThird"]
-
-		margin = 1
-		height = setup["ZRATIO"]
-		dist = camdata["Dist"]
-
-		camera = objects["Cam"]
-		rayfrom = objects["Rot"]
-		rayto = objects["Ray"]
-
-		rayto.localPosition = (0, -dist, dist*height)
-
-		hyp = (dist+margin)**2 + ((dist+margin)*height)**2
-
-		rayOBJ, rayPNT, rayNRM = self.objects["Root"].rayCast(rayto, rayfrom, hyp**0.5, "GROUND", 1, 1, 0)
-
-		camLX = 0.0
-		camLY = -dist
-		camLZ = dist*height
-
-		if rayOBJ:
-			rayto.worldPosition = rayPNT
-
-			margin = margin*(abs(rayto.localPosition[1])/(dist+margin))
-
-			camLX = 0.0
-			camLY = rayto.localPosition[1]+margin
-			camLZ = rayto.localPosition[2]-(margin*height)
-
-		if camLZ < setup["MIN"]:
-			camLZ = setup["MIN"]
-
-		camera.localPosition[0] = camLX
-		camera.localPosition[1] = camLY
-		camera.localPosition[2] = camLZ
-
 	def getInputs(self):
 		KB = keymap.BINDS
 
-		STRAFE = KB["VEH_STRAFERIGHT"].axis(True, clip=True) - KB["VEH_STRAFELEFT"].axis(True, clip=True)
-		POWER = KB["VEH_THROTTLEUP"].axis(True, clip=True) - KB["VEH_THROTTLEDOWN"].axis(True, clip=True)
-		CLIMB = KB["VEH_ASCEND"].axis(True, clip=True) - KB["VEH_DESCEND"].axis(True, clip=True)
+		STRAFE = KB["VEH_STRAFERIGHT"].axis(True, True) - KB["VEH_STRAFELEFT"].axis(True, True)
+		POWER = KB["VEH_THROTTLEUP"].axis(True, True) - KB["VEH_THROTTLEDOWN"].axis(True, True)
+		CLIMB = KB["VEH_ASCEND"].axis(True, True) - KB["VEH_DESCEND"].axis(True, True)
 
 		self.motion["Force"][0] = STRAFE
 		self.motion["Force"][1] = POWER
 		self.motion["Force"][2] = CLIMB
 
-		PITCH = KB["VEH_PITCHUP"].axis(True, clip=True) - KB["VEH_PITCHDOWN"].axis(True, clip=True)
-		BANK = KB["VEH_BANKRIGHT"].axis(True, clip=True) - KB["VEH_BANKLEFT"].axis(True, clip=True)
-		YAW = KB["VEH_YAWLEFT"].axis(True, clip=True) - KB["VEH_YAWRIGHT"].axis(True, clip=True)
+		PITCH = KB["VEH_PITCHUP"].axis(True, True) - KB["VEH_PITCHDOWN"].axis(True, True)
+		BANK = KB["VEH_BANKRIGHT"].axis(True, True) - KB["VEH_BANKLEFT"].axis(True, True)
+		YAW = KB["VEH_YAWLEFT"].axis(True, True) - KB["VEH_YAWRIGHT"].axis(True, True)
 
 		self.motion["Torque"][0] = PITCH
 		self.motion["Torque"][1] = BANK
 		self.motion["Torque"][2] = YAW
 
-		if keymap.SYSTEM["SCREENSHOT"].tap() == True:
-			self.doScreenshot()
-
 	def checkClicked(self, OBJ=None):
-		if OBJ == None:
-			OBJ = self.objects["Root"]
-
-		if OBJ["RAYCAST"] != None:
-			if keymap.BINDS["ENTERVEH"].tap() == True or keymap.BINDS["ACTIVATE"].tap() == True:
-				return True
+		for key in self.doorobj:
+			obj = self.doorobj[key]
+			if obj["RAYCAST"] != None:
+				if keymap.BINDS["ENTERVEH"].tap() == True or keymap.BINDS["ACTIVATE"].tap() == True:
+					self.driving_player = obj["RAYCAST"]
+					self.driving_seat = key
+					return True
 		return False
+
+	def clearRayProps(self):
+		owner = self.objects["Root"]
+		for key in self.doorobj:
+			obj = self.doorobj[key]
+			obj["RAYCAST"] = None
 
 	## IDLE STATE ##
 	def ST_Idle(self):
@@ -414,22 +395,27 @@ class CoreVehicle(base.CoreAdvanced):
 
 	def ST_Idle_Set(self):
 		owner = self.objects["Root"]
-		spawn = self.objects["Spawn"]
-		dist = owner.getDistanceTo(spawn)
+		if self.driving_seat == ".":
+			spawn = self.createVector(vec=(-1,0,0))
+		else:
+			spawn = self.createVector(vec=self.SEATS[self.driving_seat]["SPAWN"])
+
+		dist = spawn.length
+		spawn = self.getWorldSpace(owner, spawn)
 
 		rayOBJ = owner.rayCastTo(spawn, dist+0.5, "GROUND")
 		if rayOBJ != None:
 			return
 
+		self.driving_player.doAnim(STOP=True)
 		self.driving_player.exitVehicle(spawn)
 		self.driving_player = None
+		self.driving_seat = None
 		self.active_state = self.ST_Idle
 		self.data["PORTAL"] = False
 
 	## ACTIVE STATE ##
 	def ST_Active(self):
-		self.doCameraState()
-		self.doCameraCollision()
 		self.getInputs()
 
 		owner = self.objects["Root"]
@@ -440,24 +426,48 @@ class CoreVehicle(base.CoreAdvanced):
 	def ST_Active_Set(self):
 		if self.data["PORTAL"] == False:
 			if self.alignObject() == True:
+				self.driving_player = None
+				self.driving_seat = None
 				return
-		self.setCamera()
-		self.driving_player = self.objects["Root"]["RAYCAST"]
-		self.driving_player.enterVehicle(self.objects["Seat"]["1"], self.PLAYERACTION)
-		logic.HUDCLASS.setControl(self)
-		self.setPlayerVisibility(self.objects["Seat"]["1"])
+
+		plr = self.driving_player
+		key = self.driving_seat
+		seat = self.seatobj[key]
+		door = self.doorobj[key]
+
+		plr.enterVehicle(seat)
+		self.setPlayerVisibility()
+
+		if key == ".":
+			action = "Jumping"
+		else:
+			action = self.SEATS[key].get("ACTION", None)
+		plr.doAnim(NAME=action, FRAME=(0,0), MODE="LOOP")
+
+		self.assignCamera()
+
+		HUD.SetLayout(self)
+
 		self.active_state = self.ST_Active
 		self.data["PORTAL"] = True
 
 	## RUN ##
-	def alignSpawner(self):
-		vref = self.objects["Root"].getAxisVect((0,1,0))
-		self.objects["Spawn"].alignAxisToVect(vref, 1, 1.0)
-		self.objects["Spawn"].alignAxisToVect((0,0,1), 2, 1.0)
+	def PS_SuspensionRig(self):
+		owner = self.objects["Root"]
+		if self.objects.get("Rig", None) == None:
+			return "REMOVE"
+		for key in self.wheelobj:
+			ch = self.objects["Rig"].channels.get(key, None)
+			if ch != None:
+				pnt = self.wheelobj[key].worldPosition-owner.worldPosition
+				lp = owner.worldOrientation.inverted()*pnt
+				offset = ch.bone.arm_head
+				ch.location = lp-offset
+
+		self.doAnim(OBJECT=self.objects["Rig"], NAME="ArmatureIdle", PRIORITY=3, MODE="LOOP")
 
 	def RUN(self):
 		self.runPre()
-		self.alignSpawner()
 		self.runStates()
 		self.runPost()
 		self.clearRayProps()
@@ -471,39 +481,49 @@ class LayoutCar(HUD.HUDLayout):
 
 class CoreCar(CoreVehicle):
 
-	AIRCONTROL = 0
-	CAMTHIRD = {"DIST":8, "ZRATIO":0.2, "MIN":1, "SLOW":20, "RANGE":(4, 16)}
-	DRIVECONFIG = {"POWER":100, "SPEED":2, "BRAKE":(1,2), "STEER":1, "DRIVE":0}
+	CAM_HEIGHT = 0.2
+	CAM_MIN = 0.7
+	CAM_SLOW = 10
+	CAM_ORBIT = False
+
+	CAR_POWER = 70
+	CAR_SPEED = 100
+	CAR_BRAKE = 1
+	CAR_HANDBRAKE = 1
+	CAR_STEER = 1
+	CAR_DRIVE = "FRONT"
+	CAR_AIR = (0,0,0)
+
+	DRIVECONFIG = {"POWER":100, "SPEED":2, "BRAKE":(1,1), "STEER":1, "DRIVE":0, "AIR":None}
 	HUDLAYOUT = LayoutCar
 
 	def defaultData(self):
 		dict = {}
 		dict["ENGINE"] = {
-			"Gear":"D",
-			"Power":self.DRIVECONFIG["POWER"],
-			"Speed":self.DRIVECONFIG["SPEED"]
+			"Power":self.CAR_POWER,
+			"Speed":self.CAR_SPEED
 			}
 
 		return dict
 
 	def ST_Active(self):
-		self.doCameraState()
-		self.doCameraCollision()
+		owner = self.objects["Root"]
+
 		self.getInputs()
 
-		owner = self.objects["Root"]
 		engine = self.data["ENGINE"]
+		torque = self.motion["Torque"]
 
 		vel = owner.localLinearVelocity
 		speed = abs(vel[1])
 
 		## Steering Optimizer ##
-		STEER = 0.8
+		turn = 0.8
 
 		if speed > 6:
-			STEER = (3/(speed*0.5))*0.8
+			turn = (3/(speed*0.5))*0.8
 
-		STEER = STEER*self.DRIVECONFIG["STEER"]*self.motion["Torque"][2]
+		STEER = self.CAR_STEER*torque[2]*turn
 		POWER = 0
 		BRAKE = 0
 
@@ -511,19 +531,15 @@ class CoreCar(CoreVehicle):
 		if keymap.BINDS["VEH_THROTTLEUP"].active() == True:
 			if vel[1] < -1:
 				BRAKE = 2
-				engine["Gear"] = "N"
 			else:
 				POWER = 1
-				engine["Gear"] = "D"
 
 		## Brake Pedal ##
 		elif keymap.BINDS["VEH_THROTTLEDOWN"].active() == True:
 			if vel[1] > 1:
 				BRAKE = 1
-				engine["Gear"] = "N"
 			else:
 				POWER = -0.5
-				engine["Gear"] = "R"
 
 		HANDBRAKE = 0
 		if keymap.BINDS["VEH_HANDBRAKE"].active() == True:
@@ -533,54 +549,47 @@ class CoreCar(CoreVehicle):
 		if keymap.BINDS["VEH_ACTION"].tap() == True:
 			self.alignObject()
 
-		FORCE_F = (-engine["Power"] + (speed*engine["Speed"]))*POWER
-		DRIVE = self.DRIVECONFIG["DRIVE"]
+		mx = 1
+		if speed > 0.1:
+			mx = 1-(speed/self.CAR_SPEED)
+
+		FORCE_F = (engine["Power"]*mx)*-POWER
+		DRIVE = self.CAR_DRIVE
 
 		## Apply Engine Force ##
-		if DRIVE == 0:
-			self.vehicle_constraint.applyEngineForce(FORCE_F, 0)
-			self.vehicle_constraint.applyEngineForce(FORCE_F, 1)
-			self.vehicle_constraint.applyEngineForce(0.0, 2)
-			self.vehicle_constraint.applyEngineForce(0.0, 3)
+		if DRIVE == "FRONT":
+			self.setWheelPower(FORCE_F, "FRONT", all=True)
 		else:
 			if STEER > 0.05:
-				self.vehicle_constraint.applyEngineForce(FORCE_F, 2)
-				self.vehicle_constraint.applyEngineForce(0.0, 3)
+				self.setWheelPower(FORCE_F, "Wheel_RR")
+				self.setWheelPower(0.0, "Wheel_RL")
 			elif STEER < -0.05:
-				self.vehicle_constraint.applyEngineForce(0.0, 2)
-				self.vehicle_constraint.applyEngineForce(FORCE_F, 3)
+				self.setWheelPower(0.0, "Wheel_RR")
+				self.setWheelPower(FORCE_F, "Wheel_RL")
 			else:
-				self.vehicle_constraint.applyEngineForce(FORCE_F, 2)
-				self.vehicle_constraint.applyEngineForce(FORCE_F, 3)
+				self.setWheelPower(FORCE_F, "REAR")
 
-			if DRIVE == 2:
-				self.vehicle_constraint.applyEngineForce(FORCE_F, 0)
-				self.vehicle_constraint.applyEngineForce(FORCE_F, 1)
+			if DRIVE == "FOUR":
+				self.setWheelPower(FORCE_F, "FRONT")
 			else:
-				self.vehicle_constraint.applyEngineForce(0.0, 0)
-				self.vehicle_constraint.applyEngineForce(0.0, 1)
+				self.setWheelPower(0.0, "FRONT")
 
-		if self.AIRCONTROL != 0:
-			owner.applyTorque((self.motion["Torque"][0]*self.AIRCONTROL, self.motion["Torque"][1]*self.AIRCONTROL, 0), True)
+		air = self.CAR_AIR
+		owner.applyTorque((torque[0]*air[0], torque[1]*air[1], torque[2]*air[2]), True)
 
-		BRAKE = BRAKE*self.DRIVECONFIG["BRAKE"][0]
-		HANDBRAKE = HANDBRAKE*self.DRIVECONFIG["BRAKE"][1]
+		BRAKE = BRAKE*self.CAR_BRAKE
+		HANDBRAKE = HANDBRAKE*self.CAR_HANDBRAKE
 
 		## Brake All Wheels ##
-		self.vehicle_constraint.applyBraking(BRAKE, 0)
-		self.vehicle_constraint.applyBraking(BRAKE, 1)
-		self.vehicle_constraint.applyBraking(BRAKE, 2)
-		self.vehicle_constraint.applyBraking(BRAKE, 3)
+		self.setWheelBrake(BRAKE)
 
 		## Brake Rear Wheels ##
-		self.vehicle_constraint.applyBraking(HANDBRAKE, 2)
-		self.vehicle_constraint.applyBraking(HANDBRAKE, 3)
+		self.setWheelBrake(HANDBRAKE, "REAR")
 
 		## Steer Front Wheels ##
-		self.vehicle_constraint.setSteeringValue(STEER, 0)
-		self.vehicle_constraint.setSteeringValue(STEER, 1)
+		self.setWheelSteering(STEER, "FRONT")
 
-		self.data["HUD"]["Text"] = str(round(speed, 1))
+		self.data["HUD"]["Text"] = str(int(round(speed, 1)))
 
 		if keymap.BINDS["ENTERVEH"].tap() == True:
 			self.ST_Idle_Set()
@@ -588,16 +597,8 @@ class CoreCar(CoreVehicle):
 	def ST_Idle(self):
 		owner = self.objects["Root"]
 
-		if self.vehicle_constraint != None:
-			self.vehicle_constraint.applyEngineForce(0.0, 0)
-			self.vehicle_constraint.applyEngineForce(0.0, 1)
-			self.vehicle_constraint.applyEngineForce(0.0, 2)
-			self.vehicle_constraint.applyEngineForce(0.0, 3)
-
-			self.vehicle_constraint.applyBraking(self.DRIVECONFIG["BRAKE"][0], 0)
-			self.vehicle_constraint.applyBraking(self.DRIVECONFIG["BRAKE"][0], 1)
-			self.vehicle_constraint.applyBraking(0.0, 2)
-			self.vehicle_constraint.applyBraking(0.0, 3)
+		self.setWheelPower(0)
+		self.setWheelBrake(self.CAR_BRAKE, "FRONT", all=True)
 
 		if self.checkClicked() == True:
 			self.ST_Active_Set()
@@ -612,6 +613,14 @@ class CoreAircraft(CoreVehicle):
 
 	LANDACTION = "AircraftRigLand"
 	LANDFRAMES = [0, 100]
+
+	CAM_HEIGHT = 0.1
+	CAM_MIN = 1
+	CAM_SLOW = 5
+
+	SEATS = {
+		"Seat_1": {"NAME":"Driver", "DOOR":"Root", "CAMERA":None, "ACTION":"SeatLow", "VISIBLE":True, "SPAWN":[-2,0,0]} }
+
 	AERO = {"POWER":1000, "HOVER":0, "LIFT":0.1, "TAIL":10, "DRAG":(1,1,1)}
 	HUDLAYOUT = LayoutAircraft
 
@@ -744,7 +753,7 @@ class CoreAircraft(CoreVehicle):
 		owner = self.objects["Root"]
 		rayto = list(owner.worldPosition)
 		rayto[2] -= 1
-		dist = self.WHEELSETUP["HEIGHT"]+self.WHEELSETUP["LENGTH"]+self.WHEELOBJECT["RADIUS"]
+		dist = self.WH_HEIGHT + self.VEH_LENGTH + self.WH_RADIUS
 		ground = owner.rayCastTo(rayto, dist, "GROUND")
 
 		if keymap.BINDS["TOGGLEMODE"].tap() == True and ground == None:

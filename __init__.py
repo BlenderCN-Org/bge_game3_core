@@ -50,5 +50,6 @@ print("\n\t...game3 core init...\n")
 
 logic.UPDATELIST = []
 logic.PLAYERCLASS = None
+logic.VIEWPORT = None
 logic.HUDCLASS = None
 

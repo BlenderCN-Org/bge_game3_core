@@ -24,7 +24,7 @@
 
 from bge import logic, render
 
-from . import keymap, base, HUD, config
+from . import keymap, base, HUD, config, viewport
 
 
 
@@ -44,27 +44,36 @@ class ActorLayout(HUD.HUDLayout):
 class CorePlayer(base.CoreAdvanced):
 
 	NAME = "Player"
-	MESH = "Actor"
+	PHYSICS = "Player"
 	PORTAL = True
 	CLASS = "Standard"
-	HAND = {"MAIN":"Hand_R", "OFF":"Hand_L"}
 	WP_TYPE = "RANGED"
-	SLOTS = {"FIVE":"Back"}
+
+	HAND = {"MAIN":"Hand_R", "OFF":"Hand_L"}
+	SLOTS = {"THREE":"Hip_L", "FOUR":"Shoulder_L", "FIVE":"Back", "SIX":"Shoulder_R", "SEVEN":"Hip_R"}
+
 	SPEED = 0.1
 	JUMP = 6
 	ACCEL = 30
 	SLOPE = 60
 	MOVERUN = True
 	SIDESTEP = False
-	OFFSET = (0, 0, 0)
+
+	INTERACT = 2
 	EYE_H = 1.6
 	GND_H = 1.0
 	EDGE_H = 2.0
 	WALL_DIST = 0.4
+	OFFSET = (0, 0, 0)
+
+	CAM_ORBIT = True
+	CAM_SLOW = 2
 	CAM_RANGE = (1,6)
+	CAM_HEIGHT = 0.15
 	CAM_STEPS = 5
 	CAM_ZOOM = 2
 	CAM_MIN = 0.2
+
 	HUDLAYOUT = ActorLayout
 
 	def __init__(self):
@@ -105,13 +114,7 @@ class CorePlayer(base.CoreAdvanced):
 		self.motion = {"Move":self.createVector(2), "Rotate":self.createVector(3), "Climb":0, "Accel":0}
 
 		self.data = {"HEALTH":100, "ENERGY":100, "RECHARGE":0.1,
-			"SPEED":self.SPEED, "JUMP":self.JUMP, "RUN":self.MOVERUN}
-
-		steps = (self.CAM_RANGE[1]-self.CAM_RANGE[0])/self.CAM_STEPS
-		dist = (steps*self.CAM_ZOOM)+self.CAM_RANGE[0]
-		self.data["CAMERA"] = {"State":3, "Orbit":True, "Strafe":self.SIDESTEP,
-			"Zoom":self.CAM_ZOOM, "Dist":dist, "Range":self.CAM_RANGE,
-			"FOV":[self.CAM_FOV, 90], "ZR":[0,1,0], "XR":0}
+			"SPEED":self.SPEED, "JUMP":self.JUMP, "RUN":self.MOVERUN, "STRAFE":self.SIDESTEP}
 
 		self.data["HUD"] = {"Text":"", "Color":(0,0,0,0.5), "Target":None, "Locked":None}
 
@@ -143,30 +146,30 @@ class CorePlayer(base.CoreAdvanced):
 
 		if logic.PLAYERCLASS == None:
 			logic.PLAYERCLASS = self
-			logic.HUDCLASS = HUD.SceneManager()
 
-			portal = base.LOAD(char)
+			portal = base.LOAD()
+
+			owner = scene.addObject(self.PHYSICS, char, 0)
+			owner.setDamping(self.data["DAMPING"][0], self.data["DAMPING"][1])
+			owner["Class"] = self
+
+			self.objects["Root"] = owner
+
+			self.addCollisionCallBack()
+			self.findObjects(owner)
+			self.parentArmature(owner)
+
+			self.assignCamera()
+			viewport.setEyeHeight(self.EYE_H-self.GND_H, set=True)
 
 			if portal != None:
 				portal["RAYCAST"] = self
 			else:
-				owner = scene.addObject("Player", char, 0)
-				owner.setDamping(self.data["DAMPING"][0], self.data["DAMPING"][1])
-				owner["Class"] = self
-
-				self.objects["Root"] = owner
-
-				self.addCollisionCallBack()
-				self.findObjects(owner)
-				self.parentArmature(owner)
+				self.setPhysicsType()
 
 				self.doPortal()
 
-				self.doCameraCollision()
-				self.setCamera()
-				self.setPhysicsType()
-
-				logic.HUDCLASS.setControl(self)
+				HUD.SetLayout(self)
 
 		self.ST_Startup()
 
@@ -197,11 +200,12 @@ class CorePlayer(base.CoreAdvanced):
 
 		if portal != None and zone == None:
 			self.alignCamera()
-		else:
-			self.alignCamera(axis=self.data["CAMERA"]["ZR"])
-			self.objects["CamRot"].applyRotation([self.data["CAMERA"]["XR"],0,0], True)
+		#else:
+		#	self.alignCamera(axis=self.data["CAMERA"]["ZR"])
+		#	camxr = [self.data["CAMERA"]["XR"],0,0]
+		#	self.objects["CamRot"].localOrientation = self.createMatrix(rot=camxr, deg=False)
 
-		owner.setLinearVelocity(self.data["LINVEL"], True)
+		owner.localLinearVelocity = self.data["LINVEL"]
 
 		if base.DATA["Portal"]["Vehicle"] == None or portal == None:
 			base.DATA["Portal"]["Door"] = None
@@ -239,8 +243,8 @@ class CorePlayer(base.CoreAdvanced):
 		self.data["LINVEL"] = self.vecTuple(owner.localLinearVelocity)
 		self.data["DAMPING"] = [owner.linearDamping, owner.angularDamping]
 
-		self.data["CAMERA"]["ZR"] = list(owner.worldOrientation.inverted()*self.objects["VertRef"].getAxisVect([0,1,0]))
-		self.data["CAMERA"]["XR"] = list(self.objects["CamRot"].localOrientation.to_euler())[0]
+		#self.data["CAMERA"]["ZR"] = list(owner.worldOrientation.inverted()*self.objects["VertRef"].getAxisVect([0,1,0]))
+		#self.data["CAMERA"]["XR"] = list(self.objects["CamRot"].localOrientation.to_euler())[0]
 
 		base.LEVEL["PLAYER"]["POS"] = self.vecTuple(owner.worldPosition)
 		base.LEVEL["PLAYER"]["ORI"] = self.matTuple(owner.worldOrientation)
@@ -259,7 +263,12 @@ class CorePlayer(base.CoreAdvanced):
 		char.localPosition = POS
 		char.localOrientation = self.createMatrix()
 
-	def enterVehicle(self, seat, action="Jumping"):
+	def assignCamera(self):
+		viewport.setCamera(self)
+		viewport.setParent(self.objects["Root"])
+		viewport.setEyeHeight(self.EYE_H-self.GND_H)
+
+	def enterVehicle(self, seat):
 		self.jump_state = "NONE"
 		self.jump_timer = 0
 		self.crouch = 0
@@ -277,8 +286,6 @@ class CorePlayer(base.CoreAdvanced):
 
 		self.parentArmature(seat, True)
 
-		self.doAnim(NAME=action, FRAME=(0,0), MODE="LOOP")
-
 	def exitVehicle(self, spawn):
 		scene = base.SC_SCN
 
@@ -287,18 +294,20 @@ class CorePlayer(base.CoreAdvanced):
 		self.doAnim(NAME="Jumping", FRAME=(0,0))
 
 		self.objects["Character"].removeParent()
+		self.objects["Character"].setVisible(True, True)
 
-		owner = scene.addObject("Player", spawn, 0)
+		owner = scene.addObject("Player", self.objects["Character"], 0)
+		owner.alignAxisToVect((0,0,1), 2, 1.0)
+		owner.worldPosition = spawn
 		self.objects["Root"] = owner
 
 		self.addCollisionCallBack()
 
 		self.findObjects(owner)
 		self.parentArmature(owner)
-		self.alignCamera()
-		self.setCamera()
+		self.assignCamera()
 
-		logic.HUDCLASS.setControl(self)
+		HUD.SetLayout(self)
 
 		owner["Class"] = self
 
@@ -329,11 +338,11 @@ class CorePlayer(base.CoreAdvanced):
 
 		self.findObjects(owner)
 		self.parentArmature(owner)
-		self.setCamera()
+		self.assignCamera()
 
 		self.addCollisionCallBack()
 
-		logic.HUDCLASS.setControl(self)
+		HUD.SetLayout(self)
 
 		owner["Class"] = self
 		logic.PLAYERCLASS = self
@@ -341,45 +350,20 @@ class CorePlayer(base.CoreAdvanced):
 
 	def alignCamera(self, factor=1.0, axis=(0,1,0), up=(0,0,1)):
 		vref = self.objects["Root"].getAxisVect(axis)
-		self.objects["VertRef"].alignAxisToVect(vref, 1, factor)
-		self.objects["VertRef"].alignAxisToVect(up, 2, 1.0)
+		viewport.setDirection(vref, factor)
 
 	def alignPlayer(self, factor=1.0, axis=None, up=(0,0,1)):
 		if axis == None:
-			axis = self.objects["VertRef"].getAxisVect((0,1,0))
+			axis = viewport.getDirection()
 		self.objects["Root"].alignAxisToVect(axis, 1, factor)
 		self.objects["Root"].alignAxisToVect(up, 2, 1.0)
 
-	def setCameraEye(self, axis=2, neg=False):
-
-		for id in [0, 1, 2]:
-			x = 0
-			if id == axis:
-				x = self.EYE_H-self.GND_H
-			if neg == True:
-				x = -1*x
-
-			self.objects["CamRot"].localPosition[id] = x
-
-	def setCameraFOV(self, fov=None):
-		if fov == None:
-			fov = self.data["CAMERA"]["FOV"][0]
-			self.data["CAMERA"]["FOV"][1] = fov
-		cam = self.objects["CamThird"]
-		cam.fov = fov
-
-	def setCamera(self, CAM=0):
-		base.SC_SCN.active_camera = self.objects["CamThird"]
-		self.objects["Character"].setVisible(True, True)
-		self.setCameraEye()
-		self.setCameraFOV()
-
 	def getDropPoint(self):
-		drop = self.objects["Ray"].worldPosition.copy()
+		drop = self.getWorldSpace(self.objects["Root"], (0,self.INTERACT-0.5,0))
 
 		if self.rayhit != None:
 			if self.rayvec.length <= 1:
-				drop = self.rayhit[1]#+self.rayhit[2]
+				drop = self.rayhit[1]+(self.rayhit[2]*0.5)
 
 		return list(drop)
 
@@ -429,7 +413,7 @@ class CorePlayer(base.CoreAdvanced):
 			self.data["RUN"] ^= True
 
 		if keymap.BINDS["PLR_STRAFETOGGLE"].tap() == True:
-			self.data["CAMERA"]["Strafe"] ^= True
+			self.data["STRAFE"] ^= True
 
 		self.motion["Move"][0] = MOVE[0]
 		self.motion["Move"][1] = MOVE[1]
@@ -456,116 +440,6 @@ class CorePlayer(base.CoreAdvanced):
 			for slot in list(self.data["WEAPSLOT"].keys()):
 				self.cls_dict[slot].dropItem(WPDROP)
 				WPDROP[2] += 2
-
-		if keymap.SYSTEM["SCREENSHOT"].tap() == True:
-			self.doScreenshot()
-
-	def doCameraState(self):
-		camdata = self.data["CAMERA"]
-
-		if camdata["State"] == 1:
-			camdata["Dist"] += (0-camdata["Dist"])*0.1
-
-			if self.rayhit != None:
-				v = self.objects["CamThird"].getVectTo(self.rayhit[1])
-				self.objects["CamThird"].alignAxisToVect(-v[1], 2, 0.05)
-				xref = self.objects["CamRot"].getAxisVect([1,0,0])
-				self.objects["CamThird"].alignAxisToVect(xref, 0, 0.05)
-
-			## Toggle ##
-			if keymap.BINDS["TOGGLECAM"].tap() == True:
-				camdata["State"] = 2
-				camdata["FOV"][0] = self.CAM_FOV
-
-			if self.motion["Move"].length > 0.01 or self.jump_state != "NONE":
-				camdata["State"] = 2
-				camdata["FOV"][0] = self.CAM_FOV
-
-		else:
-			steps = (camdata["Range"][1]-camdata["Range"][0])/self.CAM_STEPS
-			dist = (steps*camdata["Zoom"])+camdata["Range"][0]
-			camdata["Dist"] += (dist-camdata["Dist"])*0.1
-
-			## Set Camera Zoom ##
-			if keymap.BINDS["ZOOM_IN"].tap() == True and camdata["Zoom"] > 0: #camdata["Range"][0]:
-				camdata["Zoom"] -= 1
-
-			elif keymap.BINDS["ZOOM_OUT"].tap() == True and camdata["Zoom"] < self.CAM_STEPS: #camdata["Range"][1]:
-				camdata["Zoom"] += 1
-
-			#if camdata["Zoom"] == 0:
-			#	camdata["FOV"][0] = 60
-			#else:
-			#	camdata["FOV"][0] = self.CAM_FOV
-
-			## Toggle ##
-			if self.motion["Move"].length < 0.01 and self.jump_state == "NONE":
-				if keymap.BINDS["TOGGLECAM"].tap() == True:
-					camdata["State"] = 1
-					camdata["FOV"][0] = 60
-
-		if camdata["State"] == 2:
-			zref = self.objects["CamRot"].getAxisVect([0,0,1])
-			self.objects["CamThird"].alignAxisToVect(zref, 1, 0.1)
-			xref = self.objects["CamRot"].getAxisVect([1,0,0])
-			self.objects["CamThird"].alignAxisToVect(xref, 0, 0.1)
-
-		if camdata["FOV"][0] != camdata["FOV"][1]:
-			dif = round((camdata["FOV"][0]-camdata["FOV"][1]), 2)
-			if abs(dif) < 0.01:
-				camdata["FOV"][1] = camdata["FOV"][0]
-			else:
-				camdata["FOV"][1] += dif*0.1
-		else:
-			if camdata["State"] == 2:
-				self.objects["CamThird"].localOrientation = self.createMatrix([90,0,0])
-				camdata["State"] = 3
-
-		self.setCameraFOV(camdata["FOV"][1])
-
-		if camdata["Orbit"] == True:
-			ts = (camdata["FOV"][1]/self.CAM_FOV)**2
-			look = [self.motion["Rotate"][2], self.motion["Rotate"][0]]
-
-			X, Y = keymap.MOUSELOOK.axis(look)
-
-			self.objects["VertRef"].applyRotation((0, 0, X*ts), True)
-			self.objects["CamRot"].applyRotation((Y*ts, 0, 0), True)
-
-	def doCameraCollision(self):
-		margin = 1
-		height = 0.15
-		dist = self.data["CAMERA"]["Dist"]
-
-		camera = self.objects["CamThird"]
-		rayfrom = self.objects["CamRot"]
-		rayto = self.objects["CamRay"]
-
-		rayto.localPosition = (0, -dist, dist*height)
-
-		hyp = (dist+margin)**2 + ((dist+margin)*height)**2
-
-		rayOBJ, rayPNT, rayNRM = self.objects["Root"].rayCast(rayto, rayfrom, hyp**0.5, "GROUND", 1, 1, 0)
-
-		camLX = 0.0
-		camLY = -dist
-		camLZ = dist*height
-
-		if rayOBJ:
-			rayto.worldPosition = rayPNT
-
-			margin = margin*(abs(rayto.localPosition[1])/(dist+margin))
-
-			camLX = 0.0
-			camLY = rayto.localPosition[1]+margin
-			camLZ = rayto.localPosition[2]-(margin*height)
-
-		if camLZ < self.CAM_MIN:
-			camLZ = self.CAM_MIN
-
-		camera.localPosition[0] = camLX
-		camera.localPosition[1] = camLY
-		camera.localPosition[2] = camLZ
 
 	def setPhysicsType(self, mode=None):
 		owner = self.objects["Root"]
@@ -765,16 +639,16 @@ class CorePlayer(base.CoreAdvanced):
 
 		return ground, angle, slope
 
-	def doInteract(self, range=2):
+	def doInteract(self):
 		scene = base.SC_SCN
 		owner = self.objects["Root"]
 
-		rayfrom = self.objects["CamRot"]
-		rayto = self.objects["Ray"]
+		rayfrom = self.getWorldSpace(owner, (0,0,self.EYE_H-self.GND_H))
+		rayto = rayfrom+viewport.getRayVec()
 		dist = 200
 
-		if self.data["CAMERA"]["State"] == 1:
-			dist = 1000
+		#if self.data["CAMERA"]["State"] == 1:
+		#	dist = 1000
 
 		RAYHIT = owner.rayCast(rayto, rayfrom, dist, "", 1, 0, 0)
 
@@ -790,11 +664,13 @@ class CorePlayer(base.CoreAdvanced):
 
 		if RAYHIT[0] != None:
 			self.rayhit = RAYHIT  #(RAYOBJ, RAYPNT, RAYNRM)
-			self.rayvec = rayfrom.worldPosition.copy()-RAYHIT[1]
+			self.rayvec = rayfrom-RAYHIT[1]
 
-			RAYTARGPOS[1] = scene.active_camera.getScreenPosition(RAYHIT[1])[1]
+			screen = scene.active_camera.getScreenPosition(RAYHIT[1])
+			RAYTARGPOS[0] = screen[0]
+			RAYTARGPOS[1] = screen[1]
 
-			if self.rayvec.length < range:
+			if self.rayvec.length < self.INTERACT:
 				RAYOBJ = RAYHIT[0]
 
 				if self.rayvec.dot(RAYHIT[2]) < 0 and config.DO_STABILITY == True:
@@ -834,7 +710,7 @@ class CorePlayer(base.CoreAdvanced):
 
 		align = owner.worldLinearVelocity.copy()
 		align[2] = 0
-		if align.length > 0.01 and self.data["CAMERA"]["Strafe"] == False:
+		if align.length > 0.01 and self.data["STRAFE"] == False and move > 0:
 			self.alignPlayer(axis=align)
 
 		owner.worldLinearVelocity[0] *= move
@@ -846,13 +722,12 @@ class CorePlayer(base.CoreAdvanced):
 
 	def doMovement(self, vec, mx=0, local=False):
 		owner = self.objects["Root"]
-		camera = self.objects["VertRef"]
 
 		axis = vec
 		if local == True:
 			axis = (0,1,0)
 
-		vref = camera.getAxisVect(axis)
+		vref = viewport.getDirection(axis)
 		dref = owner.getAxisVect((0,1,0))
 		dot = 1-((vref.dot(dref)*0.5)+0.5)
 		dot = 0.2+((dot**2)*0.5)
@@ -869,11 +744,8 @@ class CorePlayer(base.CoreAdvanced):
 
 		mref = vref.copy()
 		if local == True:
-			mref = camera.getAxisVect(vec)
+			mref = viewport.getDirection(vec)
 
-		#owner.worldPosition[0] += mref[0]*mx
-		#owner.worldPosition[1] += mref[1]*mx
-		#owner.applyMovement((mref[0]*mx, mref[1]*mx, 0), False)
 		owner.worldLinearVelocity[0] = (mref[0]*mx)*60
 		owner.worldLinearVelocity[1] = (mref[1]*mx)*60
 
@@ -947,7 +819,7 @@ class CorePlayer(base.CoreAdvanced):
 			self.objects["Root"].localScale[2] = 1
 			self.objects["Character"].localScale[2] = 1
 			self.active_state = self.ST_Walking
-			self.setCameraEye()
+			viewport.setEyeHeight(self.EYE_H-self.GND_H)
 
 	## INIT STATE ##
 	def ST_Startup(self):
@@ -969,6 +841,7 @@ class CorePlayer(base.CoreAdvanced):
 			dragY = owner.worldLinearVelocity[1]*0.67
 			dragZ = owner.worldLinearVelocity[2]*0.33
 			owner.applyForce((-dragX, -dragY, -dragZ), False)
+			self.groundhit = None
 			self.groundobj = None
 			return
 
@@ -997,6 +870,8 @@ class CorePlayer(base.CoreAdvanced):
 		euler = yvec.rotation_difference(rotOLD).to_euler()
 
 		owner.applyRotation((0,0,euler[2]), True)
+
+		owner.applyForce(-owner.scene.gravity, False)
 
 		self.groundhit = None
 
@@ -1063,7 +938,7 @@ class CorePlayer(base.CoreAdvanced):
 			if self.crouch < 10:
 				self.crouch += 1
 
-		self.objects["CamRot"].localPosition[2] = (self.EYE_H-self.GND_H)*cr_fac
+		viewport.setEyeHeight((self.EYE_H-self.GND_H)*cr_fac)
 
 	def ST_Walking(self):
 		scene = base.SC_SCN
@@ -1085,7 +960,7 @@ class CorePlayer(base.CoreAdvanced):
 				owner.worldLinearVelocity = (0,0,0)
 				owner.worldPosition[2] = ground[1][2] + self.gndraybias
 
-				strafe = self.data["CAMERA"]["Strafe"]
+				strafe = self.data["STRAFE"]
 				action = "IDLE"
 				blend = 10
 
@@ -1093,7 +968,7 @@ class CorePlayer(base.CoreAdvanced):
 					self.doCrouch(True)
 
 				elif self.motion["Move"].length > 0.01:
-					wall, wallnrm = self.checkWall(z=False, axis=self.objects["VertRef"].getAxisVect((move[0], move[1], 0)))
+					wall, wallnrm = self.checkWall(z=False, axis=viewport.getDirection((move[0], move[1], 0)))
 
 					mx = self.data["SPEED"]*slope
 
@@ -1126,7 +1001,7 @@ class CorePlayer(base.CoreAdvanced):
 							if move[0] < -0.5 and abs(move[1]) < 0.5:
 								action = "STRAFE_L"
 
-					if angle > 37:
+					if angle > 20:
 						action = action+".STAIR"
 
 					self.doMovement((move[0], move[1], 0), mx, strafe)
@@ -1150,12 +1025,14 @@ class CorePlayer(base.CoreAdvanced):
 			elif self.jump_state in ["JUMP", "JP_WAIT"]:
 				self.jump_state = "JP_WAIT"
 				self.jump_timer += 1
+
 				#if self.jump_timer > 10 and owner.localLinearVelocity[2] < 0.1:
 				#	self.doAnim(NAME="KO", FRAME=(0,60), PRIORITY=2, MODE="PLAY", BLEND=5)
 				#	#owner.setDamping(0, 0)
 				#	#owner.applyForce((0,0,-1*scene.gravity[2]), False)
 				#	owner.worldLinearVelocity = (0,0,0)
 				#	owner.worldPosition[2] = ground[1][2]+self.gndraybias
+
 				if self.jump_timer > 10:
 					self.jump_timer = 0
 					self.jump_state = "NONE"
@@ -1184,7 +1061,7 @@ class CorePlayer(base.CoreAdvanced):
 
 			if self.jump_state in ["FALLING", "A_JUMP", "B_JUMP"]:
 				if self.motion["Move"].length > 0.01:
-					vref = self.objects["VertRef"].getAxisVect((move[0], move[1], 0))
+					vref = viewport.getDirection((move[0], move[1], 0))
 					owner.applyForce((vref[0]*5, vref[1]*5, 0), False)
 
 			if self.jump_state in ["NONE", "JUMP"]:
@@ -1378,8 +1255,6 @@ class CorePlayer(base.CoreAdvanced):
 			return
 		self.runPre()
 		self.getInputs()
-		self.doCameraState()
-		self.doCameraCollision()
 		self.runStates()
 		self.runPost()
 
