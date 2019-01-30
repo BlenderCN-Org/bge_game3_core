@@ -33,11 +33,11 @@ class CoreAttachment(base.CoreObject):
 	GHOST = True
 	ENABLE = False
 	SLOTS = []
-	SCALE = 1.0
+	SCALE = 1
 	OFFSET = (0,0,0)
 	COLOR = (1,1,1,1)
-	GFXBOX = {"Mesh":"GFX_Cube"}
-	GFXDROP = {"Mesh":"GFX_Drop", "Halo":True}
+	GFXBOX = {"Mesh":"BOX_Cube", "Normalize":True}
+	GFXDROP = {"Mesh":"BOX_Drop", "Halo":True, "Normalize":True}
 
 	def __init__(self):
 		owner = logic.getCurrentController().owner
@@ -64,13 +64,8 @@ class CoreAttachment(base.CoreObject):
 		self.data["ENABLE"] = None #self.ENABLE
 		self.data["COOLDOWN"] = 0
 
-		self.SCALE = self.createVector(size=3, fill=self.SCALE)
-		self.OFFSET = self.createVector(vec=self.OFFSET)
-		for i in range(3):
-			if self.SCALE[i] < 0.1:
-				self.SCALE[i] = 0.1
-			self.SCALE[i] = 1/self.SCALE[i]
-			self.OFFSET[i] = self.OFFSET[i]*self.SCALE[i]
+		self.box_scale = self.createVector(fill=self.SCALE)
+		self.gfx_scale = self.createVector(fill=self.SCALE)
 
 		self.checkGhost(owner)
 		self.findObjects(owner)
@@ -81,6 +76,8 @@ class CoreAttachment(base.CoreObject):
 			self.equipItem(owner["RAYCAST"], load=True)
 		else:
 			self.dropItem(load=True)
+
+		del owner["RAYCAST"]
 
 	def defaultStates(self):
 		self.active_pre = []
@@ -95,26 +92,54 @@ class CoreAttachment(base.CoreObject):
 		self.data["POS"] = self.vecTuple(obj.worldPosition)
 		self.data["ORI"] = self.matTuple(obj.worldOrientation)
 
+	def getSocketScale(self):
+		scale = self.createVector(size=3, fill=1.0)
+		scale[0] *= (1/self.box_scale[0])
+		scale[1] *= (1/self.box_scale[1])
+		scale[2] *= (1/self.box_scale[2])
+		return scale
+
+	def getSocketPos(self):
+		pos = self.createVector(vec=self.OFFSET)
+		pos[0] *= (1/self.box_scale[0])
+		pos[1] *= (1/self.box_scale[1])
+		pos[2] *= (1/self.box_scale[2])
+		return pos
+
 	def buildBox(self):
 		owner = self.objects["Root"]
 
 		if self.dict["Equiped"] == None:
-			box = owner.scene.addObject(self.GFXBOX["Mesh"], owner, 0)
-			box.color = self.COLOR
+			gfx = self.GFXBOX
 			self.dict["Equiped"] = None
 		else:
-			box = owner.scene.addObject(self.GFXDROP["Mesh"], owner, 0)
-			if self.GFXDROP["Halo"] == True:
-				halo = owner.scene.addObject("GFX_Halo", owner, 0)
-				halo.setParent(box)
-				#halo.color = self.COLOR
-				halo["LOCAL"] = True
-				halo["AXIS"] = None
+			gfx = self.GFXDROP
 			self.dict["Equiped"] = False
 
-		#box.localScale = self.SCALE
+		self.box_scale = self.createVector(vec=gfx.get("Scale", (1,1,1)))*self.SCALE
+		self.gfx_scale = self.createVector(fill=self.SCALE)
+
+		if gfx.get("Normalize", False) == True:
+			scale = self.createVector(fill=1.0)
+			gfxsc = scale.copy()
+		else:
+			scale = self.box_scale
+			gfxsc = self.gfx_scale
+
+		box = owner.scene.addObject(gfx.get("Mesh", "BOX_Drop"), owner, 0)
+		box.worldScale = scale
+		box.color = self.COLOR
+
+		if gfx.get("Halo", False) == True:
+			halo = owner.scene.addObject("GFX_Halo", owner, 0)
+			halo.setParent(box)
+			#halo.color = self.COLOR
+			halo.worldScale = gfxsc
+			halo["LOCAL"] = True
+			halo["AXIS"] = None
+
 		box["RAYCAST"] = None
-		box["RAYNAME"] = self.NAME
+		box["RAYNAME"] = owner["RAYNAME"]
 
 		self.box = box
 		self.box_timer = 1
@@ -157,8 +182,8 @@ class CoreAttachment(base.CoreObject):
 		obj.localOrientation = self.createMatrix()
 
 		if socket == self.box:
-			obj.localPosition = self.OFFSET.copy()
-			obj.worldScale = self.SCALE.copy()
+			obj.localPosition = self.getSocketPos()
+			obj.localScale = self.getSocketScale()
 		else:
 			obj.localPosition = (0,0,0)
 			obj.worldScale = (1,1,1)
@@ -200,6 +225,8 @@ class CoreAttachment(base.CoreObject):
 				self.stateSwitch(True, run=True, force=True)
 			else:
 				self.data["ENABLE"] = False
+		elif self.data["ENABLE"] == True and load == False:
+			self.stateSwitch(True, run=True, force=True)
 
 	def dropItem(self, pos=None, load=False):
 		cls = self.owning_player
@@ -289,9 +316,10 @@ class CoreAttachment(base.CoreObject):
 			self.checkStability()
 		else:
 			self.box_timer -= 1
-
 		if self.checkClicked(self.box) == True:
 			self.equipItem(self.box["RAYCAST"])
+
+		#self.clearRayProps()
 
 	## STATE TRIGGER ##
 	def ST_Enable(self):
@@ -311,6 +339,9 @@ class CoreAttachment(base.CoreObject):
 		if self.owning_player != None and self.box == None:
 			if self.owning_player.objects["Root"] == None:
 				return
+		#if self.box != None:
+		#	self.ST_Box()
+		#	return
 		self.runPre()
 		self.runStates()
 		self.runPost()
