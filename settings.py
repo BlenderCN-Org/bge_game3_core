@@ -114,7 +114,9 @@ def openWorldBlend(map, scn=None):
 		blend = "MAPS\\"+map
 
 	for cls in logic.UPDATELIST:
-		cls.doUpdate()
+		if cls.UPDATE == True:
+			cls.doUpdate()
+	logic.UPDATELIST = []
 
 	print("OPEN MAP:\n\t"+blend)
 
@@ -155,6 +157,9 @@ def GenerateGlobalDict(path):
 
 def GenerateProfileData():
 	return {"LVLData":{}, "PLRData":{}, "Last":{}, "Settings":{}}
+
+def GenerateLevelData():
+	return {"SPAWN":[], "DROP":[], "CLIP":config.LOW_CLIP, "PLAYER":{}}
 
 def GenerateGraphicsData():
 	data = LoadJSON(logic.globalDict["DATA"]["GAMEPATH"]+"Graphics.cfg")

@@ -27,13 +27,13 @@ import mathutils
 
 from bge import logic
 
-from . import settings, keymap
+from . import settings, keymap, config
 
 
 SC_SCN = logic.getCurrentScene()
 SC_HUD = None
 SC_CAM = SC_SCN.active_camera
-
+SC_RUN = None
 
 CURRENT = logic.globalDict["CURRENT"]
 
@@ -50,9 +50,121 @@ DATA = logic.globalDict["DATA"]
 del CUR_LVL, CUR_PRF, CUR_PLR
 
 
-def LOAD(owner):
+def GAME(cont):
+	global SC_SCN, SC_RUN
+	SC_SCN = cont.owner.scene
+	SC_RUN = cont.owner
+
+	status = START()
+
+	if status != "DONE":
+		return
+
+	for cls in logic.UPDATELIST:
+	#	try:
+		cls.RUN()
+	#	except Exception as ex:
+	#		logic.UPDATELIST.remove(cls)
+	#		print("FATAL RUNTIME ERROR:", cls.__class__)
+	#		print("\t", ex)
+
+	if logic.VIEWPORT != None:
+		logic.VIEWPORT.RUN()
+
+	if keymap.SYSTEM["SCREENSHOT"].tap() == True:
+		logic.globalDict["SCREENSHOT"]["Trigger"] = True
+
+
+def START():
 	global CURRENT, LEVEL, DATA, PROFILE
 
+	owner = SC_RUN
+	scene = owner.scene
+
+	spawn = owner.get("SPAWN", True)
+	timer = owner.get("TIMER", None)
+
+	if spawn == False:
+		return "DONE"
+
+	## SET SCENE ##
+	if CURRENT["Scene"] != None:
+		if CURRENT["Scene"] != scene.name:
+			if scene.replace(CURRENT["Scene"]) == True:
+				CURRENT["Level"] = None
+				print(scene.name, CURRENT["Scene"])
+				#scene.active_camera.near = 0.1
+				#scene.active_camera.far = 0.2
+				#render.setBackgroundColor([0,0,0,1])
+				return "SCENE"
+			else:
+				print("NOTICE: Scene '"+CURRENT["Scene"]+"' Not Found...")
+
+	CURRENT["Scene"] = scene.name
+
+	## LEVEL DATA ##
+	if CURRENT["Level"] == None and owner.get("MAP", None) != None:
+		CURRENT["Level"] = owner["MAP"]+".blend"
+
+	newmap = str(CURRENT["Level"])+scene.name
+
+	if newmap not in PROFILE["LVLData"]:
+		print("Initializing Level Data...", newmap)
+		PROFILE["LVLData"][newmap] = settings.GenerateLevelData()
+
+	LEVEL = PROFILE["LVLData"][newmap]
+
+	## LIBLOAD ##
+	if timer == None:
+		for libblend in config.LIBRARIES:
+			libblend = DATA["GAMEPATH"]+"CONTENT\\"+libblend+".blend"
+			logic.LibLoad(libblend, "Scene", load_actions=True, verbose=False, load_scripts=True)
+
+		owner.worldScale = [1,1,1]
+		owner["TIMER"] = (config.UPBGE_FIX == False)*25
+		owner["GFX_Black"] = scene.addObject("GFX_Black", scene.active_camera, 0)
+		owner["GFX_Black"].setParent(scene.active_camera)
+		owner["GFX_Black"].color = (0, 0, 0, 1)
+
+		logic.addScene("HUD", 1)
+		return "LIBLOAD"
+
+	elif timer <= 30:
+		owner["TIMER"] += 1
+		return "TIMER"
+
+	## SPAWN ##
+	if "CLIP" in owner:
+		LEVEL["CLIP"] = owner["CLIP"]
+
+	if CURRENT["Player"] == None:
+		player = owner.get("PLAYER", config.DEFAULT_PLAYER)
+	else:
+		player = CURRENT["Player"]
+
+	if player not in scene.objectsInactive:
+		player = config.DEFAULT_PLAYER
+
+	if spawn == True:
+		CURRENT["Player"] = player
+		char = scene.addObject(player, owner, 0)
+		print("PLAYER:", player, char.worldPosition)
+		owner["SPAWN"] = None
+		return "SPAWN"
+
+	elif spawn == None:
+		owner["GFX_Black"].endObject()
+		owner["GFX_Black"] = None
+		owner["SPAWN"] = False
+		return "END"
+
+	return "WAIT"
+
+
+def LOAD():
+	global CURRENT, LEVEL, DATA, PROFILE
+
+	owner = SC_RUN
 	scene = owner.scene
 
 	## Ground Detector ##
@@ -77,9 +189,8 @@ def LOAD(owner):
 		split = obj.name.split(".")
 		name = None
 
-		if split[0] == "Spawn" and len(split) > 1:
-			if split[1] != "Player":
-				name = obj.get("OBJECT", split[1])
+		if obj != owner and split[0] == "Spawn" and len(split) > 1:
+			name = obj.get("OBJECT", split[1])
 
 		if name != None:
 			cleanup.append(obj)
@@ -123,19 +234,6 @@ def LOAD(owner):
 
 	return None
 
-
-def RUN(cont):
-	owner = cont.owner
-	try:
-		if owner.get("Class", None) != None:
-			owner["Class"].RUN()
-	except Exception as ex:
-		print("FATAL RUNTIME ERROR:", owner.name)
-		print("\t", ex)
-		del owner["Class"]
-		#if owner.scene.active_camera in owner.childrenRecursive:
-		#	owner.scene.active_camera = SC_CAM
-		#owner.endObject()
 
 class CoreObject:
 
@@ -289,8 +387,8 @@ class CoreObject:
 	def doLoad(self):
 		owner = self.objects["Root"]
 
-		if self.UPDATE == False:
-			return
+		if self not in logic.UPDATELIST:
+			logic.UPDATELIST.append(self)
 
 		if self.dict["Data"] == None:
 			self.dict["Data"] = self.data
@@ -300,13 +398,13 @@ class CoreObject:
 			self.data = self.dict["Data"]
 			self.active_state = getattr(self, self.data["ACTIVE_STATE"])
 
+		if self.UPDATE == False:
+			return
+
 		global LEVEL
 		if "Add" in self.dict:
 			LEVEL["SPAWN"].append(self.dict["Add"])
 			del self.dict["Add"]
-
-		if self not in logic.UPDATELIST:
-			logic.UPDATELIST.append(self)
 
 	def doUpdate(self):
 		owner = self.objects["Root"]
@@ -314,15 +412,19 @@ class CoreObject:
 		self.saveWorldPos()
 
 		global LEVEL
-		if self.UPDATE == True and self.dict not in LEVEL["DROP"]:
+		if self.dict not in LEVEL["DROP"]:
 			LEVEL["DROP"].append(self.dict)
 
 	def getLocalSpace(self, obj, pnt):
+		if type(pnt) != mathutils.Vector:
+			pnt = mathutils.Vector(pnt)
 		lp = pnt - obj.worldPosition
 		lp = obj.worldOrientation.inverted()*lp
 		return lp
 
 	def getWorldSpace(self, obj, pnt):
+		if type(pnt) != mathutils.Vector:
+			pnt = mathutils.Vector(pnt)
 		wp = obj.worldOrientation*pnt
 		wp = wp + obj.worldPosition
 		return wp
@@ -495,19 +597,23 @@ class CoreAdvanced(CoreObject):
 	INVENTORY = {}
 	SLOTS = {}
 
+	CAM_TYPE = "THIRD"
+	CAM_ORBIT = False
 	CAM_RANGE = (4,16)
 	CAM_HEIGHT = 0.1
-	CAM_STEPS = 3
-	CAM_ZOOM = 10
-	CAM_MIN = 1
-	CAM_ORBIT = True
+	CAM_STEPS = 5
+	CAM_ZOOM = 2
+	CAM_MIN = 0.5
 	CAM_SLOW = 10
 	CAM_FOV = 90
 
 	HUDLAYOUT = None
 
-	def doScreenshot(self):
-		logic.globalDict["SCREENSHOT"]["Trigger"] = True
+	def runStates(self):
+		self.active_state()
+		self.data["ACTIVE_STATE"] = self.active_state.__name__
+		for slot in self.cls_dict:
+			self.cls_dict[slot].RUN()
 
 	def loadInventory(self, owner):
 		scene = owner.scene

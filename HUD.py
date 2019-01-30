@@ -42,16 +42,26 @@ def START(cont):
 	base.LEVEL["HUDData"] = {}
 
 	logic.LibLoad( base.DATA["GAMEPATH"]+"CONTENT\\Game Assets HUD.blend", "Scene", load_actions=True, verbose=False, load_scripts=True)
+	logic.HUDCLASS = SceneManager()
+	logic.HUDCLASS.doBlackOut(True)
 
 
 def RUN(cont):
 	if logic.HUDCLASS != None and logic.PLAYERCLASS != None:
-		#try:
-		logic.HUDCLASS.RUN()
-		#except Exception as ex:
-		#	logic.HUDCLASS = None #.setControl(None, None)
-		#	print("FATAL RUNTIME ERROR:", cont.owner.name)
-		#	print("\t", ex)
+		try:
+			logic.HUDCLASS.RUN()
+		except Exception as ex:
+			logic.HUDCLASS.setControl(None, None)
+			logic.HUDCLASS = None
+			print("FATAL RUNTIME ERROR:", cont.owner.name)
+			print("\t", ex)
+
+
+def SetLayout(plr=None, layout=None):
+	if base.SC_HUD == None or logic.HUDCLASS == None:
+		return
+
+	logic.HUDCLASS.setControl(plr, layout)
 
 
 class CoreHUD(base.CoreObject):
@@ -631,38 +641,22 @@ class SceneManager:
 		self.active_layout = None
 		self.custom_layout = None
 		self.control = None
-		self.blackobj = "QUE"
+		self.firstrun = True
+		self.blackobj = None
 		self.MENU = None
 
-		self.doLoad()
-
-	def doLoad(self):
-		if self not in logic.UPDATELIST and base.SC_HUD != None:
-			logic.UPDATELIST.append(self)
-
-	def doUpdate(self):
-		scene = base.SC_HUD
-		if self.MENU != None:
-			return
-		obj = scene.addObject(scene.objectsInactive["HUD.Loading"], scene.active_camera, 0)
-		obj.applyMovement((0,0,-3), False)
-
-	def setControl(self, plr, layout=None):
-		if base.SC_HUD == None:
-			return
+	def setControl(self, plr, layout):
 		self.control = plr
-		if self.active_layout != None:
-			self.active_layout.destroy()
-			self.active_layout = None
 		self.custom_layout = layout
 		self.active_state = self.ST_Wait
 
 	def doBlackOut(self, add=True):
 		if add == True:
-			self.blackobj = base.SC_HUD.addObject("HUD.Black", base.SC_HUD.active_camera, 0)
-			self.blackobj.applyMovement((0,0,-4), False)
+			if self.blackobj == None:
+				self.blackobj = base.SC_HUD.addObject("HUD.Black", base.SC_HUD.active_camera, 0)
+				self.blackobj.applyMovement((0,0,-4), False)
 
-		else:
+		elif self.blackobj != None:
 			self.blackobj.endObject()
 			self.blackobj = None
 
@@ -680,32 +674,35 @@ class SceneManager:
 		self.active_state = self.ST_HUD
 
 	def ST_Wait(self):
-		if self.control != None:
-			plr = self.control
-			if self.custom_layout == None:
-				if plr.HUDLAYOUT != None:
-					self.custom_layout = plr.HUDLAYOUT
+		if self.active_layout != None:
+			self.active_layout.destroy()
+			self.active_layout = None
 
-			if self.custom_layout != None:
-				self.active_layout = self.custom_layout()
-				self.custom_layout = None
+		if self.control == None:
+			self.active_state = None
+			return
 
-				if self.blackobj == "QUE":
-					self.doBlackOut(True)
-				else:
-					self.active_layout.RUN(plr)
+		plr = self.control
+		if self.custom_layout == None:
+			if plr.HUDLAYOUT != None:
+				self.custom_layout = plr.HUDLAYOUT
 
-			self.active_state = self.ST_HUD
+		if self.custom_layout != None:
+			self.active_layout = self.custom_layout()
+			self.custom_layout = None
+
+			if self.firstrun == True:
+				self.firstrun = False
+			else:
+				self.active_layout.RUN(plr)
+
+		self.active_state = self.ST_HUD
 
 	def ST_HUD(self):
-		if self.blackobj != None:
-			self.doBlackOut(False)
+		self.doBlackOut(False)
 
-		self.active_layout.RUN(self.control)
-
-		if logic.globalDict["SCREENSHOT"]["Trigger"] == True:
-			frameobj = base.SC_HUD.addObject("HUD.FreezeFrame", base.SC_HUD.active_camera, 0)
-			frameobj.applyMovement((0,0,-8), True)
+		if self.active_layout != None:
+			self.active_layout.RUN(self.control)
 
 		if keymap.SYSTEM["ESCAPE"].tap() == True:
 			self.doSceneSuspend()
@@ -734,8 +731,10 @@ class SceneManager:
 	def RUN(self):
 		if self.active_state != None:
 			self.active_state()
-		else:
-			print("HUD - NONE")
+
+		if logic.globalDict["SCREENSHOT"]["Trigger"] == True:
+			frameobj = base.SC_HUD.addObject("HUD.FreezeFrame", base.SC_HUD.active_camera, 0)
+			frameobj.applyMovement((0,0,-8), True)
 
 
 class MenuPause:

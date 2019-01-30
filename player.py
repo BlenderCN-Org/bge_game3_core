@@ -22,85 +22,10 @@
 ## PLAYER CLASS ##
 
 
-from bge import logic
+from bge import logic, render
 
 from . import keymap, base, HUD, config
 
-
-def SPAWN(cont):
-	owner = cont.owner
-
-	spawn = owner.get("SPAWN", True)
-	timer = owner.get("TIMER", None)
-
-	base.SC_SCN = owner.scene
-
-	if spawn == False:
-		return "DONE"
-
-	## SET SCENE ##
-	portal = logic.globalDict["DATA"]["Portal"]
-
-	if base.CURRENT["Scene"] != None:
-		if base.CURRENT["Scene"] != base.SC_SCN.name:
-			base.CURRENT["Level"] = None
-			print(base.SC_SCN.name, base.CURRENT["Scene"])
-			base.SC_SCN.replace(base.CURRENT["Scene"])
-			return "SCENE"
-
-	base.CURRENT["Scene"] = base.SC_SCN.name
-
-	## LEVEL DATA ##
-	if base.CURRENT["Level"] == None and owner.get("MAP", None) != None:
-		base.CURRENT["Level"] = owner["MAP"]+".blend"
-
-	newmap = str(base.CURRENT["Level"])+base.SC_SCN.name
-
-	if newmap not in base.PROFILE["LVLData"]:
-		print("Initializing Level Data...", newmap)
-		base.PROFILE["LVLData"][newmap] = {"SPAWN":[], "DROP":[], "CLIP":config.LOW_CLIP, "PLAYER":{}}
-
-	base.LEVEL = base.PROFILE["LVLData"][newmap]
-
-	## LIBLOAD ##
-	if timer == None:
-		for libblend in config.LIBRARIES:
-			libblend = base.DATA["GAMEPATH"]+"CONTENT\\"+libblend+".blend"
-			logic.LibLoad(libblend, "Scene", load_actions=True, verbose=False, load_scripts=True)
-
-		owner.worldScale = [1,1,1]
-		owner["TIMER"] = (config.UPBGE_FIX == False)*25
-		logic.addScene("HUD", 1)
-		return "LIBLOAD"
-
-	elif timer <= 30:
-		owner["TIMER"] += 1
-		return "TIMER"
-
-	## SPAWN ##
-	if "CLIP" in owner:
-		base.LEVEL["CLIP"] = owner["CLIP"]
-
-	if base.CURRENT["Player"] == None:
-		player = owner.get("PLAYER", config.DEFAULT_PLAYER)
-	else:
-		player = base.CURRENT["Player"]
-
-	if player not in base.SC_SCN.objectsInactive:
-		player = config.DEFAULT_PLAYER
-
-	if spawn == True:
-		base.CURRENT["Player"] = player
-		char = base.SC_SCN.addObject(player, owner, 0)
-		print("PLAYER:", player, char.worldPosition)
-		owner["SPAWN"] = None
-		return "SPAWN"
-
-	elif spawn == None:
-		owner["SPAWN"] = False
-		return "DONE"
-
-	return "WAIT"
 
 
 
