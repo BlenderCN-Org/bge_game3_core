@@ -87,7 +87,7 @@ class CoreViewport(base.CoreObject):
 
 		logic.VIEWPORT = self
 
-		self.objects = {"Root":owner}
+		self.objects = {"VertRef":owner}
 
 		self.data = self.defaultData()
 		self.camdata = {}
@@ -97,9 +97,7 @@ class CoreViewport(base.CoreObject):
 
 		self.offset = self.createVector()
 		self.pitch = self.createMatrix()
-		self.slowscale = 0
-
-		self.motion = {"Move":self.createVector(), "Rotate":self.createVector()}
+		self.dist = None
 
 		self.defaultStates()
 
@@ -148,6 +146,9 @@ class CoreViewport(base.CoreObject):
 
 		self.setCameraEye(pos=[0,0,0], ori=0)
 
+		if self.objects["VertRef"].parent != None:
+			self.objects["VertRef"].removeParent()
+
 	def buildCameraData(self):
 		plr = self.control
 
@@ -163,9 +164,10 @@ class CoreViewport(base.CoreObject):
 
 		self.camdata = plr.data["CAMERA"]
 
-		steps = (plr.CAM_RANGE[1]-plr.CAM_RANGE[0])/plr.CAM_STEPS
-		dist = (steps*self.camdata["Zoom"])+plr.CAM_RANGE[0]
-		self.camdata["Dist"] = dist
+		if self.dist == None:
+			steps = (plr.CAM_RANGE[1]-plr.CAM_RANGE[0])/plr.CAM_STEPS
+			dist = (steps*self.camdata["Zoom"])+plr.CAM_RANGE[0]
+			self.dist = dist
 
 	#def ST_First()
 	#def ST_Shoulder()
@@ -186,13 +188,14 @@ class CoreViewport(base.CoreObject):
 		if plr == None:
 			return
 
-		owner = self.objects["Root"]
+		vertex = self.objects["VertRef"]
 		camera = self.objects["Camera"]
 		rotate = self.objects["Rotate"]
 
+		## SET ZOOM ##
 		steps = (plr.CAM_RANGE[1]-plr.CAM_RANGE[0])/plr.CAM_STEPS
 		dist = (steps*self.camdata["Zoom"])+plr.CAM_RANGE[0]
-		self.camdata["Dist"] += (dist-self.camdata["Dist"])*0.1
+		self.dist += (dist-self.dist)*0.1
 
 		if keymap.BINDS["ZOOM_IN"].tap() == True and self.camdata["Zoom"] > 0:
 			self.camdata["Zoom"] -= 1
@@ -200,28 +203,29 @@ class CoreViewport(base.CoreObject):
 		elif keymap.BINDS["ZOOM_OUT"].tap() == True and self.camdata["Zoom"] < plr.CAM_STEPS:
 			self.camdata["Zoom"] += 1
 
-		if plr.CAM_ORBIT in [-1,2]:
-			self.slowscale = 0
-		elif self.camdata["Orbit"] == False:
-			self.slowscale = 0
-			if keymap.BINDS["CAM_ORBIT"].tap() == True:
+		## SET ORBIT ##
+		if self.camdata["Orbit"] == False:
+			if vertex.parent != None:
+				vertex.removeParent()
+			if plr.CAM_ORBIT in [0,1] and keymap.BINDS["CAM_ORBIT"].tap() == True:
 				self.camdata["Orbit"] = True
 		elif self.camdata["Orbit"] == True:
-			self.slowscale += (1-self.slowscale)*0.1
-			if keymap.BINDS["CAM_ORBIT"].tap() == True:
+			if vertex.parent == None and self.parent != None:
+				vertex.setParent(self.parent)
+			if plr.CAM_ORBIT in [0,1] and keymap.BINDS["CAM_ORBIT"].tap() == True:
 				self.camdata["Orbit"] = False
 
+		## ADAPT FOV ##
 		if abs(self.camdata["FOV"]-camera.fov) > 0.01:
 			camera.fov += (self.camdata["FOV"]-camera.fov)*0.1
 		else:
 			camera.fov = self.camdata["FOV"]
 
+		## MOUSELOOK ##
 		if self.camdata["Orbit"] >= 1:
 			ts = (camera.fov/plr.CAM_FOV)**2
 
-			#TURN = keymap.BINDS["PLR_TURNLEFT"].axis(True) - keymap.BINDS["PLR_TURNRIGHT"].axis(True)
-			#LOOK = keymap.BINDS["PLR_LOOKUP"].axis(True) - keymap.BINDS["PLR_LOOKDOWN"].axis(True)
-			ROTATE = plr.motion.get("Rotate", [0,0,0]) #keymap.input.JoinAxis(LOOK, 0, TURN)
+			ROTATE = plr.motion.get("Rotate", [0,0,0])
 
 			X, Y = keymap.MOUSELOOK.axis([ROTATE[2], ROTATE[0]])
 
@@ -237,32 +241,29 @@ class CoreViewport(base.CoreObject):
 
 			self.doCameraFollow(self.parent, slow, orbit)
 
-		dist = self.camdata["Dist"]
-
-		self.doCameraCollision(plr, dist)
+		self.doCameraCollision(plr, self.dist)
 
 	def doCameraFollow(self, parent, slow=0, orbit=True):
 		owner = self.objects["Root"]
-		pitch = self.objects["Rotate"]
+		vertex = self.objects["VertRef"]
+		rotate = self.objects["Rotate"]
 
 		fac = 1
-		mx = 0
 		if slow > 1:
 			fac = 1/slow
-			mx = (1-fac)*self.slowscale
 
 		tpos = parent.worldPosition
-		vpos = owner.worldPosition
+		vpos = vertex.worldPosition
 
-		slowV = vpos.lerp(tpos, fac+mx)
+		slowV = vpos.lerp(tpos, fac)
 
-		owner.worldPosition = slowV
+		vertex.worldPosition = slowV
 
-		vpos = pitch.localPosition
+		vpos = rotate.localPosition
 
 		slowV = vpos.lerp(self.offset, fac)
 
-		pitch.localPosition = slowV
+		rotate.localPosition = slowV
 
 		if orbit == True:
 			owner.alignAxisToVect((0,0,1), 2, fac)
@@ -276,11 +277,11 @@ class CoreViewport(base.CoreObject):
 		owner.worldOrientation = slowQ.to_matrix()
 
 		tquat = self.pitch.to_quaternion()
-		vquat = pitch.localOrientation.to_quaternion()
+		vquat = rotate.localOrientation.to_quaternion()
 
 		slowQ = vquat.slerp(tquat, fac)
 
-		pitch.localOrientation = slowQ.to_matrix()
+		rotate.localOrientation = slowQ.to_matrix()
 
 	def doCameraCollision(self, plr, dist):
 		owner = plr.objects["Root"]

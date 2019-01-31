@@ -61,15 +61,20 @@ def GAME(cont):
 		return
 
 	for cls in logic.UPDATELIST:
-	#	try:
-		cls.RUN()
-	#	except Exception as ex:
-	#		logic.UPDATELIST.remove(cls)
-	#		print("FATAL RUNTIME ERROR:", cls.__class__)
-	#		print("\t", ex)
+		try:
+			cls.RUN()
+		except Exception as ex:
+			logic.UPDATELIST.remove(cls)
+			print("FATAL RUNTIME ERROR:", cls.__class__)
+			print("\t", ex)
 
 	if logic.VIEWPORT != None:
-		logic.VIEWPORT.RUN()
+		try:
+			logic.VIEWPORT.RUN()
+		except Exception as ex:
+			logic.VIEWPORT = None
+			print("FATAL RUNTIME ERROR:", "CoreViewport")
+			print("\t", ex)
 
 	if keymap.SYSTEM["SCREENSHOT"].tap() == True:
 		logic.globalDict["SCREENSHOT"]["Trigger"] = True
