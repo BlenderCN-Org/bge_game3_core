@@ -66,7 +66,7 @@ class CorePlayer(base.CoreAdvanced):
 	WALL_DIST = 0.4
 	OFFSET = (0, 0, 0)
 
-	CAM_ORBIT = True
+	CAM_ORBIT = 2
 	CAM_SLOW = 2
 	CAM_RANGE = (1,6)
 	CAM_HEIGHT = 0.15
