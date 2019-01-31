@@ -64,7 +64,7 @@ class CorePlayer(base.CoreAdvanced):
 	GND_H = 1.0
 	EDGE_H = 2.0
 	WALL_DIST = 0.4
-	OFFSET = (0, 0, 0)
+	OFFSET = (0, 0.0, 0.2)
 
 	CAM_ORBIT = 2
 	CAM_SLOW = 2
@@ -412,7 +412,7 @@ class CorePlayer(base.CoreAdvanced):
 		if keymap.BINDS["PLR_RUN"].tap() == True:
 			self.data["RUN"] ^= True
 
-		if keymap.BINDS["PLR_STRAFETOGGLE"].tap() == True:
+		if keymap.BINDS["TOGGLESTRAFE"].tap() == True:
 			self.data["STRAFE"] ^= True
 
 		self.motion["Move"][0] = MOVE[0]
