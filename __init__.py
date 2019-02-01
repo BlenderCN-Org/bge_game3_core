@@ -33,10 +33,10 @@ except Exception:
 ## NO VIEWPORT PLAYER ##
 try:
 	import bpy
-	logic.endGame()
-	raise RuntimeError("Embedded Player Dectected...")
+	config.EMBEDDED_FIX = True
+	print("NOTICE: Embedded Player Dectected...")
 except ImportError:
-	pass
+	config.EMBEDDED_FIX = False
 
 
 ## SETUP DATA ##

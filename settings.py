@@ -177,25 +177,32 @@ def GenerateGraphicsData():
 		"Debug": data.get("Debug", [True, True, True, True])
 	}
 
-	render.setFullScreen(dict["Fullscreen"])
+	if config.EMBEDDED_FIX == False:
+		render.setFullScreen(dict["Fullscreen"])
+
 	X = render.getWindowWidth()
 	Y = render.getWindowHeight()
 
 	if dict["Resolution"] == None:
 		print("NOTICE: Initializing Resolution...")
 		dict["Resolution"] = [X, Y]
-	if dict["Resolution"][0] > X or dict["Resolution"][1] > Y:
+	if dict["Resolution"][0] > X or dict["Resolution"][1] > Y or len(dict["Resolution"]) >= 3:
 		print("WARNING: Resolution out of Range...")
 		dict["Resolution"] = [X, Y]
 
-	if dict["Resolution"][0] % 2 != 0:
-		dict["Resolution"][0] -= 1
-		print("NOTICE: Resolution Fix")
-	if dict["Resolution"][1] % 2 != 0:
-		dict["Resolution"][1] -= 1
-		print("NOTICE: Resolution Fix")
+	if config.EMBEDDED_FIX == False:
+		if dict["Resolution"][0] % 2 != 0:
+			dict["Resolution"][0] -= 1
+			print("NOTICE: Resolution Fix")
+		if dict["Resolution"][1] % 2 != 0:
+			dict["Resolution"][1] -= 1
+			print("NOTICE: Resolution Fix")
 
-	render.setWindowSize(dict["Resolution"][0], dict["Resolution"][1])
+		render.setWindowSize(dict["Resolution"][0], dict["Resolution"][1])
+
+	elif len(dict["Resolution"]) <= 2:
+		dict["Resolution"].append("EMBEDDED")
+
 	print("...")
 
 	return dict
