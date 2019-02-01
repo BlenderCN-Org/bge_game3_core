@@ -211,6 +211,9 @@ def GenerateGraphicsData():
 def applyGraphics():
 	graphics = logic.globalDict["GRAPHICS"]
 
+	if config.EMBEDDED_FIX == True:
+		return
+
 	if SCREENSHOT not in logic.getSceneList()[0].post_draw:
 		logic.getSceneList()[0].post_draw.append(SCREENSHOT)
 

@@ -93,7 +93,7 @@ def START():
 		return "DONE"
 
 	## SET SCENE ##
-	if CURRENT["Scene"] != None:
+	if CURRENT["Scene"] != None and config.EMBEDDED_FIX == False:
 		if CURRENT["Scene"] != scene.name:
 			if scene.replace(CURRENT["Scene"]) == True:
 				CURRENT["Level"] = None
@@ -115,6 +115,10 @@ def START():
 		PROFILE["LVLData"][newmap] = settings.GenerateLevelData()
 
 	LEVEL = PROFILE["LVLData"][newmap]
+
+	if config.EMBEDDED_FIX == True:
+		owner["SPAWN"] = False
+		return "DONE"
 
 	## LIBLOAD ##
 	if timer == None:
