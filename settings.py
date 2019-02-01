@@ -116,6 +116,8 @@ def openWorldBlend(map, scn=None):
 	for cls in logic.UPDATELIST:
 		if cls.UPDATE == True:
 			cls.doUpdate()
+	if logic.VIEWPORT != None:
+		logic.VIEWPORT.doUpdate()
 	logic.UPDATELIST = []
 
 	print("OPEN MAP:\n\t"+blend)

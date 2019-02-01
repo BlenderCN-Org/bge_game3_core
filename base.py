@@ -98,9 +98,6 @@ def START():
 			if scene.replace(CURRENT["Scene"]) == True:
 				CURRENT["Level"] = None
 				print(scene.name, CURRENT["Scene"])
-				#scene.active_camera.near = 0.1
-				#scene.active_camera.far = 0.2
-				#render.setBackgroundColor([0,0,0,1])
 				return "SCENE"
 			else:
 				print("NOTICE: Scene '"+CURRENT["Scene"]+"' Not Found...")
@@ -121,16 +118,16 @@ def START():
 
 	## LIBLOAD ##
 	if timer == None:
+		owner["TIMER"] = (config.UPBGE_FIX == False)*25
+
 		for libblend in config.LIBRARIES:
 			libblend = DATA["GAMEPATH"]+"CONTENT\\"+libblend+".blend"
 			logic.LibLoad(libblend, "Scene", load_actions=True, verbose=False, load_scripts=True)
 
 		owner.worldScale = [1,1,1]
-		owner["TIMER"] = (config.UPBGE_FIX == False)*25
 		owner["GFX_Black"] = scene.addObject("GFX_Black", scene.active_camera, 0)
 		owner["GFX_Black"].setParent(scene.active_camera)
 		owner["GFX_Black"].color = (0, 0, 0, 1)
-
 		logic.addScene("HUD", 1)
 		return "LIBLOAD"
 

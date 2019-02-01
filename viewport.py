@@ -37,6 +37,9 @@ def setDirection(vec, factor=1):
 	VIEWCLASS.objects["Root"].alignAxisToVect(vec, 1, factor)
 	VIEWCLASS.objects["Root"].alignAxisToVect((0,0,1), 2, 1.0)
 
+def pointCamera(vec=None, factor=1):
+	VIEWCLASS.doTrackTo(vec, fac)
+
 def getRayVec():
 	return VIEWCLASS.objects["Rotate"].getAxisVect((0,1,0))
 
@@ -67,13 +70,15 @@ def cameraMotion(move=None, rot=None, add=False):
 	if VIEWCLASS != None:
 		VIEWCLASS.applyMotion(move, rot, add)
 
-def updateCamera(plr, parent, dist, slow=0, orbit=True):
+def updateCamera(plr, parent, dist=None, slow=0, orbit=True, load=False):
 	global VIEWCLASS
 	if VIEWCLASS == None:
 		VIEWCLASS = CoreViewport()
 
 	VIEWCLASS.doCameraFollow(parent, slow, orbit)
 	VIEWCLASS.doCameraCollision(plr, dist)
+	if load == True:
+		VIEWCLASS.doLoad()
 
 
 class CoreViewport(base.CoreObject):
@@ -105,11 +110,29 @@ class CoreViewport(base.CoreObject):
 
 	def defaultStates(self):
 		self.active_pre = []
-		self.active_state = self.ST_Active
+		self.active_state = None
 		self.active_post = []
 
 	def defaultData(self):
 		return {}
+
+	def doLoad(self):
+		if self.camdata == None or self.parent == None:
+			return
+
+		camzr = self.parent.worldOrientation*self.createMatrix(rot=self.camdata["ZR"], deg=False)
+		self.objects["Root"].worldOrientation = camzr
+		camxr = self.createMatrix(rot=(self.camdata["XR"],0,0), deg=False)
+		self.objects["Rotate"].localOrientation = camxr
+
+	def doUpdate(self):
+		if self.camdata == None or self.parent == None:
+			return
+
+		camzr = self.parent.worldOrientation.inverted()*self.objects["Root"].worldOrientation
+		self.camdata["ZR"] = list(camzr.to_euler())
+		camxr = self.objects["Rotate"].localOrientation.to_euler()
+		self.camdata["XR"] = list(camxr)[0]
 
 	def applyMotion(self, move=None, rot=None, add=False):
 		if move != None:
@@ -143,6 +166,7 @@ class CoreViewport(base.CoreObject):
 			self.camdata = None
 		else:
 			self.buildCameraData()
+			self.stateSwitch(self.camdata["State"])
 
 		self.setCameraEye(pos=[0,0,0], ori=0)
 
@@ -159,7 +183,7 @@ class CoreViewport(base.CoreObject):
 				"Zoom": plr.CAM_ZOOM,
 				"FOV": plr.CAM_FOV,
 				"Slow": plr.CAM_SLOW,
-				"ZR": [0,1,0],
+				"ZR": [0,0,0],
 				"XR": 0}
 
 		self.camdata = plr.data["CAMERA"]
@@ -169,25 +193,30 @@ class CoreViewport(base.CoreObject):
 			dist = (steps*self.camdata["Zoom"])+plr.CAM_RANGE[0]
 			self.dist = dist
 
-	#def ST_First()
-	#def ST_Shoulder()
-	#def ST_Third()
+	def doTrackTo(self, vec=None, fac=1):
+		if vec == None:
+			self.objects["Camera"].localOrientation = self.createMatrix([90,0,0])
 
-	def doTrackTo(self, vec=[0,1,0], fac=1):
 		zref = self.objects["Camera"].getVectTo(vec)[1]
 		xref = self.objects["Rotate"].getAxisVect([1,0,0])
 
 		self.objects["Camera"].alignAxisToVect(-zref, 2, fac)
 		self.objects["Camera"].alignAxisToVect(xref, 0, fac)
 
-		#self.objects["Camera"].localOrientation = self.createMatrix([90,0,0])
+	def stateSwitch(self, state):
+		#if state == "THIRD":
+		self.active_state = self.ST_Third
 
 	def RUN(self):
+
 		plr = self.control
 
-		if plr == None:
+		if plr == None or self.active_state == None:
 			return
 
+		self.active_state(plr)
+
+	def ST_Third(self, plr):
 		vertex = self.objects["VertRef"]
 		camera = self.objects["Camera"]
 		rotate = self.objects["Rotate"]
@@ -241,7 +270,10 @@ class CoreViewport(base.CoreObject):
 
 			self.doCameraFollow(self.parent, slow, orbit)
 
-		self.doCameraCollision(plr, self.dist)
+		self.doCameraCollision(plr)
+
+	#def ST_First(self, plr):
+	#def ST_Shoulder(self, plr):
 
 	def doCameraFollow(self, parent, slow=0, orbit=True):
 		owner = self.objects["Root"]
@@ -283,7 +315,7 @@ class CoreViewport(base.CoreObject):
 
 		rotate.localOrientation = slowQ.to_matrix()
 
-	def doCameraCollision(self, plr, dist):
+	def doCameraCollision(self, plr, dist=None):
 		owner = plr.objects["Root"]
 
 		camera = self.objects["Camera"]
@@ -292,6 +324,8 @@ class CoreViewport(base.CoreObject):
 		margin = 1
 		height = plr.CAM_HEIGHT
 		minz = plr.CAM_MIN
+		if dist == None:
+			dist = self.dist
 
 		camLX = 0
 		camLY = -dist

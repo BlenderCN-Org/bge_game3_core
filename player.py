@@ -68,9 +68,9 @@ class CorePlayer(base.CoreAdvanced):
 
 	CAM_ORBIT = 2
 	CAM_SLOW = 2
-	CAM_RANGE = (1,6)
+	CAM_RANGE = (0.75,6)
 	CAM_HEIGHT = 0.15
-	CAM_STEPS = 5
+	CAM_STEPS = 7
 	CAM_ZOOM = 2
 	CAM_MIN = 0.2
 
@@ -113,8 +113,8 @@ class CorePlayer(base.CoreAdvanced):
 
 		self.motion = {"Move":self.createVector(2), "Rotate":self.createVector(3), "Climb":0, "Accel":0}
 
-		self.data = {"HEALTH":100, "ENERGY":100, "RECHARGE":0.1,
-			"SPEED":self.SPEED, "JUMP":self.JUMP, "RUN":self.MOVERUN, "STRAFE":self.SIDESTEP}
+		self.data = {"HEALTH":100, "ENERGY":100, "RECHARGE":0.1, "SPEED":self.SPEED,
+			"JUMP":self.JUMP, "RUN":self.MOVERUN, "STRAFE":self.SIDESTEP}
 
 		self.data["HUD"] = {"Text":"", "Color":(0,0,0,0.5), "Target":None, "Locked":None}
 
@@ -149,23 +149,21 @@ class CorePlayer(base.CoreAdvanced):
 
 			portal = base.LOAD()
 
-			owner = scene.addObject(self.PHYSICS, char, 0)
-			owner.setDamping(self.data["DAMPING"][0], self.data["DAMPING"][1])
-			owner["Class"] = self
-
-			self.objects["Root"] = owner
-
-			self.addCollisionCallBack()
-			self.findObjects(owner)
-			self.parentArmature(owner)
-
-			self.assignCamera()
-			viewport.setEyeHeight(self.EYE_H-self.GND_H, set=True)
-
 			if portal != None:
 				portal["RAYCAST"] = self
 			else:
+				owner = scene.addObject(self.PHYSICS, char, 0)
+				owner.setDamping(self.data["DAMPING"][0], self.data["DAMPING"][1])
+				owner["Class"] = self
+
+				self.objects["Root"] = owner
+
+				self.addCollisionCallBack()
+				self.findObjects(owner)
+				self.parentArmature(owner)
 				self.setPhysicsType()
+
+				self.assignCamera(load=True)
 
 				self.doPortal()
 
@@ -199,13 +197,12 @@ class CorePlayer(base.CoreAdvanced):
 			owner.worldOrientation = base.LEVEL["PLAYER"]["ORI"]
 
 		if portal != None and zone == None:
-			self.alignCamera()
-		#else:
-		#	self.alignCamera(axis=self.data["CAMERA"]["ZR"])
-		#	camxr = [self.data["CAMERA"]["XR"],0,0]
-		#	self.objects["CamRot"].localOrientation = self.createMatrix(rot=camxr, deg=False)
+			self.data["CAMERA"]["ZR"] = [0,0,0]
+			self.data["CAMERA"]["XR"] = 0
 
 		owner.localLinearVelocity = self.data["LINVEL"]
+
+		viewport.updateCamera(self, owner, load=True)
 
 		if base.DATA["Portal"]["Vehicle"] == None or portal == None:
 			base.DATA["Portal"]["Door"] = None
@@ -243,9 +240,6 @@ class CorePlayer(base.CoreAdvanced):
 		self.data["LINVEL"] = self.vecTuple(owner.localLinearVelocity)
 		self.data["DAMPING"] = [owner.linearDamping, owner.angularDamping]
 
-		#self.data["CAMERA"]["ZR"] = list(owner.worldOrientation.inverted()*self.objects["VertRef"].getAxisVect([0,1,0]))
-		#self.data["CAMERA"]["XR"] = list(self.objects["CamRot"].localOrientation.to_euler())[0]
-
 		base.LEVEL["PLAYER"]["POS"] = self.vecTuple(owner.worldPosition)
 		base.LEVEL["PLAYER"]["ORI"] = self.matTuple(owner.worldOrientation)
 
@@ -263,10 +257,10 @@ class CorePlayer(base.CoreAdvanced):
 		char.localPosition = POS
 		char.localOrientation = self.createMatrix()
 
-	def assignCamera(self):
+	def assignCamera(self, load=False):
 		viewport.setCamera(self)
 		viewport.setParent(self.objects["Root"])
-		viewport.setEyeHeight(self.EYE_H-self.GND_H)
+		viewport.setEyeHeight(self.EYE_H-self.GND_H, set=load)
 
 	def enterVehicle(self, seat):
 		self.jump_state = "NONE"

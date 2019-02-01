@@ -141,6 +141,7 @@ class CoreVehicle(base.CoreAdvanced):
 			self.driving_seat = self.data["ACTIVE_SEAT"]
 
 			self.ST_Active_Set()
+			viewport.updateCamera(self, owner, load=True)
 
 	def doUpdate(self):
 		owner = self.objects["Root"]
