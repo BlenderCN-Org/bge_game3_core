@@ -118,18 +118,23 @@ class CoreVehicle(base.CoreAdvanced):
 				pos = portal.worldPosition
 				ori = portal.worldOrientation
 
-				owner.worldPosition = pos
-				owner.worldOrientation = ori
+				if zone != None:
+					pos = self.createVector(vec=zone[0])
+					pos = portal.worldPosition+(portal.worldOrientation*pos)
 
-			if zone != None:
-				pos = self.createVector(vec=zone[0])
-				pos = portal.worldPosition+(portal.worldOrientation*pos)
-
-				ori = self.createMatrix(mat=zone[1])
-				ori = owner.worldOrientation*ori
+					ori = self.createMatrix(mat=zone[1])
+					ori = owner.worldOrientation*ori
 
 				owner.worldPosition = pos
 				owner.worldOrientation = ori
+
+			elif "POS" in base.LEVEL["PLAYER"]:
+				owner.worldPosition = base.LEVEL["PLAYER"]["POS"]
+				owner.worldOrientation = base.LEVEL["PLAYER"]["ORI"]
+
+			else:
+				base.LEVEL["PLAYER"]["POS"] = self.vecTuple(owner.worldPosition)
+				base.LEVEL["PLAYER"]["ORI"] = self.matTuple(owner.worldOrientation)
 
 			owner.setLinearVelocity(self.data["LINVEL"], True)
 			owner.setAngularVelocity(self.data["ANGVEL"], True)

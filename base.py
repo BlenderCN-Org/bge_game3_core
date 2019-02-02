@@ -51,14 +51,6 @@ del CUR_LVL, CUR_PRF, CUR_PLR
 
 
 def GAME(cont):
-	global SC_SCN, SC_RUN
-	SC_SCN = cont.owner.scene
-	SC_RUN = cont.owner
-
-	status = START()
-
-	if status != "DONE":
-		return
 
 	for cls in logic.UPDATELIST:
 		try:
@@ -80,14 +72,19 @@ def GAME(cont):
 		logic.globalDict["SCREENSHOT"]["Trigger"] = True
 
 
-def START():
+def START(cont):
 	global CURRENT, LEVEL, DATA, PROFILE
 
+	global SC_SCN, SC_RUN
+	SC_SCN = cont.owner.scene
+	SC_RUN = cont.owner
+
+	scene = SC_SCN
 	owner = SC_RUN
-	scene = owner.scene
 
 	spawn = owner.get("SPAWN", True)
 	timer = owner.get("TIMER", None)
+	black = owner.get("GFXBG", None)
 
 	if spawn == False:
 		return "DONE"
@@ -120,6 +117,10 @@ def START():
 		owner["SPAWN"] = False
 		return "DONE"
 
+	if black == None:
+		owner["GFXBG"] = True
+		return "BLACK"
+
 	## LIBLOAD ##
 	if timer == None:
 		owner["TIMER"] = (config.UPBGE_FIX == False)*25
@@ -129,9 +130,6 @@ def START():
 			logic.LibLoad(libblend, "Scene", load_actions=True, verbose=False, load_scripts=True)
 
 		owner.worldScale = [1,1,1]
-		owner["GFX_Black"] = scene.addObject("GFX_Black", scene.active_camera, 0)
-		owner["GFX_Black"].setParent(scene.active_camera)
-		owner["GFX_Black"].color = (0, 0, 0, 1)
 		logic.addScene("HUD", 1)
 		return "LIBLOAD"
 
@@ -144,33 +142,26 @@ def START():
 		LEVEL["CLIP"] = owner["CLIP"]
 
 	if CURRENT["Player"] == None:
-		player = owner.get("PLAYER", config.DEFAULT_PLAYER)
-	else:
-		player = CURRENT["Player"]
+		CURRENT["Player"] = owner.get("PLAYER", config.DEFAULT_PLAYER)
 
-	if player not in scene.objectsInactive:
-		player = config.DEFAULT_PLAYER
+	if CURRENT["Player"] not in scene.objectsInactive:
+		CURRENT["Player"] = config.DEFAULT_PLAYER
 
 	if spawn == True:
-		CURRENT["Player"] = player
-		char = scene.addObject(player, owner, 0)
-		print("PLAYER:", player, char.worldPosition)
+		LOAD(owner)
 		owner["SPAWN"] = None
 		return "SPAWN"
 
 	elif spawn == None:
-		owner["GFX_Black"].endObject()
-		owner["GFX_Black"] = None
 		owner["SPAWN"] = False
 		return "END"
 
 	return "WAIT"
 
 
-def LOAD():
+def LOAD(owner):
 	global CURRENT, LEVEL, DATA, PROFILE
 
-	owner = SC_RUN
 	scene = owner.scene
 
 	## Ground Detector ##
@@ -181,12 +172,9 @@ def LOAD():
 		elif obj.getPhysicsId() != 0:
 			obj["GROUND"] = True
 
-	if "POS" not in LEVEL["PLAYER"]:
-		LEVEL["PLAYER"]["POS"] = list(owner.worldPosition)
-		LEVEL["PLAYER"]["ORI"] = [
-			list(owner.worldOrientation[0]),
-			list(owner.worldOrientation[1]),
-			list(owner.worldOrientation[2])]
+	## Add Player ##
+	char = scene.addObject(CURRENT["Player"], owner, 0)
+	print("PLAYER:", CURRENT["Player"], char.worldPosition)
 
 	## Spawn New Objects ##
 	cleanup = []
@@ -229,16 +217,6 @@ def LOAD():
 		print("CYBERSPACE:", drop["Object"])
 
 	LEVEL["DROP"] = []
-
-	if DATA["Portal"]["Vehicle"] != None:
-		dict = DATA["Portal"]["Vehicle"]
-		portal = scene.addObject(dict["Object"], owner, 0)
-		portal.worldPosition = LEVEL["PLAYER"]["POS"]
-		portal.worldOrientation = LEVEL["PLAYER"]["ORI"]
-		portal["DICT"] = dict
-		return portal
-
-	return None
 
 
 class CoreObject:
@@ -615,11 +593,15 @@ class CoreAdvanced(CoreObject):
 
 	HUDLAYOUT = None
 
-	def runStates(self):
-		self.active_state()
-		self.data["ACTIVE_STATE"] = self.active_state.__name__
+	def runAttachments(self):
 		for slot in self.cls_dict:
 			self.cls_dict[slot].RUN()
+
+	def runStates(self):
+		if self.active_state != None:
+			self.active_state()
+			self.data["ACTIVE_STATE"] = self.active_state.__name__
+		self.runAttachments()
 
 	def loadInventory(self, owner):
 		scene = owner.scene

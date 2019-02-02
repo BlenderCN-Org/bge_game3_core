@@ -76,7 +76,8 @@ def updateCamera(plr, parent, dist=None, slow=0, orbit=True, load=False):
 		VIEWCLASS = CoreViewport()
 
 	VIEWCLASS.doCameraFollow(parent, slow, orbit)
-	VIEWCLASS.doCameraCollision(plr, dist)
+	if dist != None and plr != None:
+		VIEWCLASS.doCameraCollision(plr, dist)
 	if load == True:
 		VIEWCLASS.doLoad()
 
@@ -275,10 +276,12 @@ class CoreViewport(base.CoreObject):
 	#def ST_First(self, plr):
 	#def ST_Shoulder(self, plr):
 
-	def doCameraFollow(self, parent, slow=0, orbit=True):
+	def doCameraFollow(self, parent=None, slow=0, orbit=True):
 		owner = self.objects["Root"]
 		vertex = self.objects["VertRef"]
 		rotate = self.objects["Rotate"]
+		if parent == None:
+			parent = self.parent
 
 		fac = 1
 		if slow > 1:

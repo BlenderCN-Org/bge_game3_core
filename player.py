@@ -85,7 +85,6 @@ class CorePlayer(base.CoreAdvanced):
 		self.findObjects(char)
 
 		self.ANIMOBJ = self.objects["Rig"]
-		self.doAnim(NAME="Jumping", FRAME=(0,0))
 
 		self.active_pre = []
 		self.active_state = self.ST_Walking
@@ -147,27 +146,24 @@ class CorePlayer(base.CoreAdvanced):
 		if logic.PLAYERCLASS == None:
 			logic.PLAYERCLASS = self
 
-			portal = base.LOAD()
+			if base.DATA["Portal"]["Vehicle"] != None:
+				dict = base.DATA["Portal"]["Vehicle"]
+				vehicle = scene.addObject(dict["Object"], owner, 0)
+				vehicle["DICT"] = dict
+				vehicle["RAYCAST"] = self
 
-			if portal != None:
-				portal["RAYCAST"] = self
 			else:
-				owner = scene.addObject(self.PHYSICS, char, 0)
-				owner.setDamping(self.data["DAMPING"][0], self.data["DAMPING"][1])
-				owner["Class"] = self
-
-				self.objects["Root"] = owner
-
-				self.addCollisionCallBack()
+				owner = self.addPhysicsBox()
 				self.findObjects(owner)
 				self.parentArmature(owner)
-				self.setPhysicsType()
 
 				self.assignCamera(load=True)
 
 				self.doPortal()
 
 				HUD.SetLayout(self)
+
+				self.doPlayerAnim("IDLE.RESET")
 
 		self.ST_Startup()
 
@@ -195,6 +191,10 @@ class CorePlayer(base.CoreAdvanced):
 		elif "POS" in base.LEVEL["PLAYER"]:
 			owner.worldPosition = base.LEVEL["PLAYER"]["POS"]
 			owner.worldOrientation = base.LEVEL["PLAYER"]["ORI"]
+
+		else:
+			base.LEVEL["PLAYER"]["POS"] = self.vecTuple(owner.worldPosition)
+			base.LEVEL["PLAYER"]["ORI"] = self.matTuple(owner.worldOrientation)
 
 		if portal != None and zone == None:
 			self.data["CAMERA"]["ZR"] = [0,0,0]
@@ -243,6 +243,20 @@ class CorePlayer(base.CoreAdvanced):
 		base.LEVEL["PLAYER"]["POS"] = self.vecTuple(owner.worldPosition)
 		base.LEVEL["PLAYER"]["ORI"] = self.matTuple(owner.worldOrientation)
 
+	def addPhysicsBox(self):
+		char = self.objects["Character"]
+
+		owner = char.scene.addObject(self.PHYSICS, char, 0)
+		owner.setDamping(self.data["DAMPING"][0], self.data["DAMPING"][1])
+		owner["Class"] = self
+
+		self.objects["Root"] = owner
+
+		self.addCollisionCallBack()
+		self.setPhysicsType()
+
+		return owner
+
 	def parentArmature(self, obj, offset=False):
 		char = self.objects["Character"]
 
@@ -281,21 +295,16 @@ class CorePlayer(base.CoreAdvanced):
 		self.parentArmature(seat, True)
 
 	def exitVehicle(self, spawn):
-		scene = base.SC_SCN
-
 		keymap.MOUSELOOK.center()
 
-		self.doAnim(NAME="Jumping", FRAME=(0,0))
+		self.doPlayerAnim("IDLE.RESET")
 
 		self.objects["Character"].removeParent()
 		self.objects["Character"].setVisible(True, True)
 
-		owner = scene.addObject("Player", self.objects["Character"], 0)
+		owner = self.addPhysicsBox()
 		owner.alignAxisToVect((0,0,1), 2, 1.0)
 		owner.worldPosition = spawn
-		self.objects["Root"] = owner
-
-		self.addCollisionCallBack()
 
 		self.findObjects(owner)
 		self.parentArmature(owner)
@@ -303,42 +312,37 @@ class CorePlayer(base.CoreAdvanced):
 
 		HUD.SetLayout(self)
 
-		owner["Class"] = self
-
-	def switchPlayerPassive(self, owner):
+	def switchPlayerPassive(self):
 		self.jump_state = "NONE"
 		self.jump_timer = 0
 		self.crouch = 0
-		self.doCrouch(False)
 		self.rayorder = "NONE"
 		self.data["HUD"]["Target"] = None
 		self.data["HUD"]["Text"] = ""
 
 		#self.doUpdate(False)
 
-		self.objects["Character"].removeParent()
-		self.objects["Root"] = None
+		if self.objects["Root"] != None:
+			self.doCrouch(False)
+			self.objects["Character"].removeParent()
+			self.objects["Root"].endObject()
+			self.objects["Root"] = None
 
-		self.parentArmature(owner)
+		self.doPlayerAnim("IDLE.RESET")
 
-		self.doAnim(NAME="Jumping", FRAME=(0,0))
-
-	def switchPlayerActive(self, owner):
-		self.objects["Root"] = owner
-
+	def switchPlayerActive(self):
 		keymap.MOUSELOOK.center()
 
 		self.doAnim(STOP=True)
+
+		owner = self.addPhysicsBox()
 
 		self.findObjects(owner)
 		self.parentArmature(owner)
 		self.assignCamera()
 
-		self.addCollisionCallBack()
-
 		HUD.SetLayout(self)
 
-		owner["Class"] = self
 		logic.PLAYERCLASS = self
 		base.CURRENT["Player"] = self.objects["Character"].name
 
@@ -353,10 +357,11 @@ class CorePlayer(base.CoreAdvanced):
 		self.objects["Root"].alignAxisToVect(up, 2, 1.0)
 
 	def getDropPoint(self):
-		drop = self.getWorldSpace(self.objects["Root"], (0,self.INTERACT-0.5,0))
+		drop = viewport.getRayVec()*(self.INTERACT-0.5)
+		drop += self.objects["Root"].worldPosition
 
 		if self.rayhit != None:
-			if self.rayvec.length <= 1:
+			if self.rayvec.length < self.INTERACT:
 				drop = self.rayhit[1]+(self.rayhit[2]*0.5)
 
 		return list(drop)
@@ -553,7 +558,7 @@ class CorePlayer(base.CoreAdvanced):
 						self.motion["Accel"] = 0
 						owner.worldPosition = [EDGEPNT[0], EDGEPNT[1], EDGEPNT[2]+1]
 						self.jump_state = "FALLING"
-						self.doAnim(NAME="Jumping", FRAME=(0,20), PRIORITY=2, MODE="PLAY", BLEND=10)
+						self.doPlayerAnim("JUMP")
 
 			## Ledge Grab ##
 			if owner.localLinearVelocity[2] < 0 and self.rayorder == "GRAB" and self.jump_state == "FALLING":
@@ -604,7 +609,7 @@ class CorePlayer(base.CoreAdvanced):
 			angle = round(self.toDeg(angle), 2)
 			gndbias = (angle/90)*0.3
 
-			if self.jump_state != "NONE":
+			if self.jump_state not in ["NONE", "CROUCH"]:
 				if owner.worldPosition[2]-rayPNT[2] > offset+gndbias:
 					ground = None
 				else:
@@ -744,7 +749,7 @@ class CorePlayer(base.CoreAdvanced):
 		owner.worldLinearVelocity[1] = (mref[1]*mx)*60
 
 	def doPlayerAnim(self, action="IDLE", blend=10):
-
+		return
 		if action == "JUMP":
 			self.doAnim(NAME="Jumping", FRAME=(0,20), PRIORITY=2, MODE="PLAY", BLEND=10)
 			self.lastaction = [action, 0]
@@ -755,17 +760,20 @@ class CorePlayer(base.CoreAdvanced):
 			self.lastaction = [action, 0]
 			return
 
-		if action == "IDLE":
+		move = action.split(".")
+
+		if "IDLE" in move:
 			invck = 0
 			for slot in self.cls_dict:
 				if slot in ["Hip_L", "Hip_R"]:
 					invck = -5
 
-			self.doAnim(NAME="Jumping", FRAME=(0+invck,0+invck), PRIORITY=3, MODE="LOOP", BLEND=blend)
+			if "RESET" in move:
+				self.doAnim(NAME="Jumping", FRAME=(0+invck,0+invck))
+			else:
+				self.doAnim(NAME="Jumping", FRAME=(0+invck,0+invck), PRIORITY=3, MODE="LOOP", BLEND=blend)
 			self.lastaction = [action, 0]
 			return
-
-		move = action.split(".")
 
 		if "STAIR" in move:
 			stair = ".Stairs"
@@ -885,7 +893,6 @@ class CorePlayer(base.CoreAdvanced):
 		owner.setDamping(0, 0)
 
 		if ground != None:
-			#owner.applyForce((0,0,-1*scene.gravity[2]), False)
 			owner.worldLinearVelocity = (0,0,0)
 			owner.worldPosition[2] = ground[1][2] + (self.gndraybias*cr_fac)
 
@@ -920,6 +927,7 @@ class CorePlayer(base.CoreAdvanced):
 			if self.crouch <= 0:
 				self.crouch = 0
 				self.doCrouch(False)
+				return
 			else:
 				self.crouch -= 1
 
@@ -932,7 +940,7 @@ class CorePlayer(base.CoreAdvanced):
 			if self.crouch < 10:
 				self.crouch += 1
 
-		viewport.setEyeHeight((self.EYE_H-self.GND_H)*cr_fac)
+		viewport.setEyeHeight( (self.EYE_H-self.GND_H)*cr_fac, set=True)
 
 	def ST_Walking(self):
 		scene = base.SC_SCN
@@ -949,8 +957,6 @@ class CorePlayer(base.CoreAdvanced):
 
 		if ground != None:
 			if self.jump_state == "NONE":
-				#owner.setDamping(0, 0)
-				#owner.applyForce((0,0,-1*scene.gravity[2]), False)
 				owner.worldLinearVelocity = (0,0,0)
 				owner.worldPosition[2] = ground[1][2] + self.gndraybias
 
@@ -1022,8 +1028,6 @@ class CorePlayer(base.CoreAdvanced):
 
 				#if self.jump_timer > 10 and owner.localLinearVelocity[2] < 0.1:
 				#	self.doAnim(NAME="KO", FRAME=(0,60), PRIORITY=2, MODE="PLAY", BLEND=5)
-				#	#owner.setDamping(0, 0)
-				#	#owner.applyForce((0,0,-1*scene.gravity[2]), False)
 				#	owner.worldLinearVelocity = (0,0,0)
 				#	owner.worldPosition[2] = ground[1][2]+self.gndraybias
 
@@ -1032,7 +1036,6 @@ class CorePlayer(base.CoreAdvanced):
 					self.jump_state = "NONE"
 
 			elif self.jump_state in ["FALLING", "A_JUMP", "B_JUMP", "NO_AIR"] and owner.localLinearVelocity[2] < 2:
-				#owner.setDamping(0, 0)
 				self.jump_timer = 0
 				self.jump_state = "NONE"
 				if ground[0].getPhysicsId() != 0:
@@ -1050,7 +1053,6 @@ class CorePlayer(base.CoreAdvanced):
 
 		else:
 			self.doPlayerAnim("FALLING")
-			#owner.setDamping(0, 0)
 			self.jump_timer += 1
 
 			if self.jump_state in ["FALLING", "A_JUMP", "B_JUMP"]:
@@ -1232,7 +1234,7 @@ class CorePlayer(base.CoreAdvanced):
 		owner.applyForce((0,0,-1*scene.gravity[2]), False)
 		owner.applyForce((move[0]*mx, move[1]*mx, climb*mx), True)
 
-		self.doAnim(NAME="Jumping", FRAME=(40,40), PRIORITY=3, MODE="LOOP", BLEND=10)
+		self.doPlayerAnim("FALLING")
 
 		if keymap.BINDS["TOGGLEMODE"].tap() == True:
 			self.jump_state = "FALLING"
@@ -1246,6 +1248,7 @@ class CorePlayer(base.CoreAdvanced):
 	## RUN ##
 	def RUN(self):
 		if self.objects["Root"] == None:
+			self.runAttachments()
 			return
 		self.runPre()
 		self.getInputs()
