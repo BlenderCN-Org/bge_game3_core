@@ -49,6 +49,8 @@ DATA = logic.globalDict["DATA"]
 
 del CUR_LVL, CUR_PRF, CUR_PLR
 
+ACTIVE_LIBLOAD = None
+
 
 def GAME(cont):
 
@@ -72,8 +74,13 @@ def GAME(cont):
 		logic.globalDict["SCREENSHOT"]["Trigger"] = True
 
 
+def LIBCB(status):
+	global ACTIVE_LIBLOAD
+	print("ASYNC:", status.libraryName)
+	ACTIVE_LIBLOAD = None
+
 def START(cont):
-	global CURRENT, LEVEL, DATA, PROFILE
+	global CURRENT, LEVEL, DATA, PROFILE, ACTIVE_LIBLOAD
 
 	global SC_SCN, SC_RUN
 	SC_SCN = cont.owner.scene
@@ -122,16 +129,38 @@ def START(cont):
 		return "BLACK"
 
 	## LIBLOAD ##
+	if owner.get("LIBLIST", None) == None:
+		owner["LIBLIST"] = []
+		for libblend in config.LIBRARIES:
+			libblend = DATA["GAMEPATH"]+"CONTENT\\"+libblend+".blend"
+			if config.LIBLOAD_TYPE != "ASYNC" or config.ASYNC_FIX == True:
+				logic.LibLoad(libblend, "Scene", load_actions=True, verbose=False, load_scripts=True)
+			else:
+				owner["LIBLIST"].append(libblend)
+		return "LIBLOAD"
+
+	if ACTIVE_LIBLOAD != None:
+		print(ACTIVE_LIBLOAD.libraryName, ACTIVE_LIBLOAD.progress)
+		return "LIBLOAD"
+
+	if len(owner["LIBLIST"]) > 0:
+		if config.LIBLOAD_TYPE == "ASYNC":
+			libblend = owner["LIBLIST"].pop(0)
+			#if config.ASYNC_FIX == True:
+			#	ACTIVE_LIBLOAD = logic.LibLoad(libblend, "Scene", load_actions=True, verbose=False, load_scripts=True, asynchronous=True)
+			#else:
+			ACTIVE_LIBLOAD = logic.LibLoad(libblend, "Scene", load_actions=True, verbose=False, load_scripts=True, async=True)
+			ACTIVE_LIBLOAD.onFinish = LIBCB
+
+		return "LIBLOAD"
+
+	## HUD SCENE ##
 	if timer == None:
 		owner["TIMER"] = (config.UPBGE_FIX == False)*25
 
-		for libblend in config.LIBRARIES:
-			libblend = DATA["GAMEPATH"]+"CONTENT\\"+libblend+".blend"
-			logic.LibLoad(libblend, "Scene", load_actions=True, verbose=False, load_scripts=True)
-
 		owner.worldScale = [1,1,1]
 		logic.addScene("HUD", 1)
-		return "LIBLOAD"
+		return "HUD"
 
 	elif timer <= 30:
 		owner["TIMER"] += 1

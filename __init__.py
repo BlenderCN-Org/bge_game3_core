@@ -21,13 +21,19 @@ try:
 
 	config.UPBGE_FIX = True
 	config.MOUSE_FIX = False
-	if app.upbge_version[1] >= 2 and app.upbge_version[2] >= 2:
-		config.MOUSE_FIX = True
+	config.ASYNC_FIX = False
+	print("UPBGE", app.upbge_version)
+	if app.upbge_version[1] >= 2:
+		if app.upbge_version[2] >= 2:
+			config.MOUSE_FIX = True
+		if app.upbge_version[2] >= 4:
+			config.ASYNC_FIX = True
 	del app
 
 except Exception:
 	config.UPBGE_FIX = False
 	config.MOUSE_FIX = False
+	config.ASYNC_FIX = False
 
 
 ## NO VIEWPORT PLAYER ##

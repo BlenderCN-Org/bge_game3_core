@@ -43,7 +43,6 @@ def START(cont):
 
 	logic.LibLoad( base.DATA["GAMEPATH"]+"CONTENT\\Game Assets HUD.blend", "Scene", load_actions=True, verbose=False, load_scripts=True)
 	logic.HUDCLASS = SceneManager()
-	logic.HUDCLASS.doBlackOut(True)
 
 
 def RUN(cont):
@@ -62,6 +61,12 @@ def SetLayout(plr=None, layout=None):
 		return
 
 	logic.HUDCLASS.setControl(plr, layout)
+
+def SetBlackScreen(mode=True):
+	if base.SC_HUD == None or logic.HUDCLASS == None:
+		return
+
+	logic.HUDCLASS.doBlackOut(mode, que=True)
 
 
 class CoreHUD(base.CoreObject):
@@ -656,13 +661,18 @@ class SceneManager:
 		self.custom_layout = layout
 		self.active_state = self.ST_Wait
 
-	def doBlackOut(self, add=True):
-		if add == True:
-			if self.blackobj == None:
-				self.blackobj = base.SC_HUD.addObject("HUD.Black", base.SC_HUD.active_camera, 0)
-				self.blackobj.applyMovement((0,0,-4), False)
+	def doBlackOut(self, add=True, que=False):
+		state = (self.blackobj not in [None, "QUE"])
 
-		elif self.blackobj != None:
+		if add == True:
+			if state == False:
+				if que == True:
+					self.blackobj = "QUE"
+				else:
+					self.blackobj = base.SC_HUD.addObject("HUD.Black", base.SC_HUD.active_camera, 0)
+					self.blackobj.applyMovement((0,0,-4), False)
+
+		elif state == True:
 			self.blackobj.endObject()
 			self.blackobj = None
 
@@ -735,6 +745,8 @@ class SceneManager:
 			self.doSceneResume()
 
 	def RUN(self):
+		if self.blackobj == "QUE":
+			self.doBlackOut()
 		if self.active_state != None:
 			self.active_state()
 
