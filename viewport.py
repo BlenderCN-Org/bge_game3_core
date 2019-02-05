@@ -81,6 +81,11 @@ def updateCamera(plr, parent, dist=None, slow=0, orbit=True, load=False):
 	if load == True:
 		VIEWCLASS.doLoad()
 
+def setState(state):
+	global VIEWCLASS
+	if VIEWCLASS != None:
+		VIEWCLASS.stateSwitch(state)
+
 
 class CoreViewport(base.CoreObject):
 
@@ -160,6 +165,7 @@ class CoreViewport(base.CoreObject):
 
 	def setCameraActive(self, control):
 		base.SC_SCN.active_camera = self.objects["Camera"]
+		HUD.SetBlackScreen(True)
 
 		self.control = control
 
@@ -170,6 +176,7 @@ class CoreViewport(base.CoreObject):
 			self.stateSwitch(self.camdata["State"])
 
 		self.setCameraEye(pos=[0,0,0], ori=0)
+		keymap.MOUSELOOK.center()
 
 		if self.objects["VertRef"].parent != None:
 			self.objects["VertRef"].removeParent()
@@ -189,24 +196,37 @@ class CoreViewport(base.CoreObject):
 
 		self.camdata = plr.data["CAMERA"]
 
-		if self.dist == None:
-			steps = (plr.CAM_RANGE[1]-plr.CAM_RANGE[0])/plr.CAM_STEPS
-			dist = (steps*self.camdata["Zoom"])+plr.CAM_RANGE[0]
-			self.dist = dist
-
 	def doTrackTo(self, vec=None, fac=1):
 		if vec == None:
-			self.objects["Camera"].localOrientation = self.createMatrix([90,0,0])
-
-		zref = self.objects["Camera"].getVectTo(vec)[1]
-		xref = self.objects["Rotate"].getAxisVect([1,0,0])
+			#self.objects["Camera"].localOrientation = self.createMatrix([90,0,0])
+			zref = self.objects["Rotate"].getAxisVect([0,1,0])
+		else:
+			zref = self.objects["Camera"].getVectTo(vec)[1]
 
 		self.objects["Camera"].alignAxisToVect(-zref, 2, fac)
-		self.objects["Camera"].alignAxisToVect(xref, 0, fac)
+
+		xref = self.objects["Rotate"].getAxisVect([0,0,1])
+		self.objects["Camera"].alignAxisToVect(xref, 1, 1.0)
 
 	def stateSwitch(self, state):
-		#if state == "THIRD":
-		self.active_state = self.ST_Third
+		plr = self.control
+		if plr == None:
+			self.active_state = None
+			return
+
+		dist = 0
+		if state == "THIRD":
+			self.active_state = self.ST_Third
+			steps = (plr.CAM_RANGE[1]-plr.CAM_RANGE[0])/plr.CAM_STEPS
+			dist = (steps*self.camdata["Zoom"])+plr.CAM_RANGE[0]
+		if state == "SHOULDER":
+			self.active_state = self.ST_Shoulder
+			dist = plr.CAM_SHDIST
+
+		self.camdata["State"] = state
+
+		if self.dist == None:
+			self.dist = dist
 
 	def RUN(self):
 
@@ -216,6 +236,21 @@ class CoreViewport(base.CoreObject):
 			return
 
 		self.active_state(plr)
+
+		camera = self.objects["Camera"]
+
+		## ADAPT FOV ##
+		if abs(self.camdata["FOV"]-camera.fov) > 0.01:
+			camera.fov += (self.camdata["FOV"]-camera.fov)*0.1
+		else:
+			camera.fov = self.camdata["FOV"]
+
+		## POSITION ##
+		if self.parent != None:
+			orbit = self.camdata["Orbit"]
+			slow = self.camdata["Slow"]
+
+			self.doCameraFollow(self.parent, slow, orbit)
 
 	def ST_Third(self, plr):
 		vertex = self.objects["VertRef"]
@@ -245,12 +280,6 @@ class CoreViewport(base.CoreObject):
 			if plr.CAM_ORBIT in [0,1] and keymap.BINDS["CAM_ORBIT"].tap() == True:
 				self.camdata["Orbit"] = False
 
-		## ADAPT FOV ##
-		if abs(self.camdata["FOV"]-camera.fov) > 0.01:
-			camera.fov += (self.camdata["FOV"]-camera.fov)*0.1
-		else:
-			camera.fov = self.camdata["FOV"]
-
 		## MOUSELOOK ##
 		if self.camdata["Orbit"] >= 1:
 			ts = (camera.fov/plr.CAM_FOV)**2
@@ -262,19 +291,39 @@ class CoreViewport(base.CoreObject):
 			self.objects["Root"].applyRotation((0, 0, X*ts), True)
 			self.objects["Rotate"].applyRotation((Y*ts, 0, 0), True)
 
-		else:
-			keymap.MOUSELOOK.center()
-
-		if self.parent != None:
-			orbit = self.camdata["Orbit"]
-			slow = self.camdata["Slow"]
-
-			self.doCameraFollow(self.parent, slow, orbit)
+		#else:
+		#	keymap.MOUSELOOK.center()
 
 		self.doCameraCollision(plr)
 
-	#def ST_First(self, plr):
-	#def ST_Shoulder(self, plr):
+	def ST_First(self, plr):
+		vertex = self.objects["VertRef"]
+		camera = self.objects["Camera"]
+		rotate = self.objects["Rotate"]
+
+		self.dist = 0
+
+	def ST_Shoulder(self, plr):
+		vertex = self.objects["VertRef"]
+		camera = self.objects["Camera"]
+		rotate = self.objects["Rotate"]
+
+		## SET ZOOM ##
+		self.dist += (plr.CAM_SHDIST-self.dist)*0.1
+
+		if vertex.parent == None and self.parent != None:
+			vertex.setParent(self.parent)
+
+		ts = (camera.fov/plr.CAM_FOV)**2
+
+		ROTATE = plr.motion.get("Rotate", [0,0,0])
+
+		X, Y = keymap.MOUSELOOK.axis([ROTATE[2], ROTATE[0]])
+
+		self.objects["Root"].applyRotation((0, 0, X*ts), True)
+		self.objects["Rotate"].applyRotation((Y*ts, 0, 0), True)
+
+		self.doCameraCollision(plr)
 
 	def doCameraFollow(self, parent=None, slow=0, orbit=True):
 		owner = self.objects["Root"]

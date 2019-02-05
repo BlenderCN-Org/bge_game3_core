@@ -67,7 +67,7 @@ class CorePlayer(base.CoreAdvanced):
 	OFFSET = (0, 0.0, 0.2)
 
 	CAM_ORBIT = 2
-	CAM_SLOW = 2
+	CAM_SLOW = 10
 	CAM_RANGE = (0.75,6)
 	CAM_HEIGHT = 0.15
 	CAM_STEPS = 7
@@ -148,7 +148,7 @@ class CorePlayer(base.CoreAdvanced):
 
 			if base.DATA["Portal"]["Vehicle"] != None:
 				dict = base.DATA["Portal"]["Vehicle"]
-				vehicle = scene.addObject(dict["Object"], owner, 0)
+				vehicle = scene.addObject(dict["Object"], char, 0)
 				vehicle["DICT"] = dict
 				vehicle["RAYCAST"] = self
 
@@ -274,7 +274,12 @@ class CorePlayer(base.CoreAdvanced):
 	def assignCamera(self, load=False):
 		viewport.setCamera(self)
 		viewport.setParent(self.objects["Root"])
-		viewport.setEyeHeight(self.EYE_H-self.GND_H, set=load)
+		if self.data["CAMERA"]["State"] == "THIRD":
+			viewport.setEyeHeight(self.EYE_H-self.GND_H, set=load)
+		elif self.data["CAMERA"]["State"] == "SHOULDER":
+			viewport.setEyeHeight(
+				eye = [self.CAM_SHSIDE, 0, self.EYE_H-self.GND_H-self.CAM_MIN],
+				set = load)
 
 	def enterVehicle(self, seat):
 		self.jump_state = "NONE"
@@ -408,12 +413,6 @@ class CorePlayer(base.CoreAdvanced):
 		if keymap.BINDS["PLR_DUCK"].active() == True:
 			CLIMB = -1
 
-		if keymap.BINDS["PLR_RUN"].tap() == True:
-			self.data["RUN"] ^= True
-
-		if keymap.BINDS["TOGGLESTRAFE"].tap() == True:
-			self.data["STRAFE"] ^= True
-
 		self.motion["Move"][0] = MOVE[0]
 		self.motion["Move"][1] = MOVE[1]
 		self.motion["Climb"] = CLIMB
@@ -421,6 +420,24 @@ class CorePlayer(base.CoreAdvanced):
 		self.motion["Rotate"][0] = ROTATE[0]
 		self.motion["Rotate"][1] = 0
 		self.motion["Rotate"][2] = ROTATE[2]
+
+		if keymap.BINDS["PLR_RUN"].tap() == True:
+			self.data["RUN"] ^= True
+
+		if self.data["CAMERA"]["State"] == "THIRD":
+			if keymap.BINDS["TOGGLESTRAFE"].tap() == True:
+				self.data["STRAFE"] ^= True
+
+			if keymap.BINDS["TOGGLECAM"].tap() == True:
+				viewport.setState("SHOULDER")
+				viewport.setEyeHeight(eye=[self.CAM_SHSIDE,0,self.EYE_H-self.GND_H-self.CAM_MIN])
+				#self.data["CAMERA"]["FOV"] = 60
+
+		elif self.data["CAMERA"]["State"] == "SHOULDER":
+			if keymap.BINDS["TOGGLECAM"].tap() == True:
+				viewport.setState("THIRD")
+				viewport.setEyeHeight(self.EYE_H-self.GND_H)
+				#self.data["CAMERA"]["FOV"] = self.CAM_FOV
 
 		for slot in self.data["SLOTS"]:
 			key = self.data["SLOTS"][slot]
@@ -646,8 +663,8 @@ class CorePlayer(base.CoreAdvanced):
 		rayto = rayfrom+viewport.getRayVec()
 		dist = 200
 
-		#if self.data["CAMERA"]["State"] == 1:
-		#	dist = 1000
+		if self.data["CAMERA"]["State"] == "SHOULDER":
+			dist = 1000
 
 		RAYHIT = owner.rayCast(rayto, rayfrom, dist, "", 1, 0, 0)
 
@@ -709,8 +726,9 @@ class CorePlayer(base.CoreAdvanced):
 
 		align = owner.worldLinearVelocity.copy()
 		align[2] = 0
-		if align.length > 0.01 and self.data["STRAFE"] == False and move > 0:
-			self.alignPlayer(axis=align)
+		if align.length > 0.01 and move > 0:
+			if self.data["STRAFE"] == False and self.data["CAMERA"]["State"] == "THIRD":
+				self.alignPlayer(axis=align)
 
 		owner.worldLinearVelocity[0] *= move
 		owner.worldLinearVelocity[1] *= move
@@ -749,7 +767,7 @@ class CorePlayer(base.CoreAdvanced):
 		owner.worldLinearVelocity[1] = (mref[1]*mx)*60
 
 	def doPlayerAnim(self, action="IDLE", blend=10):
-		return
+
 		if action == "JUMP":
 			self.doAnim(NAME="Jumping", FRAME=(0,20), PRIORITY=2, MODE="PLAY", BLEND=10)
 			self.lastaction = [action, 0]
@@ -821,7 +839,8 @@ class CorePlayer(base.CoreAdvanced):
 			self.objects["Root"].localScale[2] = 1
 			self.objects["Character"].localScale[2] = 1
 			self.active_state = self.ST_Walking
-			viewport.setEyeHeight(self.EYE_H-self.GND_H)
+			if self.data["CAMERA"]["State"] == "THIRD":
+				viewport.setEyeHeight(self.EYE_H-self.GND_H)
 
 	## INIT STATE ##
 	def ST_Startup(self):
@@ -940,7 +959,8 @@ class CorePlayer(base.CoreAdvanced):
 			if self.crouch < 10:
 				self.crouch += 1
 
-		viewport.setEyeHeight( (self.EYE_H-self.GND_H)*cr_fac, set=True)
+		if self.data["CAMERA"]["State"] == "THIRD":
+			viewport.setEyeHeight( (self.EYE_H-self.GND_H)*cr_fac, set=True)
 
 	def ST_Walking(self):
 		scene = base.SC_SCN
@@ -964,6 +984,9 @@ class CorePlayer(base.CoreAdvanced):
 				action = "IDLE"
 				blend = 10
 
+				if self.data["CAMERA"]["State"] == "SHOULDER":
+					strafe = True
+
 				if keymap.BINDS["PLR_DUCK"].active() == True:
 					self.doCrouch(True)
 
@@ -976,11 +999,11 @@ class CorePlayer(base.CoreAdvanced):
 						blend = (self.ACCEL+10)-(self.motion["Accel"])
 
 					if wall > 135:
-						mx = 0.03*slope
+						mx = 0.04*slope
 						action = "IDLE"
 
-					elif self.data["RUN"] == False or self.motion["Move"].length <= 0.7:
-						mx = 0.03*slope
+					elif self.data["RUN"] == False or self.motion["Move"].length <= 0.7 or self.data["SPEED"] <= 0:
+						mx = 0.04*slope
 						action = "FORWARD"
 						if strafe == True:
 							if move[1] < 0:
@@ -1007,8 +1030,11 @@ class CorePlayer(base.CoreAdvanced):
 					self.doMovement((move[0], move[1], 0), mx, strafe)
 
 				else:
-					if strafe == True or self.data["CAMERA"]["State"] == 1:
+					if self.data["CAMERA"]["State"] == "SHOULDER":
 						self.doMovement((0, 1, 0), 0, True)
+						#vref = viewport.getDirection(axis)
+						#owner.alignAxisToVect(vref, 1, 0.1)
+
 
 					self.motion["Accel"] = 0
 					action = "IDLE"
@@ -1056,6 +1082,10 @@ class CorePlayer(base.CoreAdvanced):
 			self.jump_timer += 1
 
 			if self.jump_state in ["FALLING", "A_JUMP", "B_JUMP"]:
+				if self.data["CAMERA"]["State"] == "SHOULDER":
+					#self.doMovement((0, 1, 0), 0, True)
+					vref = viewport.getDirection((0,1,0))
+					owner.alignAxisToVect(vref, 1, 0.1)
 				if self.motion["Move"].length > 0.01:
 					vref = viewport.getDirection((move[0], move[1], 0))
 					owner.applyForce((vref[0]*5, vref[1]*5, 0), False)

@@ -591,6 +591,9 @@ class CoreAdvanced(CoreObject):
 	CAM_SLOW = 10
 	CAM_FOV = 90
 
+	CAM_SHDIST = 0.3
+	CAM_SHSIDE = 0.3
+
 	HUDLAYOUT = None
 
 	def runAttachments(self):
