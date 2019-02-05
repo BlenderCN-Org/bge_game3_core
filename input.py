@@ -391,7 +391,7 @@ class MouseLook:
 
 		return turn
 
-	def axis(self, look=None, ui=False):
+	def axis(self, look=None, ui=False, center=True):
 		if self.skip == True:
 			self.skip = False
 			logic.mouse.position = (0.5, 0.5)
@@ -406,7 +406,8 @@ class MouseLook:
 		if ui == True:
 			X = (RAW_X-0.5)
 			Y = (0.5-RAW_Y)
-			logic.mouse.position = (0.5, 0.5)
+			if center == True:
+				logic.mouse.position = (0.5, 0.5)
 			return (X,Y)
 
 		elif self.smoothing > 1:
@@ -442,7 +443,8 @@ class MouseLook:
 			X += tsX
 			Y += tsY
 
-		logic.mouse.position = (0.5, 0.5)
+		if center == True:
+			logic.mouse.position = (0.5, 0.5)
 
 		return (X,Y)
 

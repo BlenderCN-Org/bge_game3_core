@@ -31,6 +31,7 @@ class CoreVehicle(base.CoreAdvanced):
 
 	NAME = "Vehicle"
 	PORTAL = True
+	MOUSE_SCALE = [100,100]
 
 	WH_OBJECT = "Wheel.None"  # wheel contsraint object
 	WH_MESH = None            # Visual wheel object
@@ -372,6 +373,24 @@ class CoreVehicle(base.CoreAdvanced):
 		BANK = KB["VEH_BANKRIGHT"].axis(True, True) - KB["VEH_BANKLEFT"].axis(True, True)
 		YAW = KB["VEH_YAWLEFT"].axis(True, True) - KB["VEH_YAWRIGHT"].axis(True, True)
 
+		if self.data["CAMERA"]["Orbit"] <= 0:
+			X, Y = keymap.MOUSELOOK.axis(ui=True, center=True)
+
+			nX = X*self.MOUSE_SCALE[0]
+			nY = Y*self.MOUSE_SCALE[1]
+
+			BANK += nX
+			PITCH += nY
+
+			self.data["HUD"]["Target"] = [(nX*0.1)+0.5,(-nY*0.1)+0.5]
+		else:
+			self.data["HUD"]["Target"] = None
+
+		if abs(BANK) > 1:
+			BANK = 1-(2*(BANK<0))
+		if abs(PITCH) > 1:
+			PITCH = 1-(2*(PITCH<0))
+
 		self.motion["Torque"][0] = PITCH
 		self.motion["Torque"][1] = BANK
 		self.motion["Torque"][2] = YAW
@@ -483,7 +502,7 @@ class CoreVehicle(base.CoreAdvanced):
 class LayoutCar(HUD.HUDLayout):
 
 	GROUP = "Core"
-	MODULES = [HUD.Stats, HUD.Speedometer]
+	MODULES = [HUD.Stats, HUD.Speedometer, HUD.Interact]
 
 class CoreCar(CoreVehicle):
 
@@ -613,7 +632,7 @@ class CoreCar(CoreVehicle):
 class LayoutAircraft(HUD.HUDLayout):
 
 	GROUP = "Core"
-	MODULES = [HUD.Stats, HUD.Aircraft]
+	MODULES = [HUD.Stats, HUD.Aircraft, HUD.Interact]
 
 class CoreAircraft(CoreVehicle):
 
