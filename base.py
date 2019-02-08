@@ -133,10 +133,7 @@ def START(cont):
 		owner["LIBLIST"] = []
 		for libblend in config.LIBRARIES:
 			libblend = DATA["GAMEPATH"]+"CONTENT\\"+libblend+".blend"
-			if config.LIBLOAD_TYPE != "ASYNC" or config.ASYNC_FIX == True:
-				logic.LibLoad(libblend, "Scene", load_actions=True, verbose=False, load_scripts=True)
-			else:
-				owner["LIBLIST"].append(libblend)
+			owner["LIBLIST"].append(libblend)
 		return "LIBLOAD"
 
 	if ACTIVE_LIBLOAD != None:
@@ -144,11 +141,11 @@ def START(cont):
 		return "LIBLOAD"
 
 	if len(owner["LIBLIST"]) > 0:
-		if config.LIBLOAD_TYPE == "ASYNC":
-			libblend = owner["LIBLIST"].pop(0)
-			#if config.ASYNC_FIX == True:
-			#	ACTIVE_LIBLOAD = logic.LibLoad(libblend, "Scene", load_actions=True, verbose=False, load_scripts=True, asynchronous=True)
-			#else:
+		libblend = owner["LIBLIST"].pop(0)
+		if config.LIBLOAD_TYPE != "ASYNC" or config.ASYNC_FIX == True:
+			logic.LibLoad(libblend, "Scene", load_actions=True, verbose=False, load_scripts=True)
+			print(libblend)
+		elif config.LIBLOAD_TYPE == "ASYNC":
 			ACTIVE_LIBLOAD = logic.LibLoad(libblend, "Scene", load_actions=True, verbose=False, load_scripts=True, async=True)
 			ACTIVE_LIBLOAD.onFinish = LIBCB
 
