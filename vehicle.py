@@ -548,7 +548,10 @@ class CoreCar(CoreVehicle):
 		if speed > 6:
 			turn = (3/(speed*0.5))*0.8
 
-		STEER = self.CAR_STEER*torque[2]*turn
+		STEER = (torque[1]*-1)+torque[2]
+		if abs(STEER) > 1:
+			STEER = 1-(2*(STEER<0))
+		STEER = self.CAR_STEER*STEER*turn
 		POWER = 0
 		BRAKE = 0
 

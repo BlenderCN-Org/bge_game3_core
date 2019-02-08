@@ -46,6 +46,7 @@ class CorePlayer(base.CoreAdvanced):
 	NAME = "Player"
 	PHYSICS = "Player"
 	PORTAL = True
+	GHOST = True
 	CLASS = "Standard"
 	WP_TYPE = "RANGED"
 
@@ -1156,8 +1157,12 @@ class CorePlayer(base.CoreAdvanced):
 				TRNRM[2] = 0
 				TRNRM.normalize()
 				owner.worldPosition = TRPNT+(TRNRM*(self.WALL_DIST-0.05))
-				X = self.motion["Move"][0]*0.01
-				owner.localLinearVelocity[0] = X*60
+				move = self.motion["Move"]
+				mref = viewport.getDirection((move[0], move[1], 0))
+				mref = owner.worldOrientation.inverted()*mref
+				if abs(mref[0]) > 0.5:
+					X = 1-(2*(mref[0]<0))
+				owner.localLinearVelocity[0] = (X*0.01)*60
 				self.alignPlayer(0.5, axis=-TRNRM)
 
 			if edge != None:
@@ -1168,7 +1173,7 @@ class CorePlayer(base.CoreAdvanced):
 
 				self.jump_state = "HANGING"
 
-			if abs(X) > 0.001:
+			if abs(X) > 0.01:
 				self.doAnim(NAME="EdgeTR", FRAME=(1,60), MODE="LOOP", BLEND=10)
 			else:
 				self.doAnim(NAME="EdgeClimb", FRAME=(0,0), MODE="LOOP", BLEND=5)
