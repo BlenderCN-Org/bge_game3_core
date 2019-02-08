@@ -269,13 +269,9 @@ class CoreViewport(base.CoreObject):
 
 		## SET ORBIT ##
 		if self.camdata["Orbit"] == False:
-			if vertex.parent != None:
-				vertex.removeParent()
 			if plr.CAM_ORBIT in [0,1] and keymap.BINDS["CAM_ORBIT"].tap() == True:
 				self.camdata["Orbit"] = True
 		elif self.camdata["Orbit"] == True:
-			if vertex.parent == None and self.parent != None:
-				vertex.setParent(self.parent)
 			if plr.CAM_ORBIT in [0,1] and keymap.BINDS["CAM_ORBIT"].tap() == True:
 				self.camdata["Orbit"] = False
 
@@ -335,22 +331,27 @@ class CoreViewport(base.CoreObject):
 		if slow > 1:
 			fac = 1/slow
 
-		tpos = parent.worldPosition
-		vpos = vertex.worldPosition
+		tpos = parent.worldPosition.copy()
+		vpos = vertex.worldPosition.copy()
 
 		slowV = vpos.lerp(tpos, fac)
 
 		vertex.worldPosition = slowV
 
-		vpos = rotate.localPosition
+		rpos = rotate.localPosition
 
-		slowV = vpos.lerp(self.offset, fac)
+		slowR = rpos.lerp(self.offset, fac)
 
-		rotate.localPosition = slowV
+		rotate.localPosition = slowR
 
 		if orbit == True:
+			if vertex.parent == None or vertex.parent != parent:
+				vertex.setParent(parent)
 			owner.alignAxisToVect((0,0,1), 2, fac)
 			return
+		else:
+			if vertex.parent != None:
+				vertex.removeParent()
 
 		tquat = parent.worldOrientation.to_quaternion()
 		vquat = owner.worldOrientation.to_quaternion()
