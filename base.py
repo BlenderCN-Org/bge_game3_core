@@ -193,10 +193,15 @@ def LOAD(owner):
 	## Ground Detector ##
 	for obj in scene.objects:
 		gnd = obj.get("GROUND", None)
+		cam = obj.get("CAMERA", None)
 		if gnd == False:
 			del obj["GROUND"]
 		elif obj.getPhysicsId() != 0:
 			obj["GROUND"] = True
+		if cam == False:
+			del obj["CAMERA"]
+		else:
+			obj["CAMERA"] = True
 
 	## Add Player ##
 	char = scene.addObject(CURRENT["Player"], owner, 0)
@@ -220,7 +225,7 @@ def LOAD(owner):
 				if name in scene.objectsInactive:
 					newobj = scene.addObject(name, obj, 0)
 					for prop in obj.getPropertyNames():
-						if prop not in ["SPAWN", "OBJECT", "DICT"]:
+						if prop not in ["SPAWN", "OBJECT", "DICT", "GROUND", "CAMERA"]:
 							newobj[prop] = obj[prop]
 					newobj["DICT"] = {"Object":name, "Data":None, "Add":obj.name}
 					print("SPAWNED:", name, newobj.worldPosition)
@@ -387,6 +392,8 @@ class CoreObject:
 	def checkGhost(self, obj):
 		if obj.getPhysicsId() != 0 and self.GHOST == False:
 			obj["GROUND"] = True
+		elif "GROUND" in obj:
+			del obj["GROUND"]
 
 	def saveWorldPos(self):
 		obj = self.objects["Root"]

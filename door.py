@@ -55,9 +55,11 @@ class CoreDoor(base.CoreObject):
 		self.trigger = []
 		self.keypad = None
 		self.keycode = ["", ""]
+		obj["CAMERA"] = True
 
 		for child in obj.childrenRecursive:
 			self.checkGhost(child)
+			child["CAMERA"] = True
 
 			split = child.name.split(".")
 			cat = None

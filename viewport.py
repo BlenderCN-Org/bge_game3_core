@@ -389,7 +389,7 @@ class CoreViewport(base.CoreObject):
 
 		hyp = ray**2 + (ray*height)**2
 
-		rayOBJ, rayPNT, rayNRM = owner.rayCast(rayto, rotate, hyp**0.5, "GROUND", 1, 1, 0)
+		rayOBJ, rayPNT, rayNRM = owner.rayCast(rayto, rotate, hyp**0.5, "CAMERA", 1, 1, 0)
 
 		if rayOBJ:
 			local = self.getLocalSpace(rotate, rayPNT)
