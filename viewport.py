@@ -165,7 +165,6 @@ class CoreViewport(base.CoreObject):
 
 	def setCameraActive(self, control):
 		base.SC_SCN.active_camera = self.objects["Camera"]
-		HUD.SetBlackScreen(True)
 
 		self.control = control
 

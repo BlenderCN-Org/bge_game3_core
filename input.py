@@ -375,7 +375,7 @@ class MouseLook:
 		self.ts_input = [0]*3
 
 		logic.mouse.position = (0.5, 0.5)
-		self.skip = True
+		self.skip = 10
 
 	def turn(self, look):
 		turn = [0]*2
@@ -392,8 +392,8 @@ class MouseLook:
 		return turn
 
 	def axis(self, look=None, ui=False, center=True):
-		if self.skip == True:
-			self.skip = False
+		if self.skip > 0:
+			self.skip -= 1
 			logic.mouse.position = (0.5, 0.5)
 			return (0,0)
 

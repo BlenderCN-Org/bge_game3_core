@@ -145,6 +145,7 @@ class CorePlayer(base.CoreAdvanced):
 
 		if logic.PLAYERCLASS == None:
 			logic.PLAYERCLASS = self
+			HUD.SetBlackScreen(True)
 
 			if base.DATA["Portal"]["Vehicle"] != None:
 				dict = base.DATA["Portal"]["Vehicle"]
