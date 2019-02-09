@@ -116,15 +116,14 @@ class CoreVehicle(base.CoreAdvanced):
 			portal = owner.scene.objects.get(str(door), None)
 
 			if portal != None:
-				pos = portal.worldPosition
-				ori = portal.worldOrientation
+				pos = portal.worldPosition.copy()
+				ori = portal.worldOrientation.copy()
 
 				if zone != None:
 					pos = self.createVector(vec=zone[0])
 					pos = portal.worldPosition+(portal.worldOrientation*pos)
 
-					ori = self.createMatrix(mat=zone[1])
-					ori = owner.worldOrientation*ori
+					ori = ori*self.createMatrix(mat=zone[1])
 
 				owner.worldPosition = pos
 				owner.worldOrientation = ori
@@ -137,8 +136,8 @@ class CoreVehicle(base.CoreAdvanced):
 				base.LEVEL["PLAYER"]["POS"] = self.vecTuple(owner.worldPosition)
 				base.LEVEL["PLAYER"]["ORI"] = self.matTuple(owner.worldOrientation)
 
-			owner.setLinearVelocity(self.data["LINVEL"], True)
-			owner.setAngularVelocity(self.data["ANGVEL"], True)
+			owner.localLinearVelocity = self.data["LINVEL"]
+			owner.localAngularVelocity = self.data["ANGVEL"]
 
 			base.DATA["Portal"]["Door"] = None
 			base.DATA["Portal"]["Zone"] = None
