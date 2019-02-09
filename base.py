@@ -450,12 +450,10 @@ class CoreObject:
 		root = self.objects["Root"]
 
 		pnt = root.worldPosition-obj.worldPosition
-		lp = obj.worldOrientation.inverted()*pnt
-		lp = [lp[0], lp[1], lp[2]]
+		lp = list(obj.worldOrientation.inverted()*pnt)
 
-		dr = obj.worldOrientation#.to_euler()
-		pr = root.worldOrientation#.to_euler()
-		#lr = [pr[0]-dr[0], pr[1]-dr[1], pr[2]-dr[2]]
+		dr = obj.worldOrientation
+		pr = root.worldOrientation
 		lr = self.matTuple(dr.inverted()*pr)
 
 		return lp, lr

@@ -150,7 +150,7 @@ class CorePlayer(base.CoreAdvanced):
 
 			if base.DATA["Portal"]["Vehicle"] != None:
 				dict = base.DATA["Portal"]["Vehicle"]
-				vehicle = scene.addObject(dict["Object"], char, 0)
+				vehicle = scene.addObject(dict["Object"], base.SC_RUN, 0)
 				vehicle["DICT"] = dict
 				vehicle["RAYCAST"] = self
 
