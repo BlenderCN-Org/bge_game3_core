@@ -59,6 +59,7 @@ class CorePlayer(base.CoreAdvanced):
 	SLOPE = 60
 	MOVERUN = True
 	SIDESTEP = False
+	GRAV_DAMAGE = 10
 
 	INTERACT = 2
 	EYE_H = 1.6
@@ -87,9 +88,7 @@ class CorePlayer(base.CoreAdvanced):
 
 		self.ANIMOBJ = self.objects["Rig"]
 
-		self.active_pre = []
-		self.active_state = self.ST_Walking
-		self.active_post = [self.PS_Recharge, self.PS_GroundTrack]
+		self.defaultStates()
 
 		self.gndraybias = self.GND_H
 		self.wallraydist = self.WALL_DIST
@@ -113,7 +112,7 @@ class CorePlayer(base.CoreAdvanced):
 
 		self.motion = {"Move":self.createVector(2), "Rotate":self.createVector(3), "Climb":0, "Accel":0}
 
-		self.data = {"HEALTH":100, "ENERGY":100, "RECHARGE":0.1, "SPEED":self.SPEED,
+		self.data = {"HEALTH":100, "ENERGY":100, "RECHARGE":0.01, "SPEED":self.SPEED,
 			"JUMP":self.JUMP, "RUN":self.MOVERUN, "STRAFE":self.SIDESTEP}
 
 		self.data["HUD"] = {"Text":"", "Color":(0,0,0,0.5), "Target":None, "Locked":None}
@@ -168,6 +167,11 @@ class CorePlayer(base.CoreAdvanced):
 				self.doPlayerAnim("IDLE.RESET")
 
 		self.ST_Startup()
+
+	def defaultStates(self):
+		self.active_pre = []
+		self.active_state = self.ST_Walking
+		self.active_post = [self.PS_Recharge, self.PS_GroundTrack]
 
 	def doPortal(self):
 		scene = base.SC_SCN
@@ -851,9 +855,12 @@ class CorePlayer(base.CoreAdvanced):
 
 	## POST ##
 	def PS_Recharge(self):
-		self.data["ENERGY"] += self.data["RECHARGE"]
-		if self.data["ENERGY"] > 100:
-			self.data["ENERGY"] = 100
+		if self.data["HEALTH"] < 0:
+			self.data["HEALTH"] = -1
+		if self.data["ENERGY"] < 100:
+			self.data["ENERGY"] += self.data["RECHARGE"]
+			if self.data["ENERGY"] > 100:
+				self.data["ENERGY"] = 100
 
 	def PS_GroundTrack(self):
 		owner = self.objects["Root"]
@@ -1069,6 +1076,10 @@ class CorePlayer(base.CoreAdvanced):
 				if ground[0].getPhysicsId() != 0:
 					impulse = (owner.worldLinearVelocity+scene.gravity)*owner.mass*0.1
 					ground[0].applyImpulse(ground[1], impulse, False)
+				Z = owner.worldLinearVelocity[2]
+				if Z < -8:
+					self.data["HEALTH"] += (Z+8)*self.GRAV_DAMAGE
+				print(Z)
 				owner.worldLinearVelocity[2] = 0
 				if self.motion["Move"].length < 0.01:
 					owner.worldLinearVelocity[0] = 0
@@ -1284,7 +1295,7 @@ class CorePlayer(base.CoreAdvanced):
 	## RUN ##
 	def RUN(self):
 		if self.objects["Root"] == None:
-			self.runAttachments()
+			self.PS_Attachments()
 			return
 		self.runPre()
 		self.getInputs()

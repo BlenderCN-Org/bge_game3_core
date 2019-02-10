@@ -36,6 +36,7 @@ class CoreAttachment(base.CoreObject):
 	SCALE = 1
 	OFFSET = (0,0,0)
 	COLOR = (1,1,1,1)
+	COLLIDE = False
 	GFXBOX = {"Mesh":"BOX_Cube", "Normalize":True}
 	GFXDROP = {"Mesh":"BOX_Drop", "Halo":True, "Normalize":True}
 
@@ -51,6 +52,8 @@ class CoreAttachment(base.CoreObject):
 
 		self.objects = {"Root":owner}
 		self.box = None
+		self.halo = None
+		self.campers = []
 
 		self.owning_slot = None
 		self.owning_player = None
@@ -80,7 +83,7 @@ class CoreAttachment(base.CoreObject):
 		del owner["RAYCAST"]
 
 	def defaultStates(self):
-		self.active_pre = []
+		self.active_pre = [self.PR_Modifiers]
 		self.active_state = self.ST_Box
 		self.active_post = []
 
@@ -112,9 +115,11 @@ class CoreAttachment(base.CoreObject):
 		if self.dict["Equiped"] == None:
 			gfx = self.GFXBOX
 			self.dict["Equiped"] = None
+			halo_color = self.COLOR
 		else:
 			gfx = self.GFXDROP
 			self.dict["Equiped"] = False
+			halo_color = (1,1,1,1)
 
 		self.box_scale = self.createVector(vec=gfx.get("Scale", (1,1,1)))*self.SCALE
 		self.gfx_scale = self.createVector(fill=self.SCALE)
@@ -129,20 +134,23 @@ class CoreAttachment(base.CoreObject):
 		box = owner.scene.addObject(gfx.get("Mesh", "BOX_Drop"), owner, 0)
 		box.worldScale = scale
 		box.color = self.COLOR
+		self.box = box
+		self.box_timer = 1
 
 		if gfx.get("Halo", False) == True:
 			halo = owner.scene.addObject("GFX_Halo", owner, 0)
 			halo.setParent(box)
-			#halo.color = self.COLOR
+			halo.color = halo_color
 			halo.worldScale = gfxsc
 			halo["LOCAL"] = True
 			halo["AXIS"] = None
+			self.halo = halo
 
 		box["RAYCAST"] = None
 		box["RAYNAME"] = owner["RAYNAME"]
 
-		self.box = box
-		self.box_timer = 1
+		box["COLLIDE"] = []
+
 		return box
 
 	def assignToPlayer(self):
@@ -213,7 +221,9 @@ class CoreAttachment(base.CoreObject):
 
 		if self.box != None:
 			self.box.endObject()
-			self.box = None
+
+		self.box = None
+		self.halo = None
 
 		self.dict["Equiped"] = slot
 
@@ -267,6 +277,20 @@ class CoreAttachment(base.CoreObject):
 		if slot in [None, False]:
 			return
 
+	def checkClicked(self, obj=None):
+		if obj == None:
+			obj = self.objects["Root"]
+
+		if self.COLLIDE == True:
+			if len(obj["COLLIDE"]) >= 1:
+				obj["RAYCAST"] = obj["COLLIDE"][0]
+				return True
+
+		if obj["RAYCAST"] != None:
+			if keymap.BINDS["ACTIVATE"].tap() == True:
+				return True
+		return False
+
 	def checkStability(self, align=False, offset=None):
 		box = self.box
 		if self.box == None:
@@ -310,6 +334,10 @@ class CoreAttachment(base.CoreObject):
 
 		return True
 
+	def PR_Modifiers(self):
+		if self.owning_player == None:
+			return
+
 	## STATE BOX ##
 	def ST_Box(self):
 		if self.box_timer == 0:
@@ -348,8 +376,11 @@ class CoreAttachment(base.CoreObject):
 		self.clearRayProps()
 
 	def clearRayProps(self):
+		self.objects["Root"]["COOLDOWN"] = self.data["COOLDOWN"]
+		self.objects["Root"].addDebugProperty("COOLDOWN", True)
 		if self.box != None:
 			self.box["RAYCAST"] = None
+			self.box["COLLIDE"] = []
 
 
 

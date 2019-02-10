@@ -342,7 +342,7 @@ class Stats(CoreHUD):
 			txt.color = (1,0,0,1)
 		elif stat > 1:
 			stat = 1
-			txt = (1,0,1,1)
+			txt.color = (1,0,1,1)
 		else:
 			txt.color = (0,1,0,0.5)
 

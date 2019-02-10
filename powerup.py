@@ -30,19 +30,102 @@ from . import attachment, keymap
 class CorePowerup(attachment.CoreAttachment):
 
 	NAME = "PowerUp"
-	GFXBOX = {"Mesh":"BOX_Sphere"}
-	GFXDROP = {"Mesh":"BOX_Sphere", "Halo":False}
+	WAIT = 3600
+	DURATION = 0
+	COLLIDE = True
+	OFFSET = (0,0,0)
+	GFXBOX = {"Mesh":"BOX_Sphere", "Halo":True}
+	GFXDROP = {"Mesh":"BOX_Sphere", "Halo":True}
+
+	def checkData(self, cls):
+		return True
+
+	def sendPowerup(self):
+		return {}
+
+	def hideObject(self, state=True):
+		owner = self.objects["Root"]
+		state = (state==False)
+		owner.setVisible(state, True)
+		#if self.halo != None:
+		#	self.halo.setVisible(state, True)
+
+	def equipItem(self, cls):
+		if "POWERUPS" not in cls.data:
+			return
+		if self.checkData(cls) == False:
+			return
+
+		dict = self.sendPowerup()
+		dict["__TIMER__"] = self.DURATION
+		cls.data["POWERUPS"].append(dict)
+
+		self.data["COOLDOWN"] = self.WAIT
+		self.hideObject(True)
+
+		self.active_state = self.ST_Wait
+
+	## STATE INACTIVE ##
+	def ST_Wait(self):
+		if self.data["COOLDOWN"] < 0:
+			if self in logic.UPDATELIST:
+				logic.UPDATELIST.remove(self)
+
+			self.box.endObject()
+			self.box = None
+			return
+
+		if self.data["COOLDOWN"] == 0:
+			self.data["COOLDOWN"] = 0
+			self.hideObject(False)
+			self.campers = list(self.box["COLLIDE"])
+			self.box["RAYNAME"] = self.NAME
+			self.active_state = self.ST_Box
+		else:
+			self.data["COOLDOWN"] -= 1
+			self.box["RAYNAME"] = self.NAME+": "+str(int(self.data["COOLDOWN"]))
 
 	## STATE BOX ##
 	def ST_Box(self):
+		if self.data["COOLDOWN"] != 0:
+			self.hideObject(True)
+			self.active_state = self.ST_Wait
+			return
+
+		for plr in self.campers:
+			if plr not in self.box["COLLIDE"]:
+				self.campers.remove(plr)
+
 		if self.checkClicked(self.box) == True:
-			self.equipItem(self.box["RAYCAST"])
+			if self.box["RAYCAST"] not in self.campers:
+				self.equipItem(self.box["RAYCAST"])
+
+
+class CoreStats(CorePowerup):
+
+	HEALTH = 0
+	ENERGY = 0
+	LIMIT = 99
+
+	def checkData(self, cls):
+		if self.HEALTH != 0 and cls.data.get("HEALTH", 100) < self.LIMIT:
+			return True
+		if self.ENERGY != 0 and cls.data.get("ENERGY", 100) < self.LIMIT:
+			return True
+
+		return False
+
+	def sendPowerup(self):
+		return {"HEALTH":self.HEALTH, "ENERGY":self.ENERGY}
 
 
 class CoreKey(CorePowerup):
 
-	OFFSET = (0,0,0)
 	LOCK = 1
+	WAIT = -1
+	COLLIDE = False
+	GFXBOX = {"Mesh":"BOX_Sphere", "Halo":False}
+	GFXDROP = {"Mesh":"BOX_Sphere", "Halo":False}
 
 	def defaultData(self):
 		LOCK = self.objects["Root"].get("LOCK", self.LOCK)
@@ -53,12 +136,7 @@ class CoreKey(CorePowerup):
 	def ST_Startup(self):
 		self.objects["Root"]["RAYNAME"] = "Key: "+str(self.data["LOCK"])
 
-	def equipItem(self, cls):
-		cls.data["KEYRING"].append(self.data["LOCK"])
+	def sendPowerup(self):
+		return {"KEYRING": self.data["LOCK"]}
 
-		if self in logic.UPDATELIST:
-			logic.UPDATELIST.remove(self)
-
-		self.box.endObject()
-		self.box = None
 

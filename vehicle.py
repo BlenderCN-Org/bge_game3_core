@@ -68,9 +68,7 @@ class CoreVehicle(base.CoreAdvanced):
 
 		self.objects = {"Root":owner}
 
-		self.active_pre = []
-		self.active_state = self.ST_Idle
-		self.active_post = [self.PS_SuspensionRig]
+		self.defaultStates()
 
 		self.driving_player = owner.get("RAYCAST", None)
 		self.driving_seat = None
@@ -106,6 +104,11 @@ class CoreVehicle(base.CoreAdvanced):
 		self.doPortal()
 
 		self.loadInventory(owner)
+
+	def defaultStates(self):
+		self.active_pre = []
+		self.active_state = self.ST_Idle
+		self.active_post = [self.PS_SuspensionRig]
 
 	def doPortal(self):
 		owner = self.objects["Root"]

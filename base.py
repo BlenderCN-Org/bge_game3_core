@@ -586,8 +586,9 @@ class CoreObject:
 			self.active_pre.remove(i)
 
 	def runStates(self):
-		self.active_state()
-		self.data["ACTIVE_STATE"] = self.active_state.__name__
+		if self.active_state != None:
+			self.active_state()
+			self.data["ACTIVE_STATE"] = self.active_state.__name__
 
 	def runPost(self):
 		gc = []
@@ -627,21 +628,35 @@ class CoreAdvanced(CoreObject):
 
 	HUDLAYOUT = None
 
-	def runAttachments(self):
+	def defaultData(self):
+		return {"HEALTH":100, "ENERGY":100}
+
+	def PR_Modifiers(self):
+		for dict in self.data["POWERUPS"]:
+			dict["__TIMER__"] = dict.get("__TIMER__", 0) - 1
+
+			self.data["HEALTH"] += dict.get("HEALTH", 0)
+			self.data["ENERGY"] += dict.get("ENERGY", 0)
+
+			if "KEYRING" in dict:
+				self.data["KEYRING"].append(dict["KEYRING"])
+
+	def PS_Attachments(self):
 		for slot in self.cls_dict:
 			self.cls_dict[slot].RUN()
 
-	def runStates(self):
-		if self.active_state != None:
-			self.active_state()
-			self.data["ACTIVE_STATE"] = self.active_state.__name__
-		self.runAttachments()
+		for dict in self.data["POWERUPS"]:
+			if dict["__TIMER__"] < 0:
+				self.data["POWERUPS"].remove(dict)
 
 	def loadInventory(self, owner):
 		scene = owner.scene
 
 		self.cls_dict = {}
 		self.active_weapon = None
+
+		self.active_pre.insert(0, self.PR_Modifiers)
+		self.active_post.append(self.PS_Attachments)
 
 		items = self.buildInventory()
 
@@ -658,13 +673,13 @@ class CoreAdvanced(CoreObject):
 		if self.data["WPDATA"]["ACTIVE"] == "ACTIVE":
 			type = self.data["WPDATA"]["CURRENT"]
 
-		char = self.objects.get("Character", None)
-		if char == None:
-			return
+		#char = self.objects.get("Character", None)
+		#if char == None:
+		#	return
 
-		char["WP_ACTIVE"] = ""
-		char["WP_TIMER"] = ""
-		char["WP_CLASS"] = ""
+		#char["WP_ACTIVE"] = ""
+		#char["WP_TIMER"] = ""
+		#char["WP_CLASS"] = ""
 		#char.addDebugProperty("WP_ACTIVE", True)
 		#char.addDebugProperty("WP_TIMER", True)
 		#char.addDebugProperty("WP_CLASS", True)
@@ -672,8 +687,6 @@ class CoreAdvanced(CoreObject):
 	def buildInventory(self):
 		if "INVENTORY" in self.data:
 			return self.data["INVENTORY"]
-
-		self.data["KEYRING"] = [""]
 
 		self.data["WPDATA"] = {"ACTIVE":"NONE", "CURRENT":"NONE", "TIMER":0, "WHEEL":{}}
 
@@ -692,6 +705,8 @@ class CoreAdvanced(CoreObject):
 		self.data["INVSLOT"] = {}
 		self.data["WEAPONS"] = []
 		self.data["WEAPSLOT"] = {}
+		self.data["KEYRING"] = [""]
+		self.data["POWERUPS"] = []
 
 		defaults = self.INVENTORY
 		items = []
