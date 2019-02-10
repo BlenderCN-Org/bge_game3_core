@@ -364,9 +364,9 @@ class CoreAttachment(base.CoreObject):
 		pass
 
 	def RUN(self):
-		if self.owning_player != None and self.box == None:
-			if self.owning_player.objects["Root"] == None:
-				return
+		#if self.owning_player != None and self.box == None:
+		#	if self.owning_player.objects["Root"] == None:
+		#		return
 		#if self.box != None:
 		#	self.ST_Box()
 		#	return

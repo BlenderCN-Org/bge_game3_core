@@ -337,17 +337,18 @@ class Stats(CoreHUD):
 		txt = self.objects[key+"Text"]
 
 		stat = value/100
+		xpos = offset*stat
 
 		if stat < 0.1:
 			txt.color = (1,0,0,1)
 		elif stat > 1:
-			stat = 1
+			xpos = offset
 			txt.color = (1,0,1,1)
 		else:
 			txt.color = (0,1,0,0.5)
 
 		bar.color[0] = stat
-		txt.localPosition[0] = offset*stat
+		txt.localPosition[0] = xpos
 		txt.text = str(int(round(value, 0)))
 
 
