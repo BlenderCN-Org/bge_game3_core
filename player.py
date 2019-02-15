@@ -278,7 +278,7 @@ class CorePlayer(base.CoreAdvanced):
 		char.localOrientation = self.createMatrix()
 
 	def assignCamera(self, load=False):
-		viewport.setCamera(self)
+		viewport.setCamera(self, load)
 		viewport.setParent(self.objects["Root"])
 		if self.data["CAMERA"]["State"] == "THIRD":
 			viewport.setEyeHeight(self.EYE_H-self.GND_H, set=load)
@@ -350,7 +350,7 @@ class CorePlayer(base.CoreAdvanced):
 
 		self.findObjects(owner)
 		self.parentArmature(owner)
-		self.assignCamera()
+		self.assignCamera(load=True)
 
 		HUD.SetLayout(self)
 

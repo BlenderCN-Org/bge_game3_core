@@ -43,10 +43,13 @@ def pointCamera(vec=None, factor=1):
 def getRayVec():
 	return VIEWCLASS.objects["Rotate"].getAxisVect((0,1,0))
 
-def setCamera(plr):
+def setCamera(plr, load=False):
 	global VIEWCLASS
 	if VIEWCLASS == None:
 		VIEWCLASS = CoreViewport()
+
+	if load == True:
+		VIEWCLASS.dist = None
 
 	VIEWCLASS.setCameraActive(plr)
 
