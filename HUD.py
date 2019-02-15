@@ -323,6 +323,40 @@ class Interact(CoreHUD):
 		self.objects["Target"].color = color
 
 
+class MousePos(CoreHUD):
+
+	OBJECT = "MousePos"
+
+	def ST_Startup(self):
+		self.boot_timer = 0
+
+	def ST_Active(self, plr):
+
+		pos = plr.data["HUD"]["Target"]
+
+		if pos == None:
+			self.objects["Root"].setVisible(False, True)
+		else:
+			self.objects["Root"].setVisible(True, True)
+
+			pos = self.createVector(vec=(pos[0], pos[1], 0))*12
+
+			self.objects["Cursor"].localPosition = pos.copy()
+			self.objects["Line"].localScale = (1,pos.length,1)
+
+			if pos.length < 0.01:
+				self.objects["Line"].color = (0,1,0,0)
+			else:
+				self.objects["Line"].alignAxisToVect(pos, 1, 1.0)
+				self.objects["Line"].alignAxisToVect((0,0,1), 2, 1.0)
+
+				if pos.length < 1:
+					A = (pos.length*1.01)-0.01
+					self.objects["Line"].color = (0,1,0,A)
+				else:
+					self.objects["Line"].color = (0,1,0,1)
+
+
 class Stats(CoreHUD):
 
 	OBJECT = "Stats"

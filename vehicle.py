@@ -31,6 +31,7 @@ class CoreVehicle(base.CoreAdvanced):
 
 	NAME = "Vehicle"
 	PORTAL = True
+	MOUSE_CENTER = True
 	MOUSE_SCALE = [100,100]
 
 	WH_OBJECT = "Wheel.None"  # wheel contsraint object
@@ -375,23 +376,20 @@ class CoreVehicle(base.CoreAdvanced):
 		BANK = KB["VEH_BANKRIGHT"].axis(True, True) - KB["VEH_BANKLEFT"].axis(True, True)
 		YAW = KB["VEH_YAWLEFT"].axis(True, True) - KB["VEH_YAWRIGHT"].axis(True, True)
 
+		self.data["HUD"]["Target"] = None
+
 		if self.data["CAMERA"]["Orbit"] <= 0:
-			X, Y = keymap.MOUSELOOK.axis(ui=True, center=True)
+			X, Y = keymap.MOUSELOOK.axis(ui=True, center=self.MOUSE_CENTER)
 
-			nX = X*self.MOUSE_SCALE[0]
-			nY = Y*self.MOUSE_SCALE[1]
+			BANK  += X *self.MOUSE_SCALE[0]
+			PITCH += Y *self.MOUSE_SCALE[1]
 
-			BANK += nX
-			PITCH += nY
+			if abs(BANK) > 1:
+				BANK = 1-(2*(BANK<0))
+			if abs(PITCH) > 1:
+				PITCH = 1-(2*(PITCH<0))
 
-			self.data["HUD"]["Target"] = [(nX*0.1)+0.5,(-nY*0.1)+0.5]
-		else:
-			self.data["HUD"]["Target"] = None
-
-		if abs(BANK) > 1:
-			BANK = 1-(2*(BANK<0))
-		if abs(PITCH) > 1:
-			PITCH = 1-(2*(PITCH<0))
+			self.data["HUD"]["Target"] = [BANK, PITCH]
 
 		self.motion["Torque"][0] = PITCH
 		self.motion["Torque"][1] = BANK
@@ -504,9 +502,12 @@ class CoreVehicle(base.CoreAdvanced):
 class LayoutCar(HUD.HUDLayout):
 
 	GROUP = "Core"
-	MODULES = [HUD.Stats, HUD.Speedometer, HUD.Interact]
+	MODULES = [HUD.Stats, HUD.Speedometer, HUD.MousePos]
 
 class CoreCar(CoreVehicle):
+
+	MOUSE_CENTER = False
+	MOUSE_SCALE = [10,0]
 
 	CAM_HEIGHT = 0.2
 	CAM_MIN = 0.7
@@ -637,7 +638,7 @@ class CoreCar(CoreVehicle):
 class LayoutAircraft(HUD.HUDLayout):
 
 	GROUP = "Core"
-	MODULES = [HUD.Stats, HUD.Aircraft, HUD.Interact]
+	MODULES = [HUD.Stats, HUD.Aircraft, HUD.MousePos]
 
 class CoreAircraft(CoreVehicle):
 
