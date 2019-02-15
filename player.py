@@ -861,6 +861,10 @@ class CorePlayer(base.CoreAdvanced):
 			self.data["ENERGY"] += self.data["RECHARGE"]
 			if self.data["ENERGY"] > 100:
 				self.data["ENERGY"] = 100
+		if self.data["HEALTH"] > 200:
+			self.data["HEALTH"] = 200
+		if self.data["ENERGY"] > 200:
+			self.data["ENERGY"] = 200
 
 	def PS_GroundTrack(self):
 		owner = self.objects["Root"]
