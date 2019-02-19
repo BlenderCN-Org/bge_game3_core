@@ -32,7 +32,7 @@ class CoreVehicle(base.CoreAdvanced):
 	NAME = "Vehicle"
 	PORTAL = True
 	MOUSE_CENTER = True
-	MOUSE_SCALE = [100,100]
+	MOUSE_SCALE = [0,0]
 
 	WH_OBJECT = "Wheel.None"  # wheel contsraint object
 	WH_MESH = None            # Visual wheel object
@@ -378,7 +378,7 @@ class CoreVehicle(base.CoreAdvanced):
 
 		self.data["HUD"]["Target"] = None
 
-		if self.data["CAMERA"]["Orbit"] <= 0:
+		if self.data["CAMERA"]["Orbit"] <= 0 and self.MOUSE_SCALE[0] > 0 and self.MOUSE_SCALE[1] > 0:
 			X, Y = keymap.MOUSELOOK.axis(ui=True, center=self.MOUSE_CENTER)
 
 			BANK  += X *self.MOUSE_SCALE[0]
@@ -506,8 +506,8 @@ class LayoutCar(HUD.HUDLayout):
 
 class CoreCar(CoreVehicle):
 
-	MOUSE_CENTER = False
-	MOUSE_SCALE = [10,0]
+	#MOUSE_CENTER = True
+	#MOUSE_SCALE = [100,0]
 
 	CAM_HEIGHT = 0.2
 	CAM_MIN = 0.7
