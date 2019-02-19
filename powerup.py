@@ -43,13 +43,6 @@ class CorePowerup(attachment.CoreAttachment):
 	def sendPowerup(self):
 		return {}
 
-	def hideObject(self, state=True):
-		owner = self.objects["Root"]
-		state = (state==False)
-		owner.setVisible(state, True)
-		#if self.halo != None:
-		#	self.halo.setVisible(state, True)
-
 	def equipItem(self, cls):
 		if "POWERUPS" not in cls.data:
 			return

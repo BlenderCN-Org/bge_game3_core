@@ -109,6 +109,13 @@ class CoreAttachment(base.CoreObject):
 		pos[2] *= (1/self.box_scale[2])
 		return pos
 
+	def hideObject(self, state=True):
+		owner = self.objects["Root"]
+		state = (state==False)
+		owner.setVisible(state, True)
+		#if self.halo != None:
+		#	self.halo.setVisible(state, True)
+
 	def buildBox(self):
 		owner = self.objects["Root"]
 
@@ -251,6 +258,7 @@ class CoreAttachment(base.CoreObject):
 		self.buildBox()
 
 		self.removeFromPlayer()
+		self.hideObject(False)
 		self.attachToSocket(owner, self.box)
 
 		if pos != None:

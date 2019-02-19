@@ -30,6 +30,9 @@ from . import keymap, base, HUD, config
 VIEWCLASS = None
 
 
+def getObject(obj):
+	return VIEWCLASS.objects.get(obj, None)
+
 def getDirection(vec=[0,1,0]):
 	return VIEWCLASS.objects["Root"].getAxisVect(vec)
 
@@ -68,10 +71,6 @@ def setEyeHeight(offset=0, axis=2, eye=None, set=False):
 
 def setEyePitch(ang, set=False):
 	VIEWCLASS.setCameraEye(ori=ang, set=set)
-
-def cameraMotion(move=None, rot=None, add=False):
-	if VIEWCLASS != None:
-		VIEWCLASS.applyMotion(move, rot, add)
 
 def updateCamera(plr, parent, dist=None, slow=0, orbit=True, load=False):
 	global VIEWCLASS
@@ -143,16 +142,6 @@ class CoreViewport(base.CoreObject):
 		camxr = self.objects["Rotate"].localOrientation.to_euler()
 		self.camdata["XR"] = list(camxr)[0]
 
-	def applyMotion(self, move=None, rot=None, add=False):
-		if move != None:
-			for i in [0,1,2]:
-				val = self.motion["Move"][i]*add
-				self.motion["Move"][i] = val+move[i]
-		if rot != None:
-			for i in [0,1,2]:
-				val = self.motion["Rotate"][i]*add
-				self.motion["Rotate"][i] = val+rot[i]
-
 	def setCameraEye(self, pos=None, ori=None, set=False):
 		if pos != None:
 			self.offset = self.createVector(vec=pos)
@@ -200,7 +189,6 @@ class CoreViewport(base.CoreObject):
 
 	def doTrackTo(self, vec=None, fac=1):
 		if vec == None:
-			#self.objects["Camera"].localOrientation = self.createMatrix([90,0,0])
 			zref = self.objects["Rotate"].getAxisVect([0,1,0])
 		else:
 			zref = self.objects["Camera"].getVectTo(vec)[1]
@@ -225,7 +213,11 @@ class CoreViewport(base.CoreObject):
 			self.active_state = self.ST_Shoulder
 			dist = plr.CAM_SHDIST
 
-		self.camdata["State"] = state
+		if state == "FIRST":
+			self.active_state = self.ST_First
+			self.dist = 0
+			self.objects["Camera"].localPosition = self.createVector()
+			self.objects["Camera"].localOrientation = self.createMatrix([90,0,0])
 
 		if self.dist == None:
 			self.dist = dist
@@ -247,18 +239,7 @@ class CoreViewport(base.CoreObject):
 		else:
 			camera.fov = self.camdata["FOV"]
 
-		## POSITION ##
-		if self.parent != None:
-			orbit = self.camdata["Orbit"]
-			slow = self.camdata["Slow"]
-
-			self.doCameraFollow(self.parent, slow, orbit)
-
 	def ST_Third(self, plr):
-		vertex = self.objects["VertRef"]
-		camera = self.objects["Camera"]
-		rotate = self.objects["Rotate"]
-
 		## SET ZOOM ##
 		steps = (plr.CAM_RANGE[1]-plr.CAM_RANGE[0])/plr.CAM_STEPS
 		dist = (steps*self.camdata["Zoom"])+plr.CAM_RANGE[0]
@@ -280,37 +261,48 @@ class CoreViewport(base.CoreObject):
 
 		## MOUSELOOK ##
 		if self.camdata["Orbit"] >= 1:
-			ts = (camera.fov/plr.CAM_FOV)**2
-
-			ROTATE = plr.motion.get("Rotate", [0,0,0])
-
-			X, Y = keymap.MOUSELOOK.axis([ROTATE[2], ROTATE[0]])
-
-			self.objects["Root"].applyRotation((0, 0, X*ts), True)
-			self.objects["Rotate"].applyRotation((Y*ts, 0, 0), True)
-
+			self.doCameraRotate(plr)
 		#else:
 		#	keymap.MOUSELOOK.center()
 
+		## POSITION ##
+		orbit = self.camdata["Orbit"]
+		slow = self.camdata["Slow"]
+
+		self.doCameraFollow(self.parent, slow, orbit)
+
 		self.doCameraCollision(plr)
-
-	def ST_First(self, plr):
-		vertex = self.objects["VertRef"]
-		camera = self.objects["Camera"]
-		rotate = self.objects["Rotate"]
-
-		self.dist = 0
 
 	def ST_Shoulder(self, plr):
 		vertex = self.objects["VertRef"]
-		camera = self.objects["Camera"]
-		rotate = self.objects["Rotate"]
 
 		## SET ZOOM ##
 		self.dist += (plr.CAM_SHDIST-self.dist)*0.1
 
-		if vertex.parent == None and self.parent != None:
-			vertex.setParent(self.parent)
+		#if vertex.parent == None and self.parent != None:
+		#	vertex.setParent(self.parent)
+
+		self.doCameraRotate(plr)
+
+		## POSITION ##
+		slow = self.camdata["Slow"]
+
+		self.doCameraFollow(self.parent, slow, orbit=True)
+
+		self.doCameraCollision(plr)
+
+	def ST_First(self, plr):
+		self.dist = 0
+
+		self.doCameraRotate(plr)
+
+		## POSITION ##
+		self.doCameraFollow(self.parent, slow=0, orbit=True)
+
+	def doCameraRotate(self, plr):
+		owner = self.objects["Root"]
+		camera = self.objects["Camera"]
+		rotate = self.objects["Rotate"]
 
 		ts = (camera.fov/plr.CAM_FOV)**2
 
@@ -318,17 +310,18 @@ class CoreViewport(base.CoreObject):
 
 		X, Y = keymap.MOUSELOOK.axis([ROTATE[2], ROTATE[0]])
 
-		self.objects["Root"].applyRotation((0, 0, X*ts), True)
-		self.objects["Rotate"].applyRotation((Y*ts, 0, 0), True)
-
-		self.doCameraCollision(plr)
+		owner.applyRotation((0, 0, X*ts), True)
+		rotate.applyRotation((Y*ts, 0, 0), True)
 
 	def doCameraFollow(self, parent=None, slow=0, orbit=True):
 		owner = self.objects["Root"]
 		vertex = self.objects["VertRef"]
 		rotate = self.objects["Rotate"]
+
 		if parent == None:
 			parent = self.parent
+		if parent == None:
+			return
 
 		fac = 1
 		if slow > 1:
@@ -347,11 +340,12 @@ class CoreViewport(base.CoreObject):
 
 		rotate.localPosition = slowR
 
-		if orbit == True:
+		if orbit == True or slow == 0:
 			if vertex.parent == None or vertex.parent != parent:
 				vertex.setParent(parent)
-			owner.alignAxisToVect((0,0,1), 2, fac)
-			return
+			if orbit == True:
+				owner.alignAxisToVect((0,0,1), 2, fac)
+				return
 		else:
 			if vertex.parent != None:
 				vertex.removeParent()
