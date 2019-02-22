@@ -666,16 +666,20 @@ class CorePlayer(base.CoreAdvanced):
 
 		return ground, angle, slope
 
-	def doInteract(self):
+	def doInteract(self, rayfrom=None):
 		scene = base.SC_SCN
 		owner = self.objects["Root"]
 
-		rayfrom = self.getWorldSpace(owner, (0,0,self.EYE_H-self.GND_H))
-		rayto = rayfrom+viewport.getRayVec()
-		dist = 200
+		dist = 1000
 
-		if self.data["CAMERA"]["State"] != "THIRD":
-			dist = 1000
+		if self.data["CAMERA"]["State"] == "SHOULDER":
+			if rayfrom == None:
+				rayfrom = (0, 0, self.EYE_H-self.GND_H)
+			rayfrom = self.getWorldSpace(owner, rayfrom)
+		else:
+			rayfrom = viewport.getObject("Rotate").worldPosition
+
+		rayto = rayfrom+viewport.getRayVec()
 
 		RAYHIT = owner.rayCast(rayto, rayfrom, dist, "", 1, 0, 0)
 
@@ -973,7 +977,7 @@ class CorePlayer(base.CoreAdvanced):
 
 		owner.alignAxisToVect((0,0,1), 2, 1.0)
 
-		self.doInteract()
+		self.doInteract(rayfrom=[0,0,(self.EYE_H-self.GND_H)*cr_fac])
 		self.checkStability()
 		self.weaponManager()
 
@@ -1129,12 +1133,10 @@ class CorePlayer(base.CoreAdvanced):
 			self.doPlayerAnim("FALLING")
 			self.jump_timer += 1
 
-			if self.jump_state in ["FALLING", "A_JUMP", "B_JUMP"]:
-				if self.data["CAMERA"]["State"] == "SHOULDER":
+			if self.jump_state in ["FALLING", "A_JUMP", "B_JUMP", "NO_AIR"]:
+				if self.data["CAMERA"]["State"] != "THIRD":
 					self.doMovement((0, 1, 0), 0, True)
-					#vref = viewport.getDirection((0,1,0))
-					#owner.alignAxisToVect(vref, 1, 0.1)
-				if self.motion["Move"].length > 0.01:
+				if self.motion["Move"].length > 0.01 and self.jump_state != "NO_AIR":
 					vref = viewport.getDirection((move[0], move[1], 0))
 					owner.applyForce((vref[0]*5, vref[1]*5, 0), False)
 
@@ -1167,7 +1169,6 @@ class CorePlayer(base.CoreAdvanced):
 
 	## EDGE HANG STATE ##
 	def ST_Hanging_Set(self):
-		#self.objects["Root"].setDamping(1.0, 1.0)
 		self.objects["Root"].worldLinearVelocity = (0,0,0)
 		self.objects["Root"].worldPosition = self.rayorder[0]
 
