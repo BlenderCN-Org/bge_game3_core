@@ -468,8 +468,9 @@ class CoreObject:
 		if vel == False:
 			owner.worldLinearVelocity = (0,0,0)
 
-	def hideObject(self):
-		self.objects["Root"].setVisible(False, True)
+	def hideObject(self, state=True):
+		state = (state==False)
+		self.objects["Root"].setVisible(state, True)
 
 	def doAnim(self, OBJECT=None, NAME="NONE", FRAME=(0, 60), LAYER=0, PRIORITY=0, MODE="PLAY", BLEND=0, KEY=False, STOP=False, CHECK=False, SET=None):
 

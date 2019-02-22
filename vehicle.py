@@ -58,7 +58,7 @@ class CoreVehicle(base.CoreAdvanced):
 		"Wheel_RL": {"REAR":True, "LEFT":True, "SCALE":True} }
 
 	SEATS = {
-		"Seat_1": {"NAME":"Driver", "DOOR":"Door_1", "CAMERA":None, "ACTION":"SeatLow", "VISIBLE":True, "SPAWN":[-2,0,0]} }
+		"Seat_1": {"NAME":"Driver", "DOOR":"Door_1", "CAMERA":[0,0,0], "ACTION":"SeatLow", "VISIBLE":True, "SPAWN":[-2,0,0]} }
 
 	def __init__(self):
 		owner = logic.getCurrentController().owner
@@ -325,6 +325,26 @@ class CoreVehicle(base.CoreAdvanced):
 	def assignCamera(self):
 		viewport.setCamera(self)
 		viewport.setParent(self.objects["Root"])
+		self.setCameraState()
+
+	def setCameraState(self, state=None):
+		if state == None:
+			state = self.data["CAMERA"]["State"]
+		else:
+			self.data["CAMERA"]["State"] = state
+
+		if state == "SEAT":
+			viewport.setState("SEAT")
+			pos = self.SEATS.get(self.driving_seat, {}).get("CAMERA", [0,0,0])
+			viewport.setCameraPosition(pos)
+			self.setPlayerVisibility(False)
+		elif state == "THIRD":
+			viewport.setState("THIRD")
+			viewport.setCameraPosition([0,0,0])
+			self.setPlayerVisibility(True)
+
+		viewport.setEyeHeight(0)
+		viewport.setEyePitch(0)
 
 	def hideObject(self):
 		self.objects["Root"].setVisible(False, True)
@@ -394,6 +414,12 @@ class CoreVehicle(base.CoreAdvanced):
 		self.motion["Torque"][0] = PITCH
 		self.motion["Torque"][1] = BANK
 		self.motion["Torque"][2] = YAW
+
+		if keymap.BINDS["TOGGLECAM"].tap() == True:
+			if self.data["CAMERA"]["State"] == "THIRD":
+				self.setCameraState("SEAT")
+			else:
+				self.setCameraState("THIRD")
 
 	def checkClicked(self, OBJ=None):
 		for key in self.doorobj:
@@ -650,7 +676,7 @@ class CoreAircraft(CoreVehicle):
 	CAM_SLOW = 5
 
 	SEATS = {
-		"Seat_1": {"NAME":"Driver", "DOOR":"Root", "CAMERA":None, "ACTION":"SeatLow", "VISIBLE":True, "SPAWN":[-2,0,0]} }
+		"Seat_1": {"NAME":"Driver", "DOOR":"Root", "ACTION":"SeatLow", "SPAWN":[-2,0,0]} }
 
 	AERO = {"POWER":1000, "HOVER":0, "LIFT":0.1, "TAIL":10, "DRAG":(1,1,1)}
 	HUDLAYOUT = LayoutAircraft

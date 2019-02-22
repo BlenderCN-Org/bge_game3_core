@@ -59,6 +59,11 @@ def setCamera(plr, load=False):
 def setParent(obj):
 	VIEWCLASS.setCameraParent(obj)
 
+def setCameraPosition(pos):
+	VIEWCLASS.position[0] = pos[0]
+	VIEWCLASS.position[1] = pos[1]
+	VIEWCLASS.position[2] = pos[2]
+
 def setEyeHeight(offset=0, axis=2, eye=None, set=False):
 	if eye == None:
 		eye = [0,0,0]
@@ -108,8 +113,10 @@ class CoreViewport(base.CoreObject):
 		self.control = None
 		self.parent = None
 
+		self.position = self.createVector()
 		self.offset = self.createVector()
 		self.pitch = self.createMatrix()
+		self.camrot = [0,0]
 		self.dist = None
 
 		self.defaultStates()
@@ -166,6 +173,8 @@ class CoreViewport(base.CoreObject):
 			self.buildCameraData()
 			self.stateSwitch(self.camdata["State"])
 
+		self.position = self.createVector()
+		self.camrot = [0,0]
 		self.setCameraEye(pos=[0,0,0], ori=0)
 		keymap.MOUSELOOK.center()
 
@@ -182,6 +191,7 @@ class CoreViewport(base.CoreObject):
 				"Zoom": plr.CAM_ZOOM,
 				"FOV": plr.CAM_FOV,
 				"Slow": plr.CAM_SLOW,
+				"POS": [0,0,0],
 				"ZR": [0,0,0],
 				"XR": 0}
 
@@ -199,6 +209,8 @@ class CoreViewport(base.CoreObject):
 		self.objects["Camera"].alignAxisToVect(xref, 1, 1.0)
 
 	def stateSwitch(self, state):
+		self.position = self.createVector()
+		self.camrot = [0,0]
 		plr = self.control
 		if plr == None:
 			self.active_state = None
@@ -213,7 +225,7 @@ class CoreViewport(base.CoreObject):
 			self.active_state = self.ST_Shoulder
 			dist = plr.CAM_SHDIST
 
-		if state == "FIRST":
+		if state in ["FIRST", "SEAT"]:
 			self.active_state = self.ST_First
 			self.dist = 0
 			self.objects["Camera"].localPosition = self.createVector()
@@ -254,16 +266,16 @@ class CoreViewport(base.CoreObject):
 		## SET ORBIT ##
 		if self.camdata["Orbit"] == False:
 			if plr.CAM_ORBIT in [0,1] and keymap.BINDS["CAM_ORBIT"].tap() == True:
+				keymap.MOUSELOOK.center()
 				self.camdata["Orbit"] = True
 		elif self.camdata["Orbit"] == True:
 			if plr.CAM_ORBIT in [0,1] and keymap.BINDS["CAM_ORBIT"].tap() == True:
+				keymap.MOUSELOOK.center()
 				self.camdata["Orbit"] = False
 
 		## MOUSELOOK ##
 		if self.camdata["Orbit"] >= 1:
 			self.doCameraRotate(plr)
-		#else:
-		#	keymap.MOUSELOOK.center()
 
 		## POSITION ##
 		orbit = self.camdata["Orbit"]
@@ -279,27 +291,86 @@ class CoreViewport(base.CoreObject):
 		## SET ZOOM ##
 		self.dist += (plr.CAM_SHDIST-self.dist)*0.1
 
-		#if vertex.parent == None and self.parent != None:
-		#	vertex.setParent(self.parent)
-
 		self.doCameraRotate(plr)
 
 		## POSITION ##
+		orbit = self.camdata["Orbit"]
 		slow = self.camdata["Slow"]
 
-		self.doCameraFollow(self.parent, slow, orbit=True)
+		self.doCameraFollow(self.parent, slow, orbit)
 
 		self.doCameraCollision(plr)
 
 	def ST_First(self, plr):
+		owner = self.objects["Root"]
+		rotate = self.objects["Rotate"]
+
 		self.dist = 0
 
-		self.doCameraRotate(plr)
+		if self.camdata["State"] == "FIRST":
+			axis = self.parent.getAxisVect((0,0,1))
+			self.doCameraRotate(plr)
+			self.doCameraFollow(self.parent, slow=0, orbit=True, up=axis)
 
-		## POSITION ##
-		self.doCameraFollow(self.parent, slow=0, orbit=True)
+		else:
+			## SET ORBIT ##
+			if self.camdata["Orbit"] == False:
+				if plr.CAM_ORBIT in [0,1] and keymap.BINDS["CAM_ORBIT"].tap() == True:
+					keymap.MOUSELOOK.center()
+					self.camdata["Orbit"] = True
+			elif self.camdata["Orbit"] == True:
+				if plr.CAM_ORBIT in [0,1] and keymap.BINDS["CAM_ORBIT"].tap() == True:
+					keymap.MOUSELOOK.center()
+					self.camdata["Orbit"] = False
 
-	def doCameraRotate(self, plr):
+			self.doCameraFollow(self.parent, slow=0, orbit=False, pitch=False)
+
+			if self.camdata["Orbit"] >= 1:
+				X, Y = self.doCameraRotate(plr, True)
+
+				ref = self.createMatrix()
+
+				self.camrot[0] += X
+				self.camrot[1] += Y
+
+				clipX = base.math.radians(150)
+				clipY = base.math.radians(89)
+
+				if self.camrot[0] > clipX:
+					self.camrot[0] = clipX
+				if self.camrot[0] < -clipX:
+					self.camrot[0] = -clipX
+				if self.camrot[1] > clipY:
+					self.camrot[1] = clipY
+				if self.camrot[1] < -clipY:
+					self.camrot[1] = -clipY
+
+				X, Y = self.camrot
+
+				rotY = self.createMatrix(rot=[Y,0,0], deg=False)
+
+				ref.rotate(rotY)
+
+				rotX = self.createMatrix(rot=[0,0,X], deg=False)
+				rotX = self.parent.worldOrientation*rotX
+				rotX = owner.worldOrientation.inverted()*rotX
+
+				ref.rotate(rotX)
+
+				rotate.localOrientation = ref
+
+			else:
+				self.camrot = [0,0]
+				self.pitch = self.createMatrix()
+
+				tquat = self.pitch.to_quaternion()
+				vquat = rotate.localOrientation.to_quaternion()
+
+				slowQ = vquat.slerp(tquat, 0.1)
+
+				rotate.localOrientation = slowQ.to_matrix()
+
+	def doCameraRotate(self, plr, values=False):
 		owner = self.objects["Root"]
 		camera = self.objects["Camera"]
 		rotate = self.objects["Rotate"]
@@ -310,10 +381,16 @@ class CoreViewport(base.CoreObject):
 
 		X, Y = keymap.MOUSELOOK.axis([ROTATE[2], ROTATE[0]])
 
-		owner.applyRotation((0, 0, X*ts), True)
-		rotate.applyRotation((Y*ts, 0, 0), True)
+		X = X*ts
+		Y = Y*ts
 
-	def doCameraFollow(self, parent=None, slow=0, orbit=True):
+		if values == True:
+			return X, Y
+
+		owner.applyRotation((0, 0, X), True)
+		rotate.applyRotation((Y, 0, 0), True)
+
+	def doCameraFollow(self, parent=None, slow=0, orbit=True, up=(0,0,1), pitch=True):
 		owner = self.objects["Root"]
 		vertex = self.objects["VertRef"]
 		rotate = self.objects["Rotate"]
@@ -329,8 +406,9 @@ class CoreViewport(base.CoreObject):
 
 		tpos = parent.worldPosition.copy()
 		vpos = vertex.worldPosition.copy()
+		lpos = parent.worldOrientation*self.position
 
-		slowV = vpos.lerp(tpos, fac)
+		slowV = vpos.lerp(tpos+lpos, fac)
 
 		vertex.worldPosition = slowV
 
@@ -344,7 +422,9 @@ class CoreViewport(base.CoreObject):
 			if vertex.parent == None or vertex.parent != parent:
 				vertex.setParent(parent)
 			if orbit == True:
-				owner.alignAxisToVect((0,0,1), 2, fac)
+				owner.alignAxisToVect(up, 2, fac)
+				xref = owner.getAxisVect((1,0,0))
+				rotate.alignAxisToVect(xref, 0, fac)
 				return
 		else:
 			if vertex.parent != None:
@@ -356,6 +436,9 @@ class CoreViewport(base.CoreObject):
 		slowQ = vquat.slerp(tquat, fac)
 
 		owner.worldOrientation = slowQ.to_matrix()
+
+		if pitch == False:
+			return
 
 		tquat = self.pitch.to_quaternion()
 		vquat = rotate.localOrientation.to_quaternion()
