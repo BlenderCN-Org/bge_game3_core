@@ -71,6 +71,7 @@ class CoreAttachment(base.CoreObject):
 		self.gfx_scale = self.createVector(fill=self.SCALE)
 
 		self.checkGhost(owner)
+		self.applyGravity()
 		self.findObjects(owner)
 		self.doLoad()
 		self.ST_Startup()
@@ -253,7 +254,9 @@ class CoreAttachment(base.CoreObject):
 			self.dict["Equiped"] = "DROP"
 			self.ST_Stop()
 
-		owner.alignAxisToVect((0,0,1), 2, 1.0)
+			self.gravity = cls.gravity.copy()
+
+		self.alignToGravity(owner)
 
 		self.buildBox()
 

@@ -97,6 +97,7 @@ class CoreVehicle(base.CoreAdvanced):
 		self.addCollisionCallBack()
 
 		self.checkGhost(owner)
+		self.applyGravity()
 		self.findObjects(owner, ground=False)
 		self.findSeats()
 		self.doLoad()
@@ -107,9 +108,9 @@ class CoreVehicle(base.CoreAdvanced):
 		self.loadInventory(owner)
 
 	def defaultStates(self):
-		self.active_pre = []
+		self.active_pre = [self.PR_SuspensionRig]
 		self.active_state = self.ST_Idle
-		self.active_post = [self.PS_SuspensionRig]
+		self.active_post = []
 
 	def doPortal(self):
 		owner = self.objects["Root"]
@@ -353,9 +354,11 @@ class CoreVehicle(base.CoreAdvanced):
 
 	def alignObject(self, offset=0.5, velocity=True):
 		owner = self.objects["Root"]
-		if owner.worldOrientation[2][2] < 0.5:
-			owner.alignAxisToVect((0,0,1), 2, 1.0)
-			owner.worldPosition[2] += offset
+		if self.gravity.length < 0.1:
+			return False
+		if owner.getAxisVect((0,0,-1)).dot(self.gravity) < 0.5:
+			owner.alignAxisToVect(-self.gravity, 2, 1.0)
+			owner.worldPosition += self.gravity.normalized()*-offset
 			if velocity == True:
 				owner.localLinearVelocity = (0,0,0)
 				owner.localAngularVelocity = (0,0,0)
@@ -503,10 +506,13 @@ class CoreVehicle(base.CoreAdvanced):
 		self.data["PORTAL"] = True
 
 	## RUN ##
-	def PS_SuspensionRig(self):
+	def PR_SuspensionRig(self):
 		owner = self.objects["Root"]
 		if self.objects.get("Rig", None) == None:
 			return "REMOVE"
+
+		self.doAnim(OBJECT=self.objects["Rig"], NAME="ArmatureIdle", PRIORITY=3, MODE="LOOP")
+
 		for key in self.wheelobj:
 			ch = self.objects["Rig"].channels.get(key, None)
 			if ch != None:
@@ -515,14 +521,12 @@ class CoreVehicle(base.CoreAdvanced):
 				offset = ch.bone.arm_head
 				ch.location = lp-offset
 
-		self.doAnim(OBJECT=self.objects["Rig"], NAME="ArmatureIdle", PRIORITY=3, MODE="LOOP")
-
 	def RUN(self):
 		self.runPre()
 		self.runStates()
 		self.runPost()
 		self.clearRayProps()
-		self.checkStability(True, override=(keymap.SYSTEM["STABILITY"].tap() and self.driving_player) )
+		#self.checkStability(True, offset=2.0, override=(keymap.SYSTEM["STABILITY"].tap() and self.driving_player!=None) )
 
 
 class LayoutCar(HUD.HUDLayout):
@@ -706,7 +710,7 @@ class CoreAircraft(CoreVehicle):
 	def airLift(self):
 		owner = self.objects["Root"]
 		linV = owner.localLinearVelocity
-		grav = -owner.scene.gravity[2]
+		grav = -self.gravity[2]
 
 		self.lift = (linV[1])*self.AERO["LIFT"]*owner.mass
 		mass = owner.mass*grav
@@ -724,7 +728,7 @@ class CoreAircraft(CoreVehicle):
 
 		force = self.motion["Force"]
 		torque = self.motion["Torque"]
-		grav = -owner.scene.gravity[2]
+		grav = -self.gravity[2]
 		mass = owner.mass
 
 		self.data["POWER"] += force[1]*(self.AERO["POWER"]/100)

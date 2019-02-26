@@ -276,6 +276,7 @@ class CoreObject:
 		self.defaultStates()
 
 		self.checkGhost(owner)
+		self.applyGravity()
 		self.findObjects(owner)
 		self.doLoad()
 
@@ -394,6 +395,13 @@ class CoreObject:
 			obj["GROUND"] = True
 		elif "GROUND" in obj:
 			del obj["GROUND"]
+
+	def applyGravity(self, grav=None):
+		owner = self.objects.get("Root", None)
+		if grav == None:
+			grav = SC_SCN.gravity
+
+		self.gravity = self.createVector(vec=grav)
 
 	def saveWorldPos(self):
 		obj = self.objects["Root"]
@@ -522,27 +530,32 @@ class CoreObject:
 		if KEY == True:
 			OBJECT.reinstancePhysicsMesh()
 
+	def alignToGravity(self, obj=None):
+		if obj == None:
+			obj = self.objects["Root"]
+		if self.gravity.length >= 0.1:
+			obj.alignAxisToVect(-self.gravity, 2, 1.0)
+
 	def checkStability(self, align=False, offset=1.0, override=False):
 		if settings.config.DO_STABILITY == False:
 			return
 
 		obj = self.objects["Root"]
 
-		rayto = obj.worldPosition.copy()
-		rayto[2] += 1
+		rayto = obj.worldPosition+obj.getAxisVect((0,0,1))
 
 		down, pnt, nrm = obj.rayCast(rayto, None, -20000, "GROUND", 1, 1, 0)
 
 		if down == None or override == True:
 			up, pnt, nrm = obj.rayCast(rayto, None, 10000, "GROUND", 1, 1, 0)
 			if up != None:
-				if override == True and nrm.dot(self.createVector(vec=[0,0,1])) < 0:
-					return
-				obj.worldPosition[2] = pnt[2]+offset
+				if override == True:# and nrm.dot(self.createVector(vec=[0,0,1])) < 0:
+					obj.worldLinearVelocity = (0,0,0)
+				obj.worldPosition = pnt+(nrm*offset)
 				if align == True:
 					obj.alignAxisToVect(nrm, 2, 1.0)
 			#elif obj.getPhysicsId() != 0:
-			#	obj.applyForce((0,0,-obj.scene.gravity[2]*obj.mass), False)
+			#	obj.applyForce((0,0,-self.gravity[2]*obj.mass), False)
 
 	def checkClicked(self, obj=None):
 		if obj == None:

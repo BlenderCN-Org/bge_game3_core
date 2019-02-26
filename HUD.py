@@ -314,6 +314,7 @@ class Interact(CoreHUD):
 		self.objects["Text"].text = text
 
 		plr.data["HUD"]["Text"] = ""
+		plr.data["HUD"]["Color"] = (0, 0, 0, 0.5)
 
 		if pos == None:
 			self.objects["Target"].localPosition = (0, 0, 64)

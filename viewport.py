@@ -36,9 +36,9 @@ def getObject(obj):
 def getDirection(vec=[0,1,0]):
 	return VIEWCLASS.objects["Root"].getAxisVect(vec)
 
-def setDirection(vec, factor=1):
+def setDirection(vec, factor=1, up=(0,0,1)):
 	VIEWCLASS.objects["Root"].alignAxisToVect(vec, 1, factor)
-	VIEWCLASS.objects["Root"].alignAxisToVect((0,0,1), 2, 1.0)
+	VIEWCLASS.objects["Root"].alignAxisToVect(up, 2, 1.0)
 
 def pointCamera(vec=None, factor=1):
 	VIEWCLASS.doTrackTo(vec, fac)
@@ -82,7 +82,13 @@ def updateCamera(plr, parent, dist=None, slow=0, orbit=True, load=False):
 	if VIEWCLASS == None:
 		VIEWCLASS = CoreViewport()
 
-	VIEWCLASS.doCameraFollow(parent, slow, orbit)
+	if plr != None and plr.gravity.length >= 0.1:
+		up = -plr.gravity
+	else:
+		up = None
+
+	VIEWCLASS.doCameraFollow(parent, slow, orbit, up)
+
 	if dist != None and plr != None:
 		VIEWCLASS.doCameraCollision(plr, dist)
 	if load == True:
@@ -390,7 +396,7 @@ class CoreViewport(base.CoreObject):
 		owner.applyRotation((0, 0, X), True)
 		rotate.applyRotation((Y, 0, 0), True)
 
-	def doCameraFollow(self, parent=None, slow=0, orbit=True, up=(0,0,1), pitch=True):
+	def doCameraFollow(self, parent=None, slow=0, orbit=True, up=None, pitch=True):
 		owner = self.objects["Root"]
 		vertex = self.objects["VertRef"]
 		rotate = self.objects["Rotate"]
@@ -403,6 +409,12 @@ class CoreViewport(base.CoreObject):
 		fac = 1
 		if slow > 1:
 			fac = 1/slow
+
+		if up == None:
+			if self.control == None:
+				up = parent.getAxisVect((0,0,1))
+			elif self.control.gravity.length >= 0.1:
+				up = -self.control.gravity
 
 		tpos = parent.worldPosition.copy()
 		vpos = vertex.worldPosition.copy()
@@ -422,7 +434,8 @@ class CoreViewport(base.CoreObject):
 			if vertex.parent == None or vertex.parent != parent:
 				vertex.setParent(parent)
 			if orbit == True:
-				owner.alignAxisToVect(up, 2, fac)
+				if up != None:
+					owner.alignAxisToVect(up, 2, fac)
 				xref = owner.getAxisVect((1,0,0))
 				rotate.alignAxisToVect(xref, 0, fac)
 				return
