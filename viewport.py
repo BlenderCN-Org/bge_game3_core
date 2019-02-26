@@ -83,7 +83,7 @@ def updateCamera(plr, parent, dist=None, slow=0, orbit=True, load=False):
 		VIEWCLASS = CoreViewport()
 
 	if plr != None and plr.gravity.length >= 0.1:
-		up = -plr.gravity
+		up = -plr.gravity.normalized()
 	else:
 		up = None
 
@@ -280,7 +280,7 @@ class CoreViewport(base.CoreObject):
 				self.camdata["Orbit"] = False
 
 		## MOUSELOOK ##
-		if self.camdata["Orbit"] >= 1:
+		if self.camdata["Orbit"] == True:
 			self.doCameraRotate(plr)
 
 		## POSITION ##
@@ -411,10 +411,10 @@ class CoreViewport(base.CoreObject):
 			fac = 1/slow
 
 		if up == None:
-			if self.control == None:
+			if self.control != None and self.control.gravity.length >= 0.1:
+				up = -self.control.gravity.normalized()
+			else:
 				up = parent.getAxisVect((0,0,1))
-			elif self.control.gravity.length >= 0.1:
-				up = -self.control.gravity
 
 		tpos = parent.worldPosition.copy()
 		vpos = vertex.worldPosition.copy()
@@ -422,7 +422,10 @@ class CoreViewport(base.CoreObject):
 
 		slowV = vpos.lerp(tpos+lpos, fac)
 
-		vertex.worldPosition = slowV
+		if vertex.parent != None:
+			vertex.localPosition -= vertex.localPosition*fac
+		else:
+			vertex.worldPosition = slowV
 
 		rpos = rotate.localPosition
 
@@ -435,7 +438,11 @@ class CoreViewport(base.CoreObject):
 				vertex.setParent(parent)
 			if orbit == True:
 				if up != None:
-					owner.alignAxisToVect(up, 2, fac)
+					angle = owner.getAxisVect((0,0,1)).angle(up)
+					if abs(angle) > 3.13:
+						owner.applyRotation((0,0.1,0), True)
+					else:
+						owner.alignAxisToVect(up, 2, fac)
 				xref = owner.getAxisVect((1,0,0))
 				rotate.alignAxisToVect(xref, 0, fac)
 				return
