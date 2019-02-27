@@ -256,8 +256,6 @@ class CoreAttachment(base.CoreObject):
 
 			self.gravity = cls.gravity.copy()
 
-		self.alignToGravity(owner)
-
 		self.buildBox()
 
 		self.removeFromPlayer()
@@ -309,17 +307,20 @@ class CoreAttachment(base.CoreObject):
 		if offset == None:
 			offset = box.worldScale[2]
 
-		rayto = list(box.worldPosition)
-		rayto[2] -= 1
+		rayto = box.worldPosition.copy()
+		if self.gravity.length >= 0.1:
+			rayto += self.gravity.normalized()
+		else:
+			rayto += box.getAxisVect((0,0,-1))
 
 		obj, pnt, nrm = box.rayCast(rayto, None, 10000, "", 1, 1, 0)
 
 		if obj != None:
-			box.worldPosition[2] = pnt[2]+(offset*0.5)
+			box.worldPosition = pnt+box.getAxisVect((0,0,offset*0.5))
 		else:
-			obj, pnt, nrm = box.rayCast(rayto, None, 10000, "", 1, 1, 0)
+			obj, pnt, nrm = box.rayCast(rayto, None, -10000, "", 1, 1, 0)
 			if obj != None:
-				box.worldPosition[2] = pnt[2]+(offset*0.5)
+				box.worldPosition = pnt+box.getAxisVect((0,0,offset*0.5))
 
 	def stateSwitch(self, state=None, run=False, force=False):
 		if state == None:
@@ -351,6 +352,8 @@ class CoreAttachment(base.CoreObject):
 
 	## STATE BOX ##
 	def ST_Box(self):
+		self.alignToGravity(self.box)
+
 		if self.box_timer == 0:
 			self.checkStability()
 		else:

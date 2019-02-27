@@ -366,14 +366,16 @@ class CorePlayer(base.CoreAdvanced):
 			self.alignToGravity()
 
 	def getDropPoint(self):
-		drop = viewport.getRayVec()*(self.INTERACT-0.5)
-		drop += self.objects["Root"].worldPosition
+		rotate = viewport.getObject("Rotate")
+		drop = rotate.worldPosition+rotate.getAxisVect((0,self.INTERACT,0))
 
 		if self.rayhit != None:
+			if self.rayvec.length < (self.INTERACT+0.5):
+				drop += (self.rayhit[2]*0.5)
 			if self.rayvec.length < self.INTERACT:
 				drop = self.rayhit[1]+(self.rayhit[2]*0.5)
 
-		return list(drop)
+		return drop
 
 	def getInputs(self):
 
@@ -455,10 +457,10 @@ class CorePlayer(base.CoreAdvanced):
 			WPDROP = self.getDropPoint()
 			for slot in list(self.data["INVSLOT"].keys()):
 				self.cls_dict[slot].dropItem(WPDROP)
-				WPDROP += self.objects["Root"].getAxisVect(0,0,2)
+				WPDROP += self.objects["Root"].getAxisVect((0,0,2))
 			for slot in list(self.data["WEAPSLOT"].keys()):
 				self.cls_dict[slot].dropItem(WPDROP)
-				WPDROP += self.objects["Root"].getAxisVect(0,0,2)
+				WPDROP += self.objects["Root"].getAxisVect((0,0,2))
 
 	def setCameraState(self, state=None, load=False):
 		if state == None:
