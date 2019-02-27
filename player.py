@@ -1145,9 +1145,14 @@ class CorePlayer(base.CoreAdvanced):
 						self.data["HUD"]["Color"] = (0, 1, 0, 0.5)
 						self.data["HUD"]["Text"] = "Press "+keymap.BINDS["PLR_JUMP"].input_name+" To Wall Shove"
 						if keymap.BINDS["PLR_JUMP"].tap() == True:
-							owner.worldLinearVelocity = self.rayvec.normalized()*5
+							owner.worldLinearVelocity = self.rayvec.normalized()*6
 
-				if self.motion["Move"].length > 0.01 and self.jump_state != "NO_AIR" and self.gravity.length >= 0.1:
+					vref = (self.motion["Move"][0], self.motion["Move"][1], self.motion["Climb"])
+					vref = viewport.getDirection(vref)
+					vref.normalize()
+					owner.applyForce(vref*1, False)
+
+				if self.jump_state != "NO_AIR" and self.gravity.length >= 0.1:
 					vref = viewport.getDirection((move[0], move[1], 0))
 					owner.applyForce(vref*5, False)
 
@@ -1205,7 +1210,8 @@ class CorePlayer(base.CoreAdvanced):
 
 			if edge != None:
 				EDPNT = self.getLocalSpace(owner, edge[1])
-				if abs(EDPNT[2]-offset) > 0.1:
+				diff = EDPNT[2]-offset
+				if abs(diff) > 0.1:
 					edge = None
 				else:
 					self.groundhit = edge
@@ -1228,7 +1234,7 @@ class CorePlayer(base.CoreAdvanced):
 
 				point = wall*(self.WALL_DIST-0.05)
 				point = owner.worldOrientation*point
-				owner.worldPosition = (TRPNT+point)-owner.getAxisVect((0,0,offset-0.05))
+				owner.worldPosition = (TRPNT+point)-owner.getAxisVect((0,0,offset-0.05-diff))
 
 				move = self.motion["Move"]
 				mref = viewport.getDirection((move[0], move[1], 0))
