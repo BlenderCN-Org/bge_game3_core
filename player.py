@@ -938,6 +938,8 @@ class CorePlayer(base.CoreAdvanced):
 			char.setVisible(False, True)
 		else:
 			char.setVisible(True, True)
+		if self.active_weapon != None:
+			self.active_weapon.hideObject(False)
 
 	## WALKING STATE ##
 	def ST_Crouch(self):
@@ -1127,6 +1129,11 @@ class CorePlayer(base.CoreAdvanced):
 				if self.jump_timer > 10:
 					self.jump_timer = 0
 					self.jump_state = "NONE"
+			else:
+				if keymap.BINDS["PLR_JUMP"].active() == True:
+					self.jump_state = "B_JUMP"
+				else:
+					self.jump_state = "FALLING"
 
 		elif self.jump_state == "EDGE":
 			self.ST_Hanging_Set()

@@ -530,11 +530,14 @@ class CoreObject:
 		if KEY == True:
 			OBJECT.reinstancePhysicsMesh()
 
-	def alignToGravity(self, obj=None):
+	def alignToGravity(self, obj=None, axis=2, neg=False):
 		if obj == None:
 			obj = self.objects["Root"]
 		if self.gravity.length >= 0.1:
-			obj.alignAxisToVect(-self.gravity, 2, 1.0)
+			grav = self.gravity.normalized()
+			if neg == False:
+				grav = -grav
+			obj.alignAxisToVect(grav, axis, 1.0)
 
 	def checkStability(self, align=False, offset=1.0, override=False):
 		if settings.config.DO_STABILITY == False:
@@ -549,13 +552,13 @@ class CoreObject:
 		if down == None or override == True:
 			up, pnt, nrm = obj.rayCast(rayto, None, 10000, "GROUND", 1, 1, 0)
 			if up != None:
-				if override == True:# and nrm.dot(self.createVector(vec=[0,0,1])) < 0:
+				if override == True:
 					obj.worldLinearVelocity = (0,0,0)
 				obj.worldPosition = pnt+(nrm*offset)
 				if align == True:
 					obj.alignAxisToVect(nrm, 2, 1.0)
 			#elif obj.getPhysicsId() != 0:
-			#	obj.applyForce((0,0,-self.gravity[2]*obj.mass), False)
+			#	obj.applyForce(-self.gravity*obj.mass, False)
 
 	def checkClicked(self, obj=None):
 		if obj == None:

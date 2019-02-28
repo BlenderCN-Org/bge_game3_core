@@ -36,9 +36,10 @@ def getObject(obj):
 def getDirection(vec=[0,1,0]):
 	return VIEWCLASS.objects["Root"].getAxisVect(vec)
 
-def setDirection(vec, factor=1, up=(0,0,1)):
+def setDirection(vec, factor=1, up=None):
 	VIEWCLASS.objects["Root"].alignAxisToVect(vec, 1, factor)
-	VIEWCLASS.objects["Root"].alignAxisToVect(up, 2, 1.0)
+	if up != None:
+		VIEWCLASS.objects["Root"].alignAxisToVect(up, 2, 1.0)
 
 def pointCamera(vec=None, factor=1):
 	VIEWCLASS.doTrackTo(vec, fac)
@@ -423,7 +424,7 @@ class CoreViewport(base.CoreObject):
 		slowV = vpos.lerp(tpos+lpos, fac)
 
 		if vertex.parent != None:
-			vertex.localPosition -= vertex.localPosition*fac
+			vertex.localPosition -= (vertex.localPosition-self.position)*fac
 		else:
 			vertex.worldPosition = slowV
 
@@ -508,3 +509,6 @@ class CoreViewport(base.CoreObject):
 		camera.localPosition[0] = camLX
 		camera.localPosition[1] = camLY
 		camera.localPosition[2] = camLZ
+
+
+
