@@ -7,16 +7,8 @@ __pycache__/
 *.db
 *.cfg
 *.json
-*.blend
 *.7z
 *.zip
-demo
-DEMO
-SCRIPTS
-TEXTURES
-MAPS
-FONTS
-CONTENT
 
 # C extensions
 *.so
@@ -117,4 +109,3 @@ venv.bak/
 
 # mypy
 .mypy_cache/
-Game/gd_dump

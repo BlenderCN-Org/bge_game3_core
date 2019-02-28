@@ -52,8 +52,7 @@ del CUR_LVL, CUR_PRF, CUR_PLR
 ACTIVE_LIBLOAD = None
 
 
-def GAME(cont):
-
+def MAIN(cont):
 	for cls in logic.UPDATELIST:
 		try:
 			cls.RUN()
@@ -79,7 +78,7 @@ def LIBCB(status):
 	print("ASYNC:", status.libraryName)
 	ACTIVE_LIBLOAD = None
 
-def START(cont):
+def GAME(cont):
 	global CURRENT, LEVEL, DATA, PROFILE, ACTIVE_LIBLOAD
 
 	global SC_SCN, SC_RUN
@@ -94,6 +93,7 @@ def START(cont):
 	black = owner.get("GFXBG", None)
 
 	if spawn == False:
+		MAIN(cont)
 		return "DONE"
 
 	## SET SCENE ##
@@ -189,6 +189,9 @@ def LOAD(owner):
 	global CURRENT, LEVEL, DATA, PROFILE
 
 	scene = owner.scene
+
+	from . import viewport
+	logic.VIEWPORT = viewport.CoreViewport()
 
 	## Ground Detector ##
 	for obj in scene.objects:

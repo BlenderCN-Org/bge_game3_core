@@ -34,7 +34,7 @@ class CoreVehicle(base.CoreAdvanced):
 	MOUSE_CENTER = True
 	MOUSE_SCALE = [0,0]
 
-	WH_OBJECT = "Wheel.None"  # wheel contsraint object
+	WH_OBJECT = "Empty"  # wheel contsraint object
 	WH_MESH = None            # Visual wheel object
 	WH_RADIUS = 0.2           # Wheel radius
 	WH_COLOR = None

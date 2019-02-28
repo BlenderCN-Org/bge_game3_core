@@ -85,9 +85,16 @@ class CorePlayer(base.CoreAdvanced):
 
 		self.objects = {"Root":None, "Character":char}
 
+		if len(char.children) == 0:
+			gimbal = scene.addObject("Gimbal", char, 0)
+			gimbal.setParent(char)
+			gimbal.localPosition = self.createVector()
+			gimbal.localOrientation = self.createMatrix()
+			gimbal.worldScale = self.createVector(fill=1)*0.5
+
 		self.findObjects(char)
 
-		self.ANIMOBJ = self.objects["Rig"]
+		self.ANIMOBJ = self.objects.get("Rig", None)
 
 		self.defaultStates()
 
@@ -797,6 +804,8 @@ class CorePlayer(base.CoreAdvanced):
 		owner.worldLinearVelocity = (mref*mx)*60
 
 	def doPlayerAnim(self, action="IDLE", blend=10):
+		if self.ANIMOBJ == None:
+			return
 
 		if action == "JUMP":
 			self.doAnim(NAME="Jumping", FRAME=(0,20), PRIORITY=2, MODE="PLAY", BLEND=10)
@@ -1005,7 +1014,9 @@ class CorePlayer(base.CoreAdvanced):
 				self.crouch -= 1
 
 		else:
-			if self.motion["Move"].length > 0.01:
+			if self.ANIMOBJ == None:
+				pass
+			elif self.motion["Move"].length > 0.01:
 				self.doAnim(NAME="Crouching", FRAME=(0,80), PRIORITY=3, MODE="LOOP", BLEND=10)
 			else:
 				self.doAnim(NAME="Crouching", FRAME=(0,0), PRIORITY=3, MODE="LOOP", BLEND=10)
@@ -1255,7 +1266,9 @@ class CorePlayer(base.CoreAdvanced):
 			else:
 				self.alignToGravity(owner)
 
-			if abs(X) > 0.01:
+			if self.ANIMOBJ == None:
+				pass
+			elif abs(X) > 0.01:
 				self.doAnim(NAME="EdgeTR", FRAME=(1,60), MODE="LOOP", BLEND=10)
 			else:
 				self.doAnim(NAME="EdgeClimb", FRAME=(0,0), MODE="LOOP", BLEND=5)

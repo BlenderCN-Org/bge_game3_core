@@ -27,9 +27,6 @@ from bge import logic
 from . import keymap, base, HUD, config
 
 
-VIEWCLASS = None
-
-
 def getObject(obj):
 	return VIEWCLASS.objects.get(obj, None)
 
@@ -48,10 +45,6 @@ def getRayVec():
 	return VIEWCLASS.objects["Rotate"].getAxisVect((0,1,0))
 
 def setCamera(plr, load=False):
-	global VIEWCLASS
-	if VIEWCLASS == None:
-		VIEWCLASS = CoreViewport()
-
 	if load == True:
 		VIEWCLASS.dist = None
 
@@ -79,10 +72,6 @@ def setEyePitch(ang, set=False):
 	VIEWCLASS.setCameraEye(ori=ang, set=set)
 
 def updateCamera(plr, parent, dist=None, slow=0, orbit=True, load=False):
-	global VIEWCLASS
-	if VIEWCLASS == None:
-		VIEWCLASS = CoreViewport()
-
 	if plr != None and plr.gravity.length >= 0.1:
 		up = -plr.gravity.normalized()
 	else:
@@ -96,9 +85,7 @@ def updateCamera(plr, parent, dist=None, slow=0, orbit=True, load=False):
 		VIEWCLASS.doLoad()
 
 def setState(state):
-	global VIEWCLASS
-	if VIEWCLASS != None:
-		VIEWCLASS.stateSwitch(state)
+	VIEWCLASS.stateSwitch(state)
 
 
 class CoreViewport(base.CoreObject):
@@ -107,9 +94,10 @@ class CoreViewport(base.CoreObject):
 
 	def __init__(self):
 		owner = base.SC_SCN.addObject(self.OBJECT, base.SC_RUN, 0)
-
 		owner["Class"] = self
 
+		global VIEWCLASS
+		VIEWCLASS = self
 		logic.VIEWPORT = self
 
 		self.objects = {"VertRef":owner}
