@@ -53,9 +53,6 @@ settings.LoadBinds()
 
 print("\n\t...game3 core init...\n")
 
-libblend = ospath.normpath(__file__+"\\..\\CoreAssets.blend")
-logic.LibLoad(libblend, "Scene", load_actions=True, verbose=False, load_scripts=True)
-del libblend
 
 logic.UPDATELIST = []
 logic.PLAYERCLASS = None

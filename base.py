@@ -22,6 +22,8 @@
 ## GAME CORE ##
 
 
+import os.path as ospath
+
 import math
 import mathutils
 
@@ -130,7 +132,8 @@ def GAME(cont):
 
 	## LIBLOAD ##
 	if owner.get("LIBLIST", None) == None:
-		owner["LIBLIST"] = []
+		coreblend = ospath.normpath(__file__+"\\..\\CoreAssets.blend")
+		owner["LIBLIST"] = [coreblend]
 		for libblend in config.LIBRARIES:
 			libblend = DATA["GAMEPATH"]+"CONTENT\\"+libblend+".blend"
 			owner["LIBLIST"].append(libblend)
