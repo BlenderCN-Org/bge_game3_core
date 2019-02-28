@@ -749,7 +749,7 @@ class CorePlayer(base.CoreAdvanced):
 
 		self.data["HUD"]["Target"] = RAYTARGPOS
 
-	def doJump(self, height=None, move=0.5):
+	def doJump(self, height=None, move=0.5, align=False):
 		owner = self.objects["Root"]
 
 		self.jump_state = "JUMP"
@@ -762,11 +762,11 @@ class CorePlayer(base.CoreAdvanced):
 		if height == None:
 			height = self.data["JUMP"]
 
-		align = owner.worldLinearVelocity.copy()
-		#align[2] = 0
-		if align.length > 0.01 and move > 0:
+		align = owner.localLinearVelocity.copy()*align
+		align[2] = 0
+		if align.length > 0.02 and move > 0:
 			if self.data["STRAFE"] == False and self.data["CAMERA"]["State"] == "THIRD":
-				self.alignPlayer(axis=align)
+				self.alignPlayer(axis=owner.getAxisVect(align))
 
 		owner.localLinearVelocity[0] *= move
 		owner.localLinearVelocity[1] *= move
@@ -1123,7 +1123,7 @@ class CorePlayer(base.CoreAdvanced):
 				self.doPlayerAnim(action, blend)
 
 				if keymap.BINDS["PLR_JUMP"].tap() == True:
-					self.doJump(move=0.8)
+					self.doJump(move=0.8, align=True)
 
 				if ground[0].getPhysicsId() != 0:
 					impulse = self.gravity*owner.mass*0.1
