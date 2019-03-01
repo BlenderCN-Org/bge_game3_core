@@ -4,12 +4,6 @@ from bge import logic, events
 from . import input
 
 
-## SET EXIT KEY ##
-
-logic.setExitKey(events.PAUSEKEY)
-print("Exit Key Changed: [events.PAUSEKEY]")
-
-
 ## LOAD KEYBINDS ##
 
 MOUSELOOK = input.MouseLook(25, SMOOTH=10)

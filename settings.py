@@ -86,6 +86,12 @@ def LoadBinds():
 	binds = keymap.BINDS
 	dict = LoadJSON(name)
 
+	## SET EXIT KEY ##
+	if config.EMBEDDED_FIX == False:
+		logic.setExitKey(keymap.events.PAUSEKEY)
+		print("Exit Key Changed: [events.PAUSEKEY]")
+
+	## ASSIGN KEYMAP ##
 	if dict == None:
 		print("ERROR: File not Found...\n\t", name)
 		return
