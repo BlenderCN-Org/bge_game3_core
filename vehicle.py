@@ -526,7 +526,7 @@ class CoreVehicle(base.CoreAdvanced):
 		self.runStates()
 		self.runPost()
 		self.clearRayProps()
-		#self.checkStability(True, offset=2.0, override=(keymap.SYSTEM["STABILITY"].tap() and self.driving_player!=None) )
+		self.checkStability(True, offset=2.0, override=(keymap.SYSTEM["STABILITY"].tap() and self.driving_player!=None) )
 
 
 class LayoutCar(HUD.HUDLayout):
@@ -551,6 +551,7 @@ class CoreCar(CoreVehicle):
 	CAR_STEER = 1
 	CAR_DRIVE = "FRONT"
 	CAR_AIR = (0,0,0)
+	CAR_ALIGN = False
 
 	DRIVECONFIG = {"POWER":100, "SPEED":2, "BRAKE":(1,1), "STEER":1, "DRIVE":0, "AIR":None}
 	HUDLAYOUT = LayoutCar
@@ -649,6 +650,23 @@ class CoreCar(CoreVehicle):
 
 		## Steer Front Wheels ##
 		self.setWheelSteering(STEER, "FRONT")
+
+		## Align To Ground ##
+		down = None
+		if self.CAR_ALIGN == True:
+			zref = self.gravity.normalized()
+			rayto = owner.worldPosition+zref
+
+			down, pnt, nrm = owner.rayCast(rayto, None, 20000, "GROUND", 1, 1, 0)
+
+		if down != None:
+			dist = owner.worldPosition-pnt
+			fac = 0
+			if dist.length < 2:
+				zref = -nrm
+			if dist.length < 1:
+				fac = 1-dist.length
+			owner.alignAxisToVect(-zref, 2, (fac*0.08)+0.02)
 
 		self.data["HUD"]["Text"] = str(int(round(speed, 1)))
 

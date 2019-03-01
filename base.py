@@ -546,17 +546,21 @@ class CoreObject:
 			obj.alignAxisToVect(grav, axis, 1.0)
 
 	def checkStability(self, align=False, offset=1.0, override=False):
-		if settings.config.DO_STABILITY == False:
+		if settings.config.DO_STABILITY == False or self.gravity.length < 0.1:
 			return
 
 		obj = self.objects["Root"]
 
-		rayto = obj.worldPosition+obj.getAxisVect((0,0,1))
+		grav = self.gravity.normalized()
+		rayto = obj.worldPosition+grav
 
-		down, pnt, nrm = obj.rayCast(rayto, None, -20000, "GROUND", 1, 1, 0)
+		down, pnt, nrm = obj.rayCast(rayto, None, 20000, "GROUND", 1, 1, 0)
 
+		if nrm != None:
+			if nrm.dot(grav) > 0:
+				down = None
 		if down == None or override == True:
-			up, pnt, nrm = obj.rayCast(rayto, None, 10000, "GROUND", 1, 1, 0)
+			up, pnt, nrm = obj.rayCast(rayto, None, -10000, "GROUND", 1, 1, 0)
 			if up != None:
 				if override == True:
 					obj.worldLinearVelocity = (0,0,0)

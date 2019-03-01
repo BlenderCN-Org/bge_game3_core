@@ -1192,7 +1192,7 @@ class CorePlayer(base.CoreAdvanced):
 		self.objects["Character"]["DEBUG2"] = str(self.jump_state)
 
 		self.doInteract()
-		#self.checkStability(override=keymap.SYSTEM["STABILITY"].tap())
+		self.checkStability(override=keymap.SYSTEM["STABILITY"].tap())
 		self.weaponManager()
 
 		if keymap.BINDS["TOGGLEMODE"].tap() == True:
