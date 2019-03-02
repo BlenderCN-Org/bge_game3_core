@@ -497,8 +497,10 @@ class CoreObject:
 		if OBJECT == None:
 			if self.ANIMOBJ != None:
 				OBJECT = self.ANIMOBJ
-			else:
+			elif self.objects.get("Root", None) != None:
 				OBJECT = self.objects["Root"]
+			else:
+				return
 
 		if SET != None:
 			OBJECT.setActionFrame(SET, LAYER)

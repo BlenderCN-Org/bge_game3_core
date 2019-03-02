@@ -379,7 +379,7 @@ class CoreVehicle(base.CoreAdvanced):
 			vis = dict.get("VISIBLE", True)
 			
 		for child in seat.childrenRecursive:
-			if child == self.driving_player.objects["Mesh"]:
+			if child == self.driving_player.objects.get("Mesh", None):
 				child.setVisible(vis, False)
 			else:
 				child.setVisible(False, False)
@@ -662,7 +662,7 @@ class CoreCar(CoreVehicle):
 		if down != None:
 			dist = owner.worldPosition-pnt
 			fac = 0
-			if dist.length < 2:
+			if dist.length < 4:
 				zref = -nrm
 			if dist.length < 1:
 				fac = 1-dist.length
