@@ -322,6 +322,7 @@ class CorePlayer(base.CoreAdvanced):
 		self.findObjects(owner)
 		self.parentArmature(owner)
 		self.assignCamera()
+		self.PS_SetVisible()
 
 		HUD.SetLayout(self)
 

@@ -403,7 +403,7 @@ class CoreViewport(base.CoreObject):
 			if self.control != None and self.control.gravity.length >= 0.1:
 				up = -self.control.gravity.normalized()
 			else:
-				up = parent.getAxisVect((0,0,1))
+				up = (0,0,1) #parent.getAxisVect((0,0,1))
 
 		tpos = parent.worldPosition.copy()
 		vpos = vertex.worldPosition.copy()

@@ -728,7 +728,7 @@ class CoreAircraft(CoreVehicle):
 	def airLift(self):
 		owner = self.objects["Root"]
 		linV = owner.localLinearVelocity
-		grav = -self.gravity[2]
+		grav = self.gravity.length
 
 		self.lift = (linV[1])*self.AERO["LIFT"]*owner.mass
 		mass = owner.mass*grav
@@ -746,7 +746,7 @@ class CoreAircraft(CoreVehicle):
 
 		force = self.motion["Force"]
 		torque = self.motion["Torque"]
-		grav = -self.gravity[2]
+		grav = self.gravity.length
 		mass = owner.mass
 
 		self.data["POWER"] += force[1]*(self.AERO["POWER"]/100)
