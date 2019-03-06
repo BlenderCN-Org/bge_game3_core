@@ -676,11 +676,14 @@ class CorePlayer(base.CoreAdvanced):
 				ground = None
 
 		if ground != None:
-			if angle > 5 and angle < 90:
+			if angle > 5 and angle < 90 and self.motion["Move"].length > 0.01:
 				face = owner.worldOrientation.inverted()*rayNRM
 				face[2] = 0
 				face.normalize()
-				dot = self.createVector(vec=(0,1,0)).angle(face, 0)/1.571
+				face = owner.worldOrientation*face
+				move = self.motion["Move"].normalized()
+				move = viewport.getDirection((move[0], move[1], 0))
+				dot = move.angle(face, 0)/1.571
 				slope = 1-(abs(dot-1)*((angle/90)))
 
 			self.getGroundPoint(rayOBJ)
