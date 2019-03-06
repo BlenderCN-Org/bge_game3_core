@@ -948,8 +948,6 @@ class CorePlayer(base.CoreAdvanced):
 			char.setVisible(False, True)
 		else:
 			char.setVisible(True, True)
-		if self.active_weapon != None:
-			self.active_weapon.hideObject(False)
 
 	## WALKING STATE ##
 	def ST_Crouch(self):
@@ -1193,7 +1191,7 @@ class CorePlayer(base.CoreAdvanced):
 		self.objects["Character"]["DEBUG2"] = str(self.jump_state)
 
 		self.doInteract()
-		self.checkStability(override=keymap.SYSTEM["STABILITY"].tap())
+		self.checkStability()
 		self.weaponManager()
 
 		if keymap.BINDS["TOGGLEMODE"].tap() == True:

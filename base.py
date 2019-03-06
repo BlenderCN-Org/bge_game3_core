@@ -550,13 +550,17 @@ class CoreObject:
 	def checkStability(self, align=False, offset=1.0, override=False):
 		if settings.config.DO_STABILITY == False or self.gravity.length < 0.1:
 			return
+		if keymap.SYSTEM["STABILITY"].tap() != True:
+			return
+		else:
+			override = True
 
 		obj = self.objects["Root"]
 
 		grav = self.gravity.normalized()
 		rayto = obj.worldPosition+grav
 
-		down, pnt, nrm = obj.rayCast(rayto, None, 20000, "GROUND", 1, 1, 0)
+		down, pnt, nrm = obj.rayCast(rayto, None, 10000, "GROUND", 1, 1, 0)
 
 		if nrm != None:
 			if nrm.dot(grav) > 0:

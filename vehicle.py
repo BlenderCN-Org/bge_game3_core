@@ -369,20 +369,19 @@ class CoreVehicle(base.CoreAdvanced):
 		if self.driving_player == None or self.driving_seat == None:
 			return
 
-		seat = self.seatobj[self.driving_seat]
+		char = self.driving_player.objects["Character"]
+		mesh = self.driving_player.objects.get("Mesh", None)
+
+		char.setVisible(False, True)
 
 		if self.driving_seat == ".":
 			vis = False
-			seat = self.driving_player.objects["Character"]
 		elif vis == None:
 			dict = self.SEATS[self.driving_seat]
 			vis = dict.get("VISIBLE", True)
-			
-		for child in seat.childrenRecursive:
-			if child == self.driving_player.objects.get("Mesh", None):
-				child.setVisible(vis, False)
-			else:
-				child.setVisible(False, False)
+
+		if mesh != None:
+			mesh.visible = vis
 
 	def getInputs(self):
 		KB = keymap.BINDS
@@ -489,18 +488,18 @@ class CoreVehicle(base.CoreAdvanced):
 		seat = self.seatobj[key]
 		door = self.doorobj[key]
 
+		self.setPlayerVisibility(False)
 		plr.enterVehicle(seat)
-		self.setPlayerVisibility()
+
+		self.assignCamera()
+
+		HUD.SetLayout(self)
 
 		if key == ".":
 			action = "Jumping"
 		else:
 			action = self.SEATS[key].get("ACTION", None)
 		plr.doAnim(NAME=action, FRAME=(0,0), MODE="LOOP")
-
-		self.assignCamera()
-
-		HUD.SetLayout(self)
 
 		self.active_state = self.ST_Active
 		self.data["PORTAL"] = True
@@ -526,7 +525,8 @@ class CoreVehicle(base.CoreAdvanced):
 		self.runStates()
 		self.runPost()
 		self.clearRayProps()
-		self.checkStability(True, offset=2.0, override=(keymap.SYSTEM["STABILITY"].tap() and self.driving_player!=None) )
+		if self.driving_player != None:
+			self.checkStability(True, offset=2.0)
 
 
 class LayoutCar(HUD.HUDLayout):
@@ -652,20 +652,20 @@ class CoreCar(CoreVehicle):
 		self.setWheelSteering(STEER, "FRONT")
 
 		## Align To Ground ##
-		down = None
-		if self.CAR_ALIGN == True:
+		if self.CAR_ALIGN == True and self.gravity.length >= 0.1:
 			zref = self.gravity.normalized()
 			rayto = owner.worldPosition+zref
-
-			down, pnt, nrm = owner.rayCast(rayto, None, 20000, "GROUND", 1, 1, 0)
-
-		if down != None:
-			dist = owner.worldPosition-pnt
 			fac = 0
-			if dist.length < 4:
+
+			down, pnt, nrm = owner.rayCast(rayto, None, 3, "GROUND", 1, 1, 0)
+
+			if down != None:
 				zref = -nrm
-			if dist.length < 1:
-				fac = 1-dist.length
+				dist = owner.worldPosition-pnt
+
+				if dist.length < 1:
+					fac = 1-dist.length
+
 			owner.alignAxisToVect(-zref, 2, (fac*0.08)+0.02)
 
 		self.data["HUD"]["Text"] = str(int(round(speed, 1)))

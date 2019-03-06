@@ -143,7 +143,8 @@ class CoreAttachment(base.CoreObject):
 		box.worldScale = scale
 		box.color = self.COLOR
 		self.box = box
-		self.box_timer = 1
+		gnd = gfx.get("Gravity", True)
+		self.box_timer = 1-(20*(gnd==False))
 
 		if gfx.get("Halo", False) == True:
 			halo = owner.scene.addObject("GFX_Halo", owner, 0)
@@ -301,6 +302,9 @@ class CoreAttachment(base.CoreObject):
 		return False
 
 	def checkStability(self, align=False, offset=None):
+		if self.gravity.length < 0.1:
+			return
+
 		box = self.box
 		if self.box == None:
 			box = self.objects["Root"]
@@ -354,10 +358,12 @@ class CoreAttachment(base.CoreObject):
 	def ST_Box(self):
 		self.alignToGravity(self.box)
 
-		if self.box_timer == 0:
+		if self.box_timer <= 0 and self.box_timer > -10:
 			self.checkStability()
-		else:
+
+		if self.box_timer >= -10:
 			self.box_timer -= 1
+
 		if self.checkClicked(self.box) == True:
 			self.equipItem(self.box["RAYCAST"])
 

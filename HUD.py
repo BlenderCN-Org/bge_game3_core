@@ -649,12 +649,6 @@ class Aircraft(CoreHUD):
 		self.old_lift += (lift-self.old_lift)*0.5
 		self.objects["Lift"].color[0] = ((self.old_lift/100)*0.75)
 
-		#if plr.data["HUD"]["Target"] != None:
-		#	pos = plr.data["HUD"]["Target"]
-		#	pos = [(pos[0]-0.5)*64, (0.5-pos[1])*36, 0]
-		#	from bge import render
-		#	render.drawLine([0,0,0], pos, [1,0,0])
-
 
 class HUDLayout:
 
