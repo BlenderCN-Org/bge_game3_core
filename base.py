@@ -29,7 +29,7 @@ import mathutils
 
 from bge import logic
 
-from . import settings, keymap, config
+from . import settings, keymap, config, COREBLENDS
 
 
 SC_SCN = logic.getCurrentScene()
@@ -132,10 +132,9 @@ def GAME(cont):
 
 	## LIBLOAD ##
 	if owner.get("LIBLIST", None) == None:
-		coreblend = ospath.normpath(__file__+"\\..\\CoreAssets.blend")
-		owner["LIBLIST"] = [coreblend]
+		owner["LIBLIST"] = [COREBLENDS["ASSETS"]]
 		for libblend in config.LIBRARIES:
-			libblend = DATA["GAMEPATH"]+"CONTENT\\"+libblend+".blend"
+			libblend = DATA["GAMEPATH"]+config.LIBRARY_PATH+"\\"+libblend+".blend"
 			owner["LIBLIST"].append(libblend)
 		return "LIBLOAD"
 

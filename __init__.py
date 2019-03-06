@@ -10,6 +10,11 @@ sys.path.append(GAMEPATH)
 for i in sys.path:
 	print("PATH:", i)
 
+COREBLENDS = {
+	"ASSETS": ospath.normpath(__file__+"\\..\\CoreAssets.blend"),
+	"HUD": ospath.normpath(__file__+"\\..\\CoreOverlay.blend")
+}
+
 from bge import logic
 
 

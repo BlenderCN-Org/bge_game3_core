@@ -26,7 +26,7 @@ from bge import logic
 
 from mathutils import Vector
 
-from . import keymap, base, settings
+from . import keymap, base, settings, config, COREBLENDS
 
 
 def START(cont):
@@ -41,7 +41,10 @@ def START(cont):
 	print("Loading HUD...")
 	base.LEVEL["HUDData"] = {}
 
-	logic.LibLoad( base.DATA["GAMEPATH"]+"CONTENT\\Game Assets HUD.blend", "Scene", load_actions=True, verbose=False, load_scripts=True)
+	libblend = base.DATA["GAMEPATH"]+config.LIBRARY_PATH+"\\Game Assets HUD.blend"
+
+	logic.LibLoad(libblend, "Scene", load_actions=True, verbose=False, load_scripts=True)
+
 	logic.HUDCLASS = SceneManager()
 
 
