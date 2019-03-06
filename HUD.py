@@ -623,20 +623,24 @@ class Aircraft(CoreHUD):
 	def ST_Active(self, plr):
 		root = plr.objects["Root"]
 
-		glbZ = self.createVector(vec=[0,0,1])
+		glbZ = -plr.gravity
+		angX = 0
+		angY = 90
 
-		## Roll ##
-		refX = plr.data["HUD"].get("Side", (1,0,0))
-		angX = root.getAxisVect(refX).angle(glbZ)
-		angX = self.toDeg(angX)-90
-		rscl = 0.167
-		#rscl = 1.0
-		self.objects["Roll"].localOrientation = self.createMatrix(rot=[0,0,angX*rscl], deg=True)
+		if glbZ.length >= 0.1:
 
-		## Pitch ##
-		refY = plr.data["HUD"].get("Forward", (0,1,0))
-		angY = root.getAxisVect(refY).angle(glbZ)
-		angY = self.toDeg(angY)
+			## Roll ##
+			refX = plr.data["HUD"].get("Side", (1,0,0))
+			angX = root.getAxisVect(refX).angle(glbZ)
+			angX = self.toDeg(angX)
+			angX = (angX-90)*0.167
+
+			## Pitch ##
+			refY = plr.data["HUD"].get("Forward", (0,1,0))
+			angY = root.getAxisVect(refY).angle(glbZ)
+			angY = self.toDeg(angY)
+
+		self.objects["Roll"].localOrientation = self.createMatrix(rot=[0,0,angX], deg=True)
 		self.objects["Pitch"].localOrientation = self.createMatrix(rot=[angY,0,0], deg=True)
 
 		## Power ##
