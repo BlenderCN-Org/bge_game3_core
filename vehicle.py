@@ -356,14 +356,18 @@ class CoreVehicle(base.CoreAdvanced):
 		owner = self.objects["Root"]
 		if self.gravity.length < 0.1:
 			return False
-		if owner.getAxisVect((0,0,-1)).dot(self.gravity) < 0.5:
-			owner.alignAxisToVect(-self.gravity, 2, 1.0)
-			owner.worldPosition += self.gravity.normalized()*-offset
-			if velocity == True:
-				owner.localLinearVelocity = (0,0,0)
-				owner.localAngularVelocity = (0,0,0)
-			return True
-		return False
+
+		angle = owner.getAxisVect((0,0,-1)).angle(self.gravity.normalized())
+		angle = round(self.toDeg(angle), 2)
+		if angle < 60:
+			return False
+
+		owner.alignAxisToVect(-self.gravity, 2, 1.0)
+		owner.worldPosition += self.gravity.normalized()*-offset
+		if velocity == True:
+			owner.localLinearVelocity = (0,0,0)
+			owner.localAngularVelocity = (0,0,0)
+		return True
 
 	def setPlayerVisibility(self, vis=None):
 		if self.driving_player == None or self.driving_seat == None:
