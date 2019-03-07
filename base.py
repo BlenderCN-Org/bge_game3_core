@@ -144,12 +144,12 @@ def GAME(cont):
 
 	if len(owner["LIBLIST"]) > 0:
 		libblend = owner["LIBLIST"].pop(0)
-		if config.LIBLOAD_TYPE != "ASYNC" or config.ASYNC_FIX == True:
-			logic.LibLoad(libblend, "Scene", load_actions=True, verbose=False, load_scripts=True)
-			print(libblend)
-		elif config.LIBLOAD_TYPE == "ASYNC":
-			ACTIVE_LIBLOAD = logic.LibLoad(libblend, "Scene", load_actions=True, verbose=False, load_scripts=True, async=True)
-			ACTIVE_LIBLOAD.onFinish = LIBCB
+		#if config.LIBLOAD_TYPE != "ASYNC" or config.ASYNC_FIX == True:
+		logic.LibLoad(libblend, "Scene", load_actions=True, verbose=False, load_scripts=True)
+		print(libblend)
+		#elif config.LIBLOAD_TYPE == "ASYNC":
+		#	ACTIVE_LIBLOAD = logic.LibLoad(libblend, "Scene", load_actions=True, verbose=False, load_scripts=True, async=True)
+		#	ACTIVE_LIBLOAD.onFinish = LIBCB
 
 		return "LIBLOAD"
 
