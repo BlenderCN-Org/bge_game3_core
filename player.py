@@ -53,7 +53,7 @@ class CorePlayer(base.CoreAdvanced):
 
 	SPEED = 0.1
 	JUMP = 6
-	ACCEL = 10
+	ACCEL = 30
 	SLOPE = 60
 	MOVERUN = True
 	SIDESTEP = False
@@ -1165,8 +1165,20 @@ class CorePlayer(base.CoreAdvanced):
 
 				self.doPlayerAnim(action, blend)
 
+				## Jump ##
 				if keymap.BINDS["PLR_JUMP"].tap() == True:
-					self.doJump(move=0.8, align=True)
+					if self.jump_timer == 1:
+						self.jump_timer = 2
+				elif keymap.BINDS["PLR_JUMP"].active() == True:
+					if self.jump_timer >= 2:
+						self.jump_timer += 1
+					if self.jump_timer >= 7:
+						self.doJump(move=0.8, align=True)
+				elif keymap.BINDS["PLR_JUMP"].released() == True:
+					if self.jump_timer >= 1 and self.jump_timer < 7:
+						self.doJump(height=3, move=1.0, align=False)
+				else:
+					self.jump_timer = 1
 
 				if ground[0].getPhysicsId() != 0:
 					impulse = self.gravity*owner.mass*0.1
@@ -1221,8 +1233,10 @@ class CorePlayer(base.CoreAdvanced):
 
 			if self.jump_state in ["NONE", "JUMP"]:
 				if self.jump_state == "NONE" and self.gravity.length >= 0.1:
-					if keymap.BINDS["PLR_DUCK"].active() != True:
-						self.doJump(1, 0.5)
+					if keymap.BINDS["PLR_JUMP"].active() == True:
+						self.doJump(move=0.8, align=True)
+					elif keymap.BINDS["PLR_DUCK"].active() != True:
+						self.doJump(height=1, move=0.5)
 				self.jump_state = "A_JUMP"
 
 			if keymap.BINDS["PLR_JUMP"].active() == True:
