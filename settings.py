@@ -170,9 +170,12 @@ def GenerateLevelData():
 	return {"SPAWN":[], "DROP":[], "CLIP":config.LOW_CLIP, "PLAYER":{}}
 
 def GenerateGraphicsData():
-	data = LoadJSON(logic.globalDict["DATA"]["GAMEPATH"]+"Graphics.cfg")
+	save = False
+	file = logic.globalDict["DATA"]["GAMEPATH"]+"Graphics.cfg"
+	data = LoadJSON(file)
 
 	if data == None:
+		save = True
 		data = {}
 
 	dict = {
@@ -205,6 +208,8 @@ def GenerateGraphicsData():
 			print("NOTICE: Resolution Fix")
 
 		render.setWindowSize(dict["Resolution"][0], dict["Resolution"][1])
+		if save == True:
+			SaveJSON(file, dict)
 
 	elif len(dict["Resolution"]) <= 2:
 		dict["Resolution"].append("EMBEDDED")
