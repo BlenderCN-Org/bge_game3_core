@@ -393,23 +393,40 @@ class CorePlayer(base.CoreAdvanced):
 		return drop
 
 	def getInputs(self):
-
-		FORWARD = keymap.BINDS["PLR_FORWARD"].axis(True) - keymap.BINDS["PLR_BACKWARD"].axis(True)
-		STRAFE = keymap.BINDS["PLR_STRAFERIGHT"].axis(True) - keymap.BINDS["PLR_STRAFELEFT"].axis(True)
+		FORWARD = keymap.BINDS["PLR_FORWARD"].axis() - keymap.BINDS["PLR_BACKWARD"].axis()
+		STRAFE = keymap.BINDS["PLR_STRAFERIGHT"].axis() - keymap.BINDS["PLR_STRAFELEFT"].axis()
 		MOVE = keymap.input.JoinAxis(STRAFE, FORWARD)
 
-		self.motion["Move"][0] = MOVE[0]
-		self.motion["Move"][1] = MOVE[1]
-
-		TURN = keymap.BINDS["PLR_TURNLEFT"].axis(True) - keymap.BINDS["PLR_TURNRIGHT"].axis(True)
-		LOOK = keymap.BINDS["PLR_LOOKUP"].axis(True) - keymap.BINDS["PLR_LOOKDOWN"].axis(True)
+		TURN = keymap.BINDS["PLR_TURNLEFT"].axis() - keymap.BINDS["PLR_TURNRIGHT"].axis()
+		LOOK = keymap.BINDS["PLR_LOOKUP"].axis() - keymap.BINDS["PLR_LOOKDOWN"].axis()
 		ROTATE = keymap.input.JoinAxis(LOOK, 0, TURN)
 
-		self.motion["Rotate"][0] = ROTATE[0]
-		self.motion["Rotate"][1] = 0
-		self.motion["Rotate"][2] = ROTATE[2]
-
 		CLIMB = 0
+
+		## Key Commands ##
+		if keymap.BINDS["PLR_FORWARD"].active() == True:
+			MOVE[1] = 1
+
+		if keymap.BINDS["PLR_BACKWARD"].active() == True:
+			MOVE[1] = -1
+
+		if keymap.BINDS["PLR_STRAFERIGHT"].active() == True:
+			MOVE[0] = 1
+
+		if keymap.BINDS["PLR_STRAFELEFT"].active() == True:
+			MOVE[0] = -1
+
+		if keymap.BINDS["PLR_TURNLEFT"].active() == True:
+			ROTATE[2] += 1
+
+		if keymap.BINDS["PLR_TURNRIGHT"].active() == True:
+			ROTATE[2] -= 1
+
+		if keymap.BINDS["PLR_LOOKUP"].active() == True:
+			ROTATE[0] += 1
+
+		if keymap.BINDS["PLR_LOOKDOWN"].active() == True:
+			ROTATE[0] -= 1
 
 		if keymap.BINDS["PLR_JUMP"].active() == True:
 			CLIMB = 1
@@ -417,9 +434,14 @@ class CorePlayer(base.CoreAdvanced):
 		if keymap.BINDS["PLR_DUCK"].active() == True:
 			CLIMB = -1
 
+		self.motion["Move"][0] = MOVE[0]
+		self.motion["Move"][1] = MOVE[1]
 		self.motion["Climb"] = CLIMB
 
-		## Key Commands ##
+		self.motion["Rotate"][0] = ROTATE[0]
+		self.motion["Rotate"][1] = 0
+		self.motion["Rotate"][2] = ROTATE[2]
+
 		if keymap.BINDS["PLR_RUN"].tap() == True:
 			self.data["RUN"] ^= True
 
