@@ -27,6 +27,9 @@ from bge import logic
 from . import keymap, base, HUD, config
 
 
+VIEWCLASS = None
+
+
 def getObject(obj):
 	return VIEWCLASS.objects.get(obj, None)
 
@@ -39,7 +42,9 @@ def setDirection(vec, factor=1, up=None):
 		VIEWCLASS.objects["Root"].alignAxisToVect(up, 2, 1.0)
 
 def pointCamera(vec=None, factor=1):
-	VIEWCLASS.doTrackTo(vec, fac)
+	print("VP_TRACK")
+	VIEWCLASS.track = vec
+	#VIEWCLASS.doTrackTo(vec, fac)
 
 def getRayVec():
 	return VIEWCLASS.objects["Rotate"].getAxisVect((0,1,0))
@@ -113,6 +118,7 @@ class CoreViewport(base.CoreObject):
 		self.pitch = self.createMatrix()
 		self.camrot = [0,0]
 		self.dist = None
+		self.track = None
 
 		self.defaultStates()
 
@@ -162,14 +168,9 @@ class CoreViewport(base.CoreObject):
 
 		self.control = control
 
-		if control == None:
-			self.camdata = None
-		else:
-			self.buildCameraData()
-			self.stateSwitch(self.camdata["State"])
+		self.buildCameraData()
+		self.stateSwitch()
 
-		self.position = self.createVector()
-		self.camrot = [0,0]
 		self.setCameraEye(pos=[0,0,0], ori=0)
 		keymap.MOUSELOOK.center()
 
@@ -177,6 +178,10 @@ class CoreViewport(base.CoreObject):
 			self.objects["VertRef"].removeParent()
 
 	def buildCameraData(self):
+		if self.control == None:
+			self.camdata = None
+			return
+
 		plr = self.control
 
 		if "CAMERA" not in plr.data:
@@ -203,15 +208,20 @@ class CoreViewport(base.CoreObject):
 		xref = self.objects["Rotate"].getAxisVect([0,0,1])
 		self.objects["Camera"].alignAxisToVect(xref, 1, 1.0)
 
-	def stateSwitch(self, state):
+	def stateSwitch(self, state=None):
 		self.position = self.createVector()
 		self.camrot = [0,0]
-		plr = self.control
-		if plr == None:
+		self.track = None
+		if self.control == None:
 			self.active_state = None
 			return
 
+		plr = self.control
 		dist = 0
+
+		if state == None:
+			state = self.camdata["State"]
+
 		if state == "THIRD":
 			self.active_state = self.ST_Third
 			steps = (plr.CAM_RANGE[1]-plr.CAM_RANGE[0])/plr.CAM_STEPS
@@ -426,6 +436,9 @@ class CoreViewport(base.CoreObject):
 			if vertex.parent == None or vertex.parent != parent:
 				vertex.setParent(parent)
 			if orbit == True:
+				if self.track != None:
+					owner.alignAxisToVect(self.track, 1, fac)
+					self.track = None
 				if up != None:
 					angle = owner.getAxisVect((0,0,1)).angle(up)
 					if abs(angle) > 3.13:
@@ -438,6 +451,8 @@ class CoreViewport(base.CoreObject):
 		else:
 			if vertex.parent != None:
 				vertex.removeParent()
+
+		self.track = None
 
 		tquat = parent.worldOrientation.to_quaternion()
 		vquat = owner.worldOrientation.to_quaternion()

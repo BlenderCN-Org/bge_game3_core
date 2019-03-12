@@ -22,8 +22,6 @@
 ## GAME CORE ##
 
 
-import os.path as ospath
-
 import math
 import mathutils
 

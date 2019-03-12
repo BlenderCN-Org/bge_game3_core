@@ -323,6 +323,13 @@ class CoreVehicle(base.CoreAdvanced):
 			if all == True or check == True:
 				self.vehicle_constraint.applyBraking(brake, i)
 
+	def rotateCamera(self):
+		TURN = keymap.BINDS["PLR_TURNLEFT"].axis(True) - keymap.BINDS["PLR_TURNRIGHT"].axis(True)
+		LOOK = keymap.BINDS["PLR_LOOKUP"].axis(True) - keymap.BINDS["PLR_LOOKDOWN"].axis(True)
+		ROTATE = keymap.input.JoinAxis(LOOK, 0, TURN)
+
+		self.motion["Rotate"] = ROTATE
+
 	def assignCamera(self):
 		viewport.setCamera(self)
 		viewport.setParent(self.objects["Root"])
@@ -586,7 +593,7 @@ class CoreCar(CoreVehicle):
 		if speed > 6:
 			turn = (3/(speed*0.5))*0.8
 
-		STEER = (torque[1]*-1)+torque[2]
+		STEER = torque[2]
 		if abs(STEER) > 1:
 			STEER = 1-(2*(STEER<0))
 		STEER = self.CAR_STEER*STEER*turn
@@ -671,6 +678,9 @@ class CoreCar(CoreVehicle):
 					fac = 1-dist.length
 
 			owner.alignAxisToVect(-zref, 2, (fac*0.08)+0.02)
+
+		if self.CAR_AIR <= 0:
+			self.rotateCamera()
 
 		self.data["HUD"]["Text"] = str(int(round(speed, 1)))
 
