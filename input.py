@@ -344,7 +344,7 @@ class KeyBase:
 ## Mouse Look Base Class ##
 class MouseLook:
 
-	def __init__(self, SPEED=25, SMOOTH=10, TURN=0.05):
+	def __init__(self, SPEED=25, SMOOTH=10, TURN=0.035):
 		self.getScreenRatio()
 		self.updateSpeed(SPEED, SMOOTH, TURN)
 		self.center()

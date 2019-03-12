@@ -679,7 +679,7 @@ class CoreCar(CoreVehicle):
 
 			owner.alignAxisToVect(-zref, 2, (fac*0.08)+0.02)
 
-		if self.CAR_AIR <= 0:
+		if self.createVector(vec=self.CAR_AIR).length <= 0:
 			self.rotateCamera()
 
 		self.data["HUD"]["Text"] = str(int(round(speed, 1)))
