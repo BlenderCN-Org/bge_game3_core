@@ -30,6 +30,11 @@ import json
 from . import config
 
 
+## Mouse ##
+events.MOUSEMOVE = {"Old":(0.5,0.5), "Move":(0,0), "Position":(0.5,0.5)}
+MS_CENTER = False
+WIN_DIM = (render.getWindowWidth(), render.getWindowHeight())
+
 ## Find Available Gamepads ##
 events.JOYBUTTONS = {}
 
@@ -178,7 +183,7 @@ class KeyBase:
 
 	def sceneGamepadCheck(self):
 		if GAMEPADDER not in logic.getSceneList()[0].pre_draw:
-			logic.getSceneList()[0].pre_draw.append(GAMEPADDER)
+			logic.getSceneList()[0].pre_draw.insert(0, GAMEPADDER)
 			print("NOTICE: GAMEPADDER() Scene Fix -", logic.getSceneList()[0].name)
 			GAMEPADDER()
 			return False
@@ -271,8 +276,12 @@ class KeyBase:
 		return False
 
 	## KEY EVENTS ##
-	def active(self):
+	def active(self, exlusive=False):
 		if self.checkInput(logic.KX_INPUT_ACTIVE) == True:
+			return True
+		elif exlusive == True:
+			return False
+		elif self.checkInput(logic.KX_INPUT_JUST_ACTIVATED) == True:
 			return True
 
 		return False
@@ -304,8 +313,10 @@ class KeyBase:
 		TYPE = self.gamepad["Type"]
 		CURVE = self.gamepad["Curve"]
 
-		if self.checkInput(logic.KX_INPUT_ACTIVE) == True and key == True:
-			return 1.0
+		if key == True:
+			if self.active(False) == True:
+				return 1.0
+
 		if JOYID == None or AXIS == None or CURVE == "B":
 			return 0.0
 
@@ -333,120 +344,98 @@ class KeyBase:
 ## Mouse Look Base Class ##
 class MouseLook:
 
-	def __init__(self, SPEED=25, SMOOTH=10, TURN=0.05, RAMP=10):
+	def __init__(self, SPEED=25, SMOOTH=10, TURN=0.05):
 		self.getScreenRatio()
-		self.updateSpeed(SPEED, SMOOTH)
-		self.setTurnRate(TURN, RAMP)
+		self.updateSpeed(SPEED, SMOOTH, TURN)
 		self.center()
 
 	def getScreenRatio(self):
-		self.screen = (render.getWindowWidth(), render.getWindowHeight())
-		self.ratio = self.screen[1]/self.screen[0]
+		global WIN_DIM
+		WIN_DIM = (render.getWindowWidth(), render.getWindowHeight())
+		self.screen = list(WIN_DIM)
+		self.ratio = WIN_DIM[1]/WIN_DIM[0]
 
-	def updateSpeed(self, SPEED=None, SMOOTH=None):
-		if SPEED != None:
-			self.input = SPEED
-		if SMOOTH != None:
-			self.smoothing = int(SMOOTH)
-
-	def setTurnRate(self, turn=None, ramp=None):
-		self.ts_input = [0]*3
+	def updateSpeed(self, speed=None, smooth=None, turn=None):
+		if speed != None:
+			self.input = speed
+		if smooth != None:
+			self.smoothing = int(smooth)
 		if turn != None:
 			self.ts_rate = turn
-		if ramp != None:
-			self.ts_ramp = ramp
 
 	def getData(self):
 		dict = {
 			"Speed":self.input,
 			"Smooth":self.smoothing,
-			"TurnRate":self.ts_rate,
-			"TurnRamp":self.ts_ramp
+			"TurnRate":self.ts_rate
 			}
 		return dict
 
 	def setData(self, dict):
-		self.updateSpeed(dict.get("Speed", None), dict.get("Smooth", None))
-		self.setTurnRate(dict.get("TurnRate", None), dict.get("TurnRamp", None))
+		speed = dict.get("Speed", None)
+		smooth = dict.get("Smooth", None)
+		turn = dict.get("TurnRate", None)
+		self.updateSpeed(speed, smooth, turn)
+
+	def bufferReset(self):
+		que = [0]*self.smoothing
+		self.old_input = [que.copy(), que.copy()]
+
+	def bufferAxis(self, axis):
+		AVG = 0
+
+		for a in range(self.smoothing):
+			AVG += self.old_input[axis][a]
+
+		return AVG/self.smoothing
 
 	def center(self):
-		self.OLD_X = [0]*self.smoothing
-		self.OLD_Y = [0]*self.smoothing
-		self.ts_input = [0]*3
+		global MS_CENTER
+		#MS_CENTER = True
 
-		logic.mouse.position = (0.5, 0.5)
+		self.bufferReset()
+		self.ts_input = [0, 0]
 		self.skip = 10
 
-	def turn(self, look):
+	def smoothAxis(self, X, Y):
 		turn = [0]*2
-		look = Vector(look)
+		look = Vector((X, Y))
 
 		for i in [0,1]:
-			if self.ts_ramp < 1 or look.length == 0:
-				self.ts_input[i] = look[i]
-			else:
-				diff = (look[i]-self.ts_input[i])
-				self.ts_input[i] += diff/self.ts_ramp
-			turn[i] = self.ts_input[i]*self.ts_rate
+			turn[i] = look[i]
+			if self.smoothing > 1:
+				if look.length <= 0 and config.MOUSE_BUFFER == False:
+					self.bufferReset()
+				else:
+					self.old_input[i].insert(0, look[i])
+					self.old_input[i].pop()
+				turn[i] = self.bufferAxis(i)
 
 		return turn
 
 	def axis(self, look=None, ui=False, center=True):
+		global MS_CENTER
+		#MS_CENTER = center
+
 		if self.skip > 0:
 			self.skip -= 1
-			logic.mouse.position = (0.5, 0.5)
 			return (0,0)
 
-		RAW_X, RAW_Y = logic.mouse.position
-
-		if config.MOUSE_FIX == True:
-			RAW_X = (RAW_X*self.screen[0])/(self.screen[0]-1)
-			RAW_Y = (RAW_Y*self.screen[1])/(self.screen[1]-1)
+		RAW_X, RAW_Y = events.MOUSEMOVE["Move"]
 
 		if ui == True:
-			X = (RAW_X-0.5)
-			Y = (0.5-RAW_Y)
-			if center == True:
-				logic.mouse.position = (0.5, 0.5)
-			return (X,Y)
+			return (RAW_X, RAW_Y)
 
-		elif self.smoothing > 1:
-			NEW_X = (0.5-RAW_X)*2
-			NEW_Y = (0.5-RAW_Y)*2
-
-			AVG_X = 0
-			AVG_Y = 0
-
-			for IX in range(self.smoothing):
-				AVG_X += self.OLD_X[IX]
-
-			for IY in range(self.smoothing):
-				AVG_Y += self.OLD_Y[IY]
-
-			msX = AVG_X/self.smoothing
-			msY = AVG_Y/self.smoothing
-
-			self.OLD_X.insert(0, NEW_X)
-			self.OLD_Y.insert(0, NEW_Y)
-			self.OLD_X.pop()
-			self.OLD_Y.pop()
-
-		else:
-			msX = (0.5-RAW_X)*2
-			msY = (0.5-RAW_Y)*2
-
-		X = msX*(self.input*0.1)
-		Y = msY*(self.input*0.1)*self.ratio
+		X = RAW_X*(self.input/-5)
+		Y = RAW_Y*(self.input/5)*self.ratio
 
 		if look != None:
-			tsX, tsY = self.turn(look)
-			X += tsX
-			Y += tsY
+			X += look[0]*self.ts_rate
+			Y += look[1]*self.ts_rate
 
-		if center == True:
-			logic.mouse.position = (0.5, 0.5)
+		X, Y = self.smoothAxis(X, Y)
 
-		return (X,Y)
+		return (X, Y)
 
 
 class NumPad:
@@ -495,6 +484,24 @@ class NumPad:
 
 ## Updates Joystick Values ##
 def GAMEPADDER():
+	global MS_CENTER
+	global WIN_DIM
+	NEW_X, NEW_Y = logic.mouse.position
+	OLD_X, OLD_Y = events.MOUSEMOVE["Old"]
+
+	if getattr(config, "MOUSE_FIX", False) == True:
+		NEW_X = (NEW_X*WIN_DIM[0])/(WIN_DIM[0]-1)
+		NEW_Y = (NEW_Y*WIN_DIM[1])/(WIN_DIM[1]-1)
+
+	events.MOUSEMOVE["Move"] = (NEW_X-OLD_X, OLD_Y-NEW_Y)
+	events.MOUSEMOVE["Old"] = (NEW_X, NEW_Y)
+
+	events.MOUSEMOVE["Position"] = (NEW_X-0.5, 0.5-NEW_Y)
+
+	if MS_CENTER == True or abs(NEW_X-0.5) > 0.25 or abs(NEW_Y-0.5) > 0.25:
+		logic.mouse.position = (0.5, 0.5)
+		events.MOUSEMOVE["Old"] = (0.5, 0.5)
+	MS_CENTER = False
 
 	for JOYID in events.JOYBUTTONS:
 

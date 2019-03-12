@@ -6,7 +6,7 @@ from . import input
 
 ## LOAD KEYBINDS ##
 
-MOUSELOOK = input.MouseLook(25, SMOOTH=10)
+MOUSELOOK = input.MouseLook(25, SMOOTH=5)
 NUMPAD = input.NumPad()
 
 BINDS = {
