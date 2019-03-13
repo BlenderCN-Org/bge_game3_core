@@ -1231,7 +1231,6 @@ class CorePlayer(base.CoreAdvanced):
 
 		else:
 			self.doPlayerAnim("FALLING")
-			self.jump_timer += 1
 
 			if self.jump_state in ["FALLING", "A_JUMP", "B_JUMP", "NO_AIR"]:
 				if self.data["CAMERA"]["State"] != "THIRD":
@@ -1255,7 +1254,7 @@ class CorePlayer(base.CoreAdvanced):
 
 			if self.jump_state in ["NONE", "JUMP"]:
 				if self.jump_state == "NONE" and self.gravity.length >= 0.1:
-					if keymap.BINDS["PLR_JUMP"].active() == True:
+					if keymap.BINDS["PLR_JUMP"].active() == True and self.jump_timer >= 1:
 						self.doJump(move=0.8, align=True)
 					elif keymap.BINDS["PLR_DUCK"].active() != True:
 						self.doJump(height=1, move=0.5)
@@ -1266,6 +1265,8 @@ class CorePlayer(base.CoreAdvanced):
 					self.jump_state = "B_JUMP"
 			else:
 				self.jump_state = "FALLING"
+
+			self.jump_timer += 1
 
 		self.alignToGravity(owner)
 
