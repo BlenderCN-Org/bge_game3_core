@@ -37,6 +37,8 @@ WIN_DIM = (render.getWindowWidth(), render.getWindowHeight())
 
 ## Find Available Gamepads ##
 events.JOYBUTTONS = {}
+events.AXISCALIBRATION = {}
+JOY_CALIBRATE = None
 
 for JOYID in range(len(logic.joysticks)):
 	if logic.joysticks[JOYID] != None:
@@ -52,6 +54,7 @@ for JOYID in range(len(logic.joysticks)):
 
 		for AXIS in range(len(logic.joysticks[JOYID].axisValues)):
 			events.JOYBUTTONS[JOYID]["Axis"][AXIS] = {"NEG":0, "POS":0, "SLIDER":0, "VALUE":0.0}
+			events.AXISCALIBRATION[AXIS] = 0.0
 
 		for HAT in range(len(logic.joysticks[JOYID].hatValues)):
 			events.JOYBUTTONS[JOYID]["Hats"][HAT] = {"U":0, "D":0, "L":0, "R":0}
@@ -391,7 +394,7 @@ class MouseLook:
 
 	def center(self):
 		global MS_CENTER
-		#MS_CENTER = True
+		MS_CENTER = True
 
 		self.bufferReset()
 		self.ts_input = [0, 0]
@@ -415,7 +418,7 @@ class MouseLook:
 
 	def axis(self, look=None, ui=False, center=True):
 		global MS_CENTER
-		#MS_CENTER = center
+		MS_CENTER = center
 
 		if self.skip > 0:
 			self.skip -= 1
@@ -484,8 +487,8 @@ class NumPad:
 
 ## Updates Joystick Values ##
 def GAMEPADDER():
-	global MS_CENTER
-	global WIN_DIM
+	global MS_CENTER, WIN_DIM, JOY_CALIBRATE
+
 	NEW_X, NEW_Y = logic.mouse.position
 	OLD_X, OLD_Y = events.MOUSEMOVE["Old"]
 
@@ -498,9 +501,10 @@ def GAMEPADDER():
 
 	events.MOUSEMOVE["Position"] = (NEW_X-0.5, 0.5-NEW_Y)
 
-	if MS_CENTER == True or abs(NEW_X-0.5) > 0.25 or abs(NEW_Y-0.5) > 0.25:
-		logic.mouse.position = (0.5, 0.5)
-		events.MOUSEMOVE["Old"] = (0.5, 0.5)
+	if MS_CENTER == True:
+		if abs(NEW_X-0.5) > 0.25 or abs(NEW_Y-0.5) > 0.25:
+			logic.mouse.position = (0.5, 0.5)
+			events.MOUSEMOVE["Old"] = (0.5, 0.5)
 	MS_CENTER = False
 
 	for JOYID in events.JOYBUTTONS:
@@ -525,10 +529,15 @@ def GAMEPADDER():
 
 		for A in events.JOYBUTTONS[JOYID]["Axis"]:
 			DICT = events.JOYBUTTONS[JOYID]["Axis"]
+			BIAS = events.AXISCALIBRATION
 
 			RAWINPUT = logic.joysticks[JOYID].axisValues[A]
 
-			DICT[A]["VALUE"] = RAWINPUT
+			if JOY_CALIBRATE in ["ALL", A]: #and abs(RAWINPUT) < 0.5:
+				print("AXIS CALIBRATED:", JOYID, A, -RAWINPUT)
+				BIAS[A] = -RAWINPUT
+
+			DICT[A]["VALUE"] = RAWINPUT+BIAS[A]
 
 			if RAWINPUT > 0.5:
 				if DICT[A]["POS"] == 0 or DICT[A]["POS"] == 3:
@@ -581,6 +590,8 @@ def GAMEPADDER():
 						DICT[H][key] = 0
 
 				events.JOYBUTTONS[JOYID]["Buttons"][key] = DICT[H][key]
+
+	JOY_CALIBRATE = None
 
 
 print("input.py Imported")

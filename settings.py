@@ -67,6 +67,9 @@ def SaveBinds():
 			dict[key] = binds[key].getData()
 
 	dict["MOUSELOOK"] = keymap.MOUSELOOK.getData()
+	dict["CALIBRATE"] = {}
+	for AXIS in events.AXISCALIBRATION:
+		dict["CALIBRATE"][str(int(AXIS))] = events.AXISCALIBRATION[AXIS]
 
 	name = path+profile+"Keymap.json"
 
@@ -102,6 +105,10 @@ def LoadBinds():
 
 	if "MOUSELOOK" in dict:
 		keymap.MOUSELOOK.setData(dict["MOUSELOOK"])
+
+	if "CALIBRATE" in dict:
+		for AXIS in dict["CALIBRATE"]:
+			events.AXISCALIBRATION[int(AXIS)] = dict["CALIBRATE"][AXIS]
 
 	print("NOTICE: Keybinds Loaded...\n\t", name)
 

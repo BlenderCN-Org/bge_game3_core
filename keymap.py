@@ -84,6 +84,7 @@ SYSTEM = {
 
 "SCREENSHOT":        input.KeyBase("999.Z",  "F12KEY",     "PrintScreen",   ALT=False),
 "STABILITY":         input.KeyBase("999.Z",  "PAGEUPKEY",  "Snap to Floor", ALT=True),
+"CALIBRATE":         input.KeyBase("999.Z",  "HOMEKEY",    "PrintScreen",   ALT=True),
 "ESCAPE":            input.KeyBase("999.Z",  "ESCKEY",     "Escape",        JOYBUTTON=4),
 
 "SHIFT":             input.KeyBase("999.Z",  "NONE",    "Shift",   SHIFT=True),
