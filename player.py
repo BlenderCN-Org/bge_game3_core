@@ -1125,6 +1125,7 @@ class CorePlayer(base.CoreAdvanced):
 				Z = owner.localLinearVelocity[2]
 				if Z < -8:
 					self.data["HEALTH"] += (Z+8)*self.GRAV_DAMAGE
+				self.doAnim(STOP=True)
 				self.resetAcceleration(owner.worldLinearVelocity*(1/60))
 				self.accel_timer = self.ACCEL
 
@@ -1198,7 +1199,7 @@ class CorePlayer(base.CoreAdvanced):
 						self.doJump(move=0.8, align=True)
 				elif keymap.BINDS["PLR_JUMP"].released() == True:
 					if self.jump_timer >= 1 and self.jump_timer < 7:
-						self.doJump(height=3, move=1.0, align=False)
+						self.doJump(height=self.JUMP/1.5, move=1.0, align=False)
 				else:
 					self.jump_timer = 1
 
@@ -1211,6 +1212,7 @@ class CorePlayer(base.CoreAdvanced):
 				self.jump_timer += 1
 
 				if self.jump_timer > 10:
+					self.doAnim(STOP=True)
 					self.jump_timer = 0
 					self.jump_state = "NONE"
 			else:
@@ -1222,6 +1224,7 @@ class CorePlayer(base.CoreAdvanced):
 				if keymap.BINDS["PLR_JUMP"].active() == True:
 					self.jump_state = "B_JUMP"
 				else:
+					self.doAnim(STOP=True)
 					self.jump_state = "FALLING"
 
 		elif self.jump_state == "EDGE":
