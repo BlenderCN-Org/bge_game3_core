@@ -53,7 +53,7 @@ class CorePlayer(base.CoreAdvanced):
 
 	SPEED = 0.1
 	JUMP = 6
-	ACCEL = 30
+	ACCEL = 20
 	SLOPE = 60
 	MOVERUN = True
 	SIDESTEP = False
@@ -815,8 +815,6 @@ class CorePlayer(base.CoreAdvanced):
 				rate = rate
 			elif self.accel_end.length < 0.001 or self.accel_stand == -1:
 				rate = rate*2
-			if rate > 1:
-				rate = 1
 
 			offset = mref-self.accel_start
 			self.accel_move += offset*rate
@@ -844,12 +842,12 @@ class CorePlayer(base.CoreAdvanced):
 		#	else:
 		#		self.accel_timer = self.ACCEL
 
+		owner.worldLinearVelocity = move*60
+
 		if local == True:
 			self.doMoveAlign()
 		else:
 			self.doMoveAlign(move)
-
-		owner.worldLinearVelocity = move*60
 
 	def doMoveAlign(self, align=None):
 		owner = self.objects["Root"]
@@ -858,12 +856,16 @@ class CorePlayer(base.CoreAdvanced):
 		else:
 			align = align.normalized()
 
-		if align.length >= 0.001:
+		align = owner.worldOrientation.inverted()*align
+		align[2] = 0
+		align = owner.worldOrientation*align
+
+		if align.length >= 0.01:
 			dref = owner.getAxisVect((0,1,0))
 			dot = 1-((dref.dot(align)*0.5)+0.5)
 			dot = 0.2+((dot**2)*0.5)
 
-			owner.alignAxisToVect(align, 1, dot)
+			self.alignPlayer(dot, align) #(align, 1, dot)
 
 	def doPlayerAnim(self, action="IDLE", blend=10):
 		if self.ANIMOBJ == None:
@@ -933,7 +935,7 @@ class CorePlayer(base.CoreAdvanced):
 		self.lastaction[1] = self.doAnim(CHECK="FRAME")/setframe
 
 	def doCrouch(self, state):
-		#self.resetAcceleration()
+		self.jump_timer = 0
 		if state == True or self.crouch != 0:
 			self.jump_state = "CROUCH"
 			self.objects["Root"].localScale[2] = 0.25
@@ -1136,60 +1138,64 @@ class CorePlayer(base.CoreAdvanced):
 				strafe = self.data["STRAFE"]
 				action = "IDLE"
 				blend = 10
-				mx = 0.035*slope
+
+				if self.data["RUN"] == False or self.motion["Move"].length <= 0.7 or self.data["SPEED"] <= 0:
+					mx = 0.035*slope
+				else:
+					mx = self.data["SPEED"]*slope
 
 				if self.data["CAMERA"]["State"] != "THIRD":
 					strafe = True
 
-				if keymap.BINDS["PLR_DUCK"].active() == True:
-					self.doCrouch(True)
+				self.doMovement((move[0], move[1], 0), mx, strafe)
 
-				elif self.motion["Move"].length > 0.01:
-					wall, wallnrm = self.checkWall(z=False, axis=viewport.getDirection((move[0], move[1], 0)))
+				linLV = owner.localLinearVelocity.copy()
+				linLV[2] = 0
+				linWV = owner.worldOrientation*linLV
 
-					if self.ACCEL > 10:
-						blend = (self.ACCEL+10)-(self.accel_timer)
+				if linLV.length > 0.01:
+					wall, wallnrm = self.checkWall(z=False, axis=linWV)
+
+					if self.ACCEL > 10 and self.accel_stand >= 0:
+						blend = self.ACCEL
 
 					if wall > 135:
 						action = "IDLE"
 
-					elif self.data["RUN"] == False or self.motion["Move"].length <= 0.7 or self.data["SPEED"] <= 0:
+					elif linLV.length <= (0.04*slope*60):
 						action = "FORWARD"
 						if strafe == True:
-							if move[1] < 0:
+							if linLV[1] < 0:
 								action = "BACKWARD"
-							if move[0] > 0.5 and abs(move[1]) < 0.5:
+							if linLV[0] > 0.5 and abs(linLV[1]) < 0.5:
 								action = "STRAFE_R"
-							if move[0] < -0.5 and abs(move[1]) < 0.5:
+							if linLV[0] < -0.5 and abs(linLV[1]) < 0.5:
 								action = "STRAFE_L"
 						action = action+".WALK"
 
 					else:
-						mx = self.data["SPEED"]*slope
 						action = "FORWARD"
 						if strafe == True:
-							if move[1] < 0:
+							if linLV[1] < 0:
 								action = "BACKWARD"
-							if move[0] > 0.5 and abs(move[1]) < 0.5:
+							if linLV[0] > 0.5 and abs(linLV[1]) < 0.5:
 								action = "STRAFE_R"
-							if move[0] < -0.5 and abs(move[1]) < 0.5:
+							if linLV[0] < -0.5 and abs(linLV[1]) < 0.5:
 								action = "STRAFE_L"
 
 					if angle > 20:
 						action = action+".STAIR"
 
-					self.doMovement((move[0], move[1], 0), mx, strafe)
-
 				else:
 					action = "IDLE"
-					mx = 0
-
-				self.doMovement((move[0], move[1], 0), mx, strafe)
 
 				self.doPlayerAnim(action, blend)
 
-				## Jump ##
-				if keymap.BINDS["PLR_JUMP"].tap() == True:
+				## Jump/Crouch ##
+				if keymap.BINDS["PLR_DUCK"].active() == True:
+					self.doCrouch(True)
+
+				elif keymap.BINDS["PLR_JUMP"].tap() == True:
 					if self.jump_timer == 1:
 						self.jump_timer = 2
 				elif keymap.BINDS["PLR_JUMP"].active() == True:
