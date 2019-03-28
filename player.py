@@ -178,7 +178,7 @@ class CorePlayer(base.CoreAdvanced):
 
 				HUD.SetLayout(self)
 
-				self.doPlayerAnim("IDLE.RESET")
+				self.doPlayerAnim("RESET")
 
 		self.ST_Startup()
 
@@ -317,7 +317,7 @@ class CorePlayer(base.CoreAdvanced):
 	def exitVehicle(self, spawn):
 		keymap.MOUSELOOK.center()
 
-		self.doPlayerAnim("IDLE.RESET")
+		self.doPlayerAnim("RESET")
 
 		self.objects["Character"].removeParent() 
 
@@ -347,7 +347,7 @@ class CorePlayer(base.CoreAdvanced):
 			self.objects["Root"].endObject()
 			self.objects["Root"] = None
 
-		self.doPlayerAnim("IDLE.RESET")
+		self.doPlayerAnim("RESET")
 
 	def switchPlayerActive(self):
 		keymap.MOUSELOOK.center()
@@ -791,8 +791,13 @@ class CorePlayer(base.CoreAdvanced):
 		self.accel_timer = 0
 		self.accel_stand = -1
 
-	def doMovement(self, vec, mx=0, local=False):
+	def doMovement(self, vec, mx=0, local=None):
 		owner = self.objects["Root"]
+
+		if local == None:
+			local = self.data["STRAFE"]
+			if self.data["CAMERA"]["State"] != "THIRD":
+				local = True
 
 		vref = viewport.getDirection(vec)
 
@@ -867,8 +872,10 @@ class CorePlayer(base.CoreAdvanced):
 
 			self.alignPlayer(dot, align) #(align, 1, dot)
 
-	def doPlayerAnim(self, action="IDLE", blend=10):
-		if self.ANIMOBJ == None:
+	def doPlayerAnim(self, action="MOVE", blend=10):
+		owner = self.objects["Root"]
+
+		if self.ANIMOBJ == None or owner == None:
 			return
 
 		if action == "JUMP":
@@ -881,38 +888,74 @@ class CorePlayer(base.CoreAdvanced):
 			self.lastaction = [action, 0]
 			return
 
-		move = action.split(".")
-
-		if "IDLE" in move:
+		if action in ["IDLE", "RESET"]:
 			invck = 0
 			for slot in self.cls_dict:
 				if slot in ["Hip_L", "Hip_R"]:
 					invck = -5
 
-			if "RESET" in move:
+			if action == "RESET":
 				self.doAnim(NAME="Jumping", FRAME=(0+invck,0+invck))
 			else:
 				self.doAnim(NAME="Jumping", FRAME=(0+invck,0+invck), PRIORITY=3, MODE="LOOP", BLEND=blend)
 			self.lastaction = [action, 0]
 			return
 
-		if "STAIR" in move:
-			stair = ".Stairs"
-		else:
-			stair = ""
+		linLV = owner.localLinearVelocity.copy()
+		linLV[2] = 0
 
+		if action == "CROUCH":
+			if linLV.length > 0.1:
+				self.doAnim(NAME="Crouching", FRAME=(0,80), PRIORITY=3, MODE="LOOP", BLEND=blend)
+			else:
+				self.doAnim(NAME="Crouching", FRAME=(0,0), PRIORITY=3, MODE="LOOP", BLEND=blend)
+			self.lastaction = [action, 0]
+			return
+
+		action = "IDLE"
+		walk = False
+		stair = ""
 		setframe = 0
 
-		if move[0] == "FORWARD":
-			if "WALK" in move:
+		if linLV.length > 0.1:
+			if self.ACCEL > 10 and self.accel_stand >= 0:
+				blend = self.ACCEL
+
+			if linLV.length <= (0.04*60):
+				walk = True
+
+			action = "FORWARD"
+
+			if self.data["STRAFE"] == True or self.data["CAMERA"]["State"] != "THIRD":
+				if linLV[1] < 0:
+					action = "BACKWARD"
+				if linLV[0] > 0.5 and abs(linLV[1]) < 0.5:
+					action = "STRAFE_R"
+				if linLV[0] < -0.5 and abs(linLV[1]) < 0.5:
+					action = "STRAFE_L"
+
+			angle = owner.getAxisVect((0,0,1)).angle(self.groundhit[2], 0)
+			angle = round(self.toDeg(angle), 2)
+
+			if angle > 20:
+				stair = ".Stairs"
+
+			#wall, wallnrm = self.checkWall(z=False, axis=owner.worldOrientation*linLV)
+
+			#if wall > 135:
+			#	action = "IDLE"
+
+		## ANIMATIONS ##
+		if action == "FORWARD":
+			if walk == True:
 				self.doAnim(NAME="Walking", FRAME=(0,59), PRIORITY=3, MODE="LOOP", BLEND=blend)
 				setframe = 59
 			else:
 				self.doAnim(NAME="Running"+stair, FRAME=(0,39), PRIORITY=3, MODE="LOOP", BLEND=blend)
 				setframe = 39
 
-		elif move[0] == "BACKWARD":
-			if "WALK" in move:
+		elif action == "BACKWARD":
+			if walk == True:
 				self.doAnim(NAME="Walking", FRAME=(59,0), PRIORITY=3, MODE="LOOP", BLEND=blend)
 				setframe = 59
 			else:
@@ -927,10 +970,6 @@ class CorePlayer(base.CoreAdvanced):
 		if self.lastaction[0] != action:
 			self.lastaction[0] = action
 			self.doAnim(SET=self.lastaction[1]*setframe)
-
-		#self.lastaction[1] += (1/setframe)
-		#if self.lastaction[1] > 1:
-		#	self.lastaction[1] = 0
 
 		self.lastaction[1] = self.doAnim(CHECK="FRAME")/setframe
 
@@ -1055,16 +1094,12 @@ class CorePlayer(base.CoreAdvanced):
 		else:
 			chkwall = False
 
-		strafe = self.data["STRAFE"]
-		if self.data["CAMERA"]["State"] != "THIRD":
-			strafe = True
-
 		mx = 0
 		move = self.motion["Move"].normalized()
 		if self.motion["Move"].length > 0.01:
 			mx = 0.02
 
-		self.doMovement((move[0], move[1], 0), mx, strafe)
+		self.doMovement((move[0], move[1], 0), mx)
 
 		self.alignToGravity(owner)
 
@@ -1074,6 +1109,7 @@ class CorePlayer(base.CoreAdvanced):
 
 		if chkwall == False:
 			self.doPlayerAnim("IDLE")
+
 			if self.crouch <= 0:
 				self.crouch = 0
 				self.doCrouch(False)
@@ -1081,12 +1117,7 @@ class CorePlayer(base.CoreAdvanced):
 				self.crouch -= 1
 
 		else:
-			if self.ANIMOBJ == None:
-				pass
-			elif self.motion["Move"].length > 0.01:
-				self.doAnim(NAME="Crouching", FRAME=(0,80), PRIORITY=3, MODE="LOOP", BLEND=10)
-			else:
-				self.doAnim(NAME="Crouching", FRAME=(0,0), PRIORITY=3, MODE="LOOP", BLEND=10)
+			self.doPlayerAnim("CROUCH", blend=10)
 
 			if self.crouch < 10:
 				self.crouch += 1
@@ -1132,64 +1163,17 @@ class CorePlayer(base.CoreAdvanced):
 				self.accel_timer = self.ACCEL
 
 			if self.jump_state == "NONE":
+				self.doPlayerAnim("MOVE", blend=10)
+
 				owner.worldPosition = gpos
 				owner.worldLinearVelocity = (0,0,0)
-
-				strafe = self.data["STRAFE"]
-				action = "IDLE"
-				blend = 10
 
 				if self.data["RUN"] == False or self.motion["Move"].length <= 0.7 or self.data["SPEED"] <= 0:
 					mx = 0.035*slope
 				else:
 					mx = self.data["SPEED"]*slope
 
-				if self.data["CAMERA"]["State"] != "THIRD":
-					strafe = True
-
-				self.doMovement((move[0], move[1], 0), mx, strafe)
-
-				linLV = owner.localLinearVelocity.copy()
-				linLV[2] = 0
-				linWV = owner.worldOrientation*linLV
-
-				if linLV.length > 0.01:
-					wall, wallnrm = self.checkWall(z=False, axis=linWV)
-
-					if self.ACCEL > 10 and self.accel_stand >= 0:
-						blend = self.ACCEL
-
-					if wall > 135:
-						action = "IDLE"
-
-					elif linLV.length <= (0.04*slope*60):
-						action = "FORWARD"
-						if strafe == True:
-							if linLV[1] < 0:
-								action = "BACKWARD"
-							if linLV[0] > 0.5 and abs(linLV[1]) < 0.5:
-								action = "STRAFE_R"
-							if linLV[0] < -0.5 and abs(linLV[1]) < 0.5:
-								action = "STRAFE_L"
-						action = action+".WALK"
-
-					else:
-						action = "FORWARD"
-						if strafe == True:
-							if linLV[1] < 0:
-								action = "BACKWARD"
-							if linLV[0] > 0.5 and abs(linLV[1]) < 0.5:
-								action = "STRAFE_R"
-							if linLV[0] < -0.5 and abs(linLV[1]) < 0.5:
-								action = "STRAFE_L"
-
-					if angle > 20:
-						action = action+".STAIR"
-
-				else:
-					action = "IDLE"
-
-				self.doPlayerAnim(action, blend)
+				self.doMovement((move[0], move[1], 0), mx)
 
 				## Jump/Crouch ##
 				if keymap.BINDS["PLR_DUCK"].active() == True:
