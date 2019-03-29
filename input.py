@@ -39,6 +39,7 @@ WIN_DIM = (render.getWindowWidth(), render.getWindowHeight())
 events.JOYBUTTONS = {}
 events.AXISCALIBRATION = {}
 JOY_CALIBRATE = None
+JOY_HATSDIR = {0:"", 1:"U", 2:"R", 3:"UR", 4:"D", 6:"DR", 8:"L", 9:"UL", 12:"DL"}
 
 for JOYID in range(len(logic.joysticks)):
 	if logic.joysticks[JOYID] != None:
@@ -338,7 +339,7 @@ class KeyBase:
 
 		elif TYPE == "SLIDER":
 			if VALUE > 0:
-				SLIDER = (VALUE+1)*0.5
+				SLIDER = VALUE # (VALUE+1)*0.5
 				return SLIDER
 
 		return 0.0
@@ -487,7 +488,7 @@ class NumPad:
 
 ## Updates Joystick Values ##
 def GAMEPADDER():
-	global MS_CENTER, WIN_DIM, JOY_CALIBRATE
+	global MS_CENTER, WIN_DIM, JOY_CALIBRATE, JOY_HATSDIR
 
 	NEW_X, NEW_Y = logic.mouse.position
 	OLD_X, OLD_Y = events.MOUSEMOVE["Old"]
@@ -537,7 +538,12 @@ def GAMEPADDER():
 				print("AXIS CALIBRATED:", JOYID, A, -RAWINPUT)
 				BIAS[A] = -RAWINPUT
 
-			DICT[A]["VALUE"] = RAWINPUT+BIAS[A]
+			RAWINPUT = RAWINPUT+BIAS[A]
+			if abs(RAWINPUT) > 1:
+				isneg = int(RAWINPUT<0)
+				RAWINPUT = 1-(2*isneg)
+
+			DICT[A]["VALUE"] = RAWINPUT
 
 			if RAWINPUT > 0.5:
 				if DICT[A]["POS"] == 0 or DICT[A]["POS"] == 3:
@@ -561,21 +567,22 @@ def GAMEPADDER():
 				else:
 					DICT[A]["NEG"] = 0
 
-			if RAWINPUT > 0.0:
-				if DICT[A]["SLIDER"] == 0 or DICT[A]["SLIDER"] == 3:
+			if RAWINPUT > 0.1:
+				if DICT[A]["SLIDER"] in [0, 3]:
 					DICT[A]["SLIDER"] = 1
-				else:
+				elif RAWINPUT > 0.9:
 					DICT[A]["SLIDER"] = 2
+				elif DICT[A]["SLIDER"] != 2:
+					DICT[A]["SLIDER"] = 1
 			else:
-				if DICT[A]["SLIDER"] == 2 or DICT[A]["SLIDER"] == 1:
+				if DICT[A]["SLIDER"] in [2, 1, -9]:
 					DICT[A]["SLIDER"] = 3
 				else:
 					DICT[A]["SLIDER"] = 0
 
 		for H in events.JOYBUTTONS[JOYID]["Hats"]:
 			DICT = events.JOYBUTTONS[JOYID]["Hats"]
-			STAT = {0:"", 1:"U", 2:"R", 3:"UR", 4:"D", 6:"DR", 8:"L", 9:"UL", 12:"DL"}
-			VALUE = STAT[logic.joysticks[JOYID].hatValues[H]]
+			VALUE = JOY_HATSDIR[logic.joysticks[JOYID].hatValues[H]]
 
 			for key in DICT[H]:
 				if key in VALUE:
