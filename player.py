@@ -317,8 +317,6 @@ class CorePlayer(base.CoreAdvanced):
 	def exitVehicle(self, spawn):
 		keymap.MOUSELOOK.center()
 
-		self.doPlayerAnim("RESET")
-
 		self.objects["Character"].removeParent() 
 
 		owner = self.addPhysicsBox()
@@ -329,6 +327,8 @@ class CorePlayer(base.CoreAdvanced):
 		self.parentArmature(owner)
 		self.assignCamera()
 		self.PS_SetVisible()
+
+		self.doPlayerAnim("RESET")
 
 		HUD.SetLayout(self)
 
@@ -341,13 +341,13 @@ class CorePlayer(base.CoreAdvanced):
 		self.data["HUD"]["Target"] = None
 		self.data["HUD"]["Text"] = ""
 
+		self.doPlayerAnim("RESET")
+
 		if self.objects["Root"] != None:
 			self.doCrouch(False)
 			self.objects["Character"].removeParent()
 			self.objects["Root"].endObject()
 			self.objects["Root"] = None
-
-		self.doPlayerAnim("RESET")
 
 	def switchPlayerActive(self):
 		keymap.MOUSELOOK.center()
@@ -873,9 +873,8 @@ class CorePlayer(base.CoreAdvanced):
 			self.alignPlayer(dot, align) #(align, 1, dot)
 
 	def doPlayerAnim(self, action="MOVE", blend=10):
-		owner = self.objects["Root"]
 
-		if self.ANIMOBJ == None or owner == None:
+		if self.ANIMOBJ == None:
 			return
 
 		if action == "JUMP":
@@ -901,8 +900,12 @@ class CorePlayer(base.CoreAdvanced):
 			self.lastaction = [action, 0]
 			return
 
-		linLV = owner.localLinearVelocity.copy()
-		linLV[2] = 0
+		owner = self.objects["Root"]
+		if owner != None:
+			linLV = owner.localLinearVelocity.copy()
+			linLV[2] = 0
+		else:
+			linLV = self.createVector()
 
 		if action == "CROUCH":
 			if linLV.length > 0.1:
@@ -934,16 +937,11 @@ class CorePlayer(base.CoreAdvanced):
 				if linLV[0] < -0.5 and abs(linLV[1]) < 0.5:
 					action = "STRAFE_L"
 
-			angle = owner.getAxisVect((0,0,1)).angle(self.groundhit[2], 0)
+			angle = self.objects["Character"].getAxisVect((0,0,1)).angle(self.groundhit[2], 0)
 			angle = round(self.toDeg(angle), 2)
 
 			if angle > 20:
 				stair = ".Stairs"
-
-			#wall, wallnrm = self.checkWall(z=False, axis=owner.worldOrientation*linLV)
-
-			#if wall > 135:
-			#	action = "IDLE"
 
 		## ANIMATIONS ##
 		if action == "FORWARD":
