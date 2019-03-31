@@ -117,13 +117,15 @@ class CorePlayer(base.CoreAdvanced):
 		self.groundold = None
 		self.groundobj = None
 		self.groundchk = False
+		self.groundvel = self.createVector()
 		self.groundpos = [self.createVector(), self.createVector()]
 		self.groundori = [self.createMatrix(), self.createMatrix()]
 
 		self.motion = {
 			"Move": self.createVector(2),
 			"Rotate": self.createVector(3),
-			"Climb": 0
+			"Climb": 0,
+			"Velocity": self.createVector(3)
 			}
 
 		self.data = {"HEALTH":100, "ENERGY":100, "RECHARGE":0.02, "SPEED":self.SPEED,
@@ -443,6 +445,20 @@ class CorePlayer(base.CoreAdvanced):
 		self.motion["Rotate"][1] = 0
 		self.motion["Rotate"][2] = ROTATE[2]
 
+		owner = self.objects["Root"]
+		if owner != None:
+			linLV = owner.localLinearVelocity.copy()
+			linLV[2] = 0
+			linWV = owner.worldOrientation*linLV
+		else:
+			linLV = self.createVector()
+			linWV = self.createVector()
+
+		gndvel = self.groundvel.copy()
+		gndvel[2] = 0
+		self.motion["Local"] = linLV-(owner.worldOrientation.inverted()*gndvel)
+		self.motion["World"] = linWV-gndvel
+
 		if keymap.BINDS["PLR_RUN"].tap() == True:
 			self.data["RUN"] ^= True
 
@@ -530,6 +546,7 @@ class CorePlayer(base.CoreAdvanced):
 
 		if self.groundobj != obj:
 			self.groundobj = obj
+			self.groundvel *= 0
 			self.groundpos[1] = self.groundpos[0].copy()
 			self.groundori[1] = self.groundori[0].copy()
 
@@ -684,22 +701,20 @@ class CorePlayer(base.CoreAdvanced):
 				ground = None
 
 		if ground != None:
-			if angle > 5 and angle < 90:
-				if self.motion["Move"].length > 0.01:
-					face = owner.worldOrientation.inverted()*rayNRM
-					face[2] = 0
-					face.normalize()
-					face = owner.worldOrientation*face
-					move = self.motion["Move"].normalized()
-					move = viewport.getDirection((move[0], move[1], 0))
-					dot = move.angle(face, 0)/1.571
-					slope = 1-(abs(dot-1)*((angle/90)))
+			if angle > 5 and angle < 90 and self.motion["World"].length > 0.01:
+				face = owner.worldOrientation.inverted()*rayNRM
+				face[2] = 0
+				face.normalize()
+				face = owner.worldOrientation*face
+				move = self.motion["World"].normalized()
+				dot = move.angle(face, 0)/1.571
+				slope = 1-(abs(dot-1)*((angle/90)))
 
-			if self.groundold != None and angle < 10:
+			if self.groundold != None and angle < 20:
 				gnddiff = self.groundold[1]-rayPNT
 				gnddiff = owner.worldOrientation.inverted()*gnddiff
 				if abs(gnddiff[2]) > 0.02:
-					print(gnddiff[2])
+					print(round(gnddiff[2], 4), angle)
 					self.gndraybias += gnddiff[2]
 
 			self.getGroundPoint(rayOBJ)
@@ -879,7 +894,7 @@ class CorePlayer(base.CoreAdvanced):
 			dot = 1-((dref.dot(align)*0.5)+0.5)
 			dot = 0.2+((dot**2)*0.5)
 
-			self.alignPlayer(dot, align) #(align, 1, dot)
+			self.alignPlayer(dot, align)
 
 	def doPlayerAnim(self, action="MOVE", blend=10):
 
@@ -909,12 +924,7 @@ class CorePlayer(base.CoreAdvanced):
 			self.lastaction = [action, 0]
 			return
 
-		owner = self.objects["Root"]
-		if owner != None:
-			linLV = owner.localLinearVelocity.copy()
-			linLV[2] = 0
-		else:
-			linLV = self.createVector()
+		linLV = self.motion["Local"]
 
 		if action == "CROUCH":
 			if linLV.length > 0.1:
@@ -938,13 +948,13 @@ class CorePlayer(base.CoreAdvanced):
 
 			action = "FORWARD"
 
-			if self.data["STRAFE"] == True or self.data["CAMERA"]["State"] != "THIRD":
-				if linLV[1] < 0:
-					action = "BACKWARD"
-				if linLV[0] > 0.5 and abs(linLV[1]) < 0.5:
-					action = "STRAFE_R"
-				if linLV[0] < -0.5 and abs(linLV[1]) < 0.5:
-					action = "STRAFE_L"
+			#if self.data["STRAFE"] == True or self.data["CAMERA"]["State"] != "THIRD":
+			if linLV[1] < 0:
+				action = "BACKWARD"
+			if linLV[0] > 0.5 and abs(linLV[1]) < 0.5:
+				action = "STRAFE_R"
+			if linLV[0] < -0.5 and abs(linLV[1]) < 0.5:
+				action = "STRAFE_L"
 
 			angle = self.objects["Character"].getAxisVect((0,0,1)).angle(self.groundhit[2], 0)
 			angle = round(self.toDeg(angle), 2)
@@ -1021,6 +1031,7 @@ class CorePlayer(base.CoreAdvanced):
 			dragY = owner.localLinearVelocity[1]*drag[1] #0.67
 			dragZ = owner.localLinearVelocity[2]*drag[2] #0.33
 			owner.applyForce((-dragX, -dragY, -dragZ), True)
+			self.groundvel *= 0
 			self.groundhit = None
 			self.groundold = None
 			self.groundobj = None
@@ -1038,13 +1049,14 @@ class CorePlayer(base.CoreAdvanced):
 		offset = self.groundori[0]*local
 		offset = owner.worldOrientation.inverted()*offset
 		offset[2] = 0
+		offset = owner.worldOrientation*offset
 
 		if self.data["PHYSICS"] == "NONE":
 			#owner.worldPosition[0] += offset[0]
 			#owner.worldPosition[1] += offset[1]
-			owner.applyMovement(offset, True)
+			owner.applyMovement(offset, False)
 		else:
-			owner.localLinearVelocity += offset*60
+			owner.worldLinearVelocity += offset*60
 
 		yvec = owner.getAxisVect((0,1,0))
 		rotOLD = self.groundori[1].inverted()*yvec
@@ -1055,6 +1067,7 @@ class CorePlayer(base.CoreAdvanced):
 
 		owner.applyForce(-self.gravity, False)
 
+		self.groundvel = offset.copy()*60
 		self.groundold = self.groundhit.copy()
 		self.groundhit = None
 
@@ -1434,7 +1447,7 @@ class CorePlayer(base.CoreAdvanced):
 		scene = base.SC_SCN
 		owner = self.objects["Root"]
 
-		self.doMovement((0, 0, 0), 0.0, True)
+		self.doMoveAlign()
 
 		mx = 10
 		move = self.motion["Move"]
