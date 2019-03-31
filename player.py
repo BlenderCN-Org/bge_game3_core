@@ -114,6 +114,7 @@ class CorePlayer(base.CoreAdvanced):
 		self.rayvec = None
 
 		self.groundhit = None
+		self.groundold = None
 		self.groundobj = None
 		self.groundchk = False
 		self.groundpos = [self.createVector(), self.createVector()]
@@ -683,15 +684,23 @@ class CorePlayer(base.CoreAdvanced):
 				ground = None
 
 		if ground != None:
-			if angle > 5 and angle < 90 and self.motion["Move"].length > 0.01:
-				face = owner.worldOrientation.inverted()*rayNRM
-				face[2] = 0
-				face.normalize()
-				face = owner.worldOrientation*face
-				move = self.motion["Move"].normalized()
-				move = viewport.getDirection((move[0], move[1], 0))
-				dot = move.angle(face, 0)/1.571
-				slope = 1-(abs(dot-1)*((angle/90)))
+			if angle > 5 and angle < 90:
+				if self.motion["Move"].length > 0.01:
+					face = owner.worldOrientation.inverted()*rayNRM
+					face[2] = 0
+					face.normalize()
+					face = owner.worldOrientation*face
+					move = self.motion["Move"].normalized()
+					move = viewport.getDirection((move[0], move[1], 0))
+					dot = move.angle(face, 0)/1.571
+					slope = 1-(abs(dot-1)*((angle/90)))
+
+			if self.groundold != None and angle < 10:
+				gnddiff = self.groundold[1]-rayPNT
+				gnddiff = owner.worldOrientation.inverted()*gnddiff
+				if abs(gnddiff[2]) > 0.02:
+					print(gnddiff[2])
+					self.gndraybias += gnddiff[2]
 
 			self.getGroundPoint(rayOBJ)
 
@@ -1013,6 +1022,7 @@ class CorePlayer(base.CoreAdvanced):
 			dragZ = owner.localLinearVelocity[2]*drag[2] #0.33
 			owner.applyForce((-dragX, -dragY, -dragZ), True)
 			self.groundhit = None
+			self.groundold = None
 			self.groundobj = None
 			return
 
@@ -1045,6 +1055,7 @@ class CorePlayer(base.CoreAdvanced):
 
 		owner.applyForce(-self.gravity, False)
 
+		self.groundold = self.groundhit.copy()
 		self.groundhit = None
 
 	def PS_SetVisible(self):
