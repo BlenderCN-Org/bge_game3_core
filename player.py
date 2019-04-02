@@ -97,29 +97,21 @@ class CorePlayer(base.CoreAdvanced):
 
 		self.defaultStates()
 
-		self.gndraybias = self.GND_H
 		self.wallraydist = self.WALL_DIST
 		self.wallrayto = self.createVector(vec=(0, self.WALL_DIST, 0))
 		self.wallrayup = self.createVector(vec=(0, self.WALL_DIST, self.EDGE_H-self.GND_H+0.3))
 
-		self.jump_state = "NONE"
-		self.jump_timer = 0
-		self.crouch = 0
-		self.rayorder = "NONE"
-		self.lastaction = [None,0]
-
-		self.resetAcceleration()
-
 		self.rayhit = None
 		self.rayvec = None
 
-		self.groundhit = None
-		self.groundold = None
-		self.groundobj = None
-		self.groundchk = False
-		self.groundvel = self.createVector()
-		self.groundpos = [self.createVector(), self.createVector()]
-		self.groundori = [self.createMatrix(), self.createMatrix()]
+		self.jump_state = "NONE"
+		self.jump_timer = 0
+		self.rayorder = "NONE"
+		self.crouch = 0
+		self.lastaction = [None,0]
+
+		self.resetGroundRay()
+		self.resetAcceleration()
 
 		self.motion = {
 			"Move": self.createVector(2),
@@ -133,13 +125,14 @@ class CorePlayer(base.CoreAdvanced):
 
 		self.data["HUD"] = {"Text":"", "Color":(0,0,0,0.5), "Target":None, "Locked":None}
 
+		self.data["PHYSICS"] = "DYNAMIC"
 		self.data["DAMPING"] = [0, 0]
 		self.data["LINVEL"] = [0,0,0]
-		self.data["PHYSICS"] = "DYNAMIC"
-		self.data["CROUCH"] = self.crouch
+
 		self.data["JP_STATE"] = self.jump_state
 		self.data["JP_TIMER"] = self.jump_timer
 		self.data["GB_STATE"] = self.rayorder
+		self.data["CROUCH"] = self.crouch
 
 		dict = self.defaultData()
 		for key in dict:
@@ -189,6 +182,24 @@ class CorePlayer(base.CoreAdvanced):
 		self.active_pre = []
 		self.active_state = self.ST_Walking
 		self.active_post = [self.PS_Recharge, self.PS_GroundTrack, self.PS_SetVisible]
+
+	def resetGroundRay(self):
+		self.groundhit = None
+		self.groundold = None
+		self.groundobj = None
+		self.groundchk = False
+		self.groundvel = self.createVector()
+		self.groundpos = [self.createVector(), self.createVector()]
+		self.groundori = [self.createMatrix(), self.createMatrix()]
+
+		self.gndraybias = self.GND_H
+
+	def resetAcceleration(self, speed=(0,0,0)):
+		self.accel_start = self.createVector(3)
+		self.accel_move = self.createVector(vec=speed)
+		self.accel_end = self.createVector(vec=speed)
+		self.accel_timer = 0
+		self.accel_stand = -1
 
 	def doPortal(self):
 		scene = base.SC_SCN
@@ -280,6 +291,18 @@ class CorePlayer(base.CoreAdvanced):
 
 		return owner
 
+	def removePhysicsBox(self):
+		self.jump_state = "NONE"
+		self.jump_timer = 0
+		self.rayorder = "NONE"
+		self.crouch = 0
+
+		if self.objects["Root"] != None:
+			self.doCrouch(False)
+			self.objects["Character"].removeParent()
+			self.objects["Root"].endObject()
+			self.objects["Root"] = None
+
 	def parentArmature(self, obj, offset=False):
 		char = self.objects["Character"]
 
@@ -301,19 +324,12 @@ class CorePlayer(base.CoreAdvanced):
 		print("CAMERA")
 
 	def enterVehicle(self, seat):
-		self.jump_state = "NONE"
-		self.jump_timer = 0
-		self.crouch = 0
-		self.rayorder = "NONE"
+		self.resetGroundRay()
 		self.resetAcceleration()
 		self.data["HUD"]["Target"] = None
 		self.data["HUD"]["Text"] = ""
 
-		if self.objects["Root"] != None:
-			self.doCrouch(False)
-			self.objects["Character"].removeParent()
-			self.objects["Root"].endObject()
-			self.objects["Root"] = None
+		self.removePhysicsBox()
 
 		self.parentArmature(seat, True)
 
@@ -336,21 +352,14 @@ class CorePlayer(base.CoreAdvanced):
 		HUD.SetLayout(self)
 
 	def switchPlayerPassive(self):
-		self.jump_state = "NONE"
-		self.jump_timer = 0
-		self.crouch = 0
-		self.rayorder = "NONE"
+		self.resetGroundRay()
 		self.resetAcceleration()
 		self.data["HUD"]["Target"] = None
 		self.data["HUD"]["Text"] = ""
 
-		self.doPlayerAnim("RESET")
+		self.removePhysicsBox()
 
-		if self.objects["Root"] != None:
-			self.doCrouch(False)
-			self.objects["Character"].removeParent()
-			self.objects["Root"].endObject()
-			self.objects["Root"] = None
+		self.doPlayerAnim("RESET")
 
 	def switchPlayerActive(self):
 		keymap.MOUSELOOK.center()
@@ -378,10 +387,10 @@ class CorePlayer(base.CoreAdvanced):
 		if axis == None:
 			axis = viewport.getDirection()
 		self.objects["Root"].alignAxisToVect(axis, 1, factor)
-		if up != None:
-			self.objects["Root"].alignAxisToVect(up, 2, 1.0)
-		else:
+		if up == None:
 			self.alignToGravity()
+		elif up != False:
+			self.objects["Root"].alignAxisToVect(up, 2, 1.0)
 
 	def getDropPoint(self):
 		rotate = viewport.getObject("Rotate")
@@ -714,7 +723,6 @@ class CorePlayer(base.CoreAdvanced):
 				gnddiff = self.groundold[1]-rayPNT
 				gnddiff = owner.worldOrientation.inverted()*gnddiff
 				if abs(gnddiff[2]) > 0.02:
-					print(round(gnddiff[2], 4), angle)
 					self.gndraybias += gnddiff[2]
 
 			self.getGroundPoint(rayOBJ)
@@ -808,27 +816,15 @@ class CorePlayer(base.CoreAdvanced):
 
 		self.doPlayerAnim("JUMP", 5)
 
-	def resetAcceleration(self, speed=(0,0,0)):
-		self.accel_start = self.createVector(3)
-		self.accel_move = self.createVector(vec=speed)
-		self.accel_end = self.createVector(vec=speed)
-		self.accel_timer = 0
-		self.accel_stand = -1
-
-	def doMovement(self, vec, mx=0, local=None):
+	def doMovement(self, vec, mx=0):
 		owner = self.objects["Root"]
 
-		if local == None:
-			local = self.data["STRAFE"]
-			if self.data["CAMERA"]["State"] != "THIRD":
-				local = True
-
 		vref = viewport.getDirection(vec)
-
 		mref = (vref*mx)
+
 		if self.ACCEL < 1:
 			move = mref.copy()
-		else: #if local == True:
+		else:
 			check = self.accel_end-mref
 			if check.length > 0.001:
 				self.accel_start = self.accel_move.copy()
@@ -849,7 +845,9 @@ class CorePlayer(base.CoreAdvanced):
 			self.accel_move += offset*rate
 			check = mref-self.accel_move
 
-			if offset.normalized().dot(check.normalized()) < 0 or check.length < 0.001:
+			angle = offset.normalized().dot(check.normalized())
+
+			if angle < 0 or check.length < 0.001:
 				self.accel_move = mref.copy()
 
 			if self.accel_timer < self.ACCEL:
@@ -864,40 +862,41 @@ class CorePlayer(base.CoreAdvanced):
 
 			move = self.accel_move.copy()
 
-		#else:
-		#	move = self.accel_move*(self.accel_timer/self.ACCEL)
-		#	if self.accel_timer < self.ACCEL:
-		#		self.accel_timer += 1
-		#	else:
-		#		self.accel_timer = self.ACCEL
-
 		owner.worldLinearVelocity = move*60
 
-		if local == True:
-			self.doMoveAlign()
-		else:
-			self.doMoveAlign(move)
-
-	def doMoveAlign(self, align=None):
+	def doMoveAlign(self, axis=None, up=None, margin=0.01):
 		owner = self.objects["Root"]
-		if align == None:
+		zfix = True
+
+		if axis != None:
+			align = self.createVector(vec=axis)
+		elif self.data["STRAFE"] == True:
+			align = viewport.getDirection((0,1,0))
+		elif self.data["CAMERA"]["State"] != "THIRD":
 			align = viewport.getDirection((0,1,0))
 		else:
-			align = align.normalized()
+			zfix = False
+			align = self.motion["World"]*(1/60)
 
-		align = owner.worldOrientation.inverted()*align
-		align[2] = 0
-		align = owner.worldOrientation*align
+		if zfix == True:
+			align = owner.worldOrientation.inverted()*align
+			align[2] = 0
+			align = owner.worldOrientation*align
 
-		if align.length >= 0.01:
+		if align.length >= margin:
+			align.normalize()
 			dref = owner.getAxisVect((0,1,0))
 			dot = 1-((dref.dot(align)*0.5)+0.5)
 			dot = 0.2+((dot**2)*0.5)
 
-			self.alignPlayer(dot, align)
+			self.alignPlayer(dot, align, up)
+
+		elif up == None:
+			self.alignToGravity()
+		elif up != False:
+			owner.alignAxisToVect(up, 2, 1.0)
 
 	def doPlayerAnim(self, action="MOVE", blend=10):
-
 		if self.ANIMOBJ == None:
 			return
 
@@ -943,12 +942,11 @@ class CorePlayer(base.CoreAdvanced):
 			if self.ACCEL > 10 and self.accel_stand >= 0:
 				blend = self.ACCEL
 
-			if linLV.length <= (0.04*60):
+			if linLV.length <= (0.06*60):
 				walk = True
 
 			action = "FORWARD"
 
-			#if self.data["STRAFE"] == True or self.data["CAMERA"]["State"] != "THIRD":
 			if linLV[1] < 0:
 				action = "BACKWARD"
 			if linLV[0] > 0.5 and abs(linLV[1]) < 0.5:
@@ -972,12 +970,12 @@ class CorePlayer(base.CoreAdvanced):
 				setframe = 39
 
 		elif action == "BACKWARD":
-			if walk == True:
-				self.doAnim(NAME="Walking", FRAME=(59,0), PRIORITY=3, MODE="LOOP", BLEND=blend)
-				setframe = 59
-			else:
-				self.doAnim(NAME="Running"+stair, FRAME=(39,0), PRIORITY=3, MODE="LOOP", BLEND=blend)
-				setframe = 39
+			#if walk == True:
+			self.doAnim(NAME="Walking", FRAME=(59,0), PRIORITY=3, MODE="LOOP", BLEND=blend)
+			setframe = 59
+			#else:
+			#	self.doAnim(NAME="Running"+stair, FRAME=(39,0), PRIORITY=3, MODE="LOOP", BLEND=blend)
+			#	setframe = 39
 
 		else:
 			self.lastaction = ["IDLE", 0]
@@ -1123,7 +1121,7 @@ class CorePlayer(base.CoreAdvanced):
 
 		self.doMovement((move[0], move[1], 0), mx)
 
-		self.alignToGravity(owner)
+		self.doMoveAlign(axis=viewport.getDirection((move[0], move[1], 0)), margin=0.002)
 
 		self.doInteract(rayfrom=[0,0,(self.EYE_H-self.GND_H)*cr_fac])
 		self.checkStability()
@@ -1185,8 +1183,6 @@ class CorePlayer(base.CoreAdvanced):
 				self.accel_timer = self.ACCEL
 
 			if self.jump_state == "NONE":
-				self.doPlayerAnim("MOVE", blend=10)
-
 				owner.worldPosition = gpos
 				owner.worldLinearVelocity = (0,0,0)
 
@@ -1196,6 +1192,8 @@ class CorePlayer(base.CoreAdvanced):
 					mx = self.data["SPEED"]*slope
 
 				self.doMovement((move[0], move[1], 0), mx)
+				self.doMoveAlign(up=False)
+				self.doPlayerAnim("MOVE", blend=10)
 
 				## Jump/Crouch ##
 				if keymap.BINDS["PLR_DUCK"].active() == True:
@@ -1249,7 +1247,7 @@ class CorePlayer(base.CoreAdvanced):
 
 			if self.jump_state in ["FALLING", "A_JUMP", "B_JUMP", "NO_AIR"]:
 				if self.data["CAMERA"]["State"] != "THIRD":
-					self.doMoveAlign()
+					self.doMoveAlign(up=False)
 
 				if self.gravity.length < 0.1 and self.rayvec != None:
 					if self.rayvec.length < self.INTERACT:
@@ -1283,7 +1281,7 @@ class CorePlayer(base.CoreAdvanced):
 
 			self.jump_timer += 1
 
-		self.alignToGravity(owner)
+		self.alignToGravity()
 
 		self.objects["Character"]["DEBUG1"] = self.rayorder
 		self.objects["Character"]["DEBUG2"] = str(self.jump_state)
@@ -1341,7 +1339,7 @@ class CorePlayer(base.CoreAdvanced):
 			X = 0
 			if self.jump_state == "HANG_INIT":
 				self.jump_state = "HANGING"
-				self.alignToGravity(owner)
+				self.alignToGravity()
 			elif TROBJ != None and edge != None:
 				wall = owner.worldOrientation.inverted()*TRNRM
 				wall[2] = 0
@@ -1361,7 +1359,7 @@ class CorePlayer(base.CoreAdvanced):
 				align = owner.worldOrientation*wall
 				self.alignPlayer(0.5, axis=-align)
 			else:
-				self.alignToGravity(owner)
+				self.alignToGravity()
 
 			if self.ANIMOBJ == None:
 				pass
@@ -1427,6 +1425,8 @@ class CorePlayer(base.CoreAdvanced):
 			self.groundhit = ground
 			self.getGroundPoint(ground[0])
 
+		self.alignToGravity()
+
 		if self.jump_timer == time or ground == None:
 			self.setPhysicsType("DYNAMIC")
 			self.rayorder = "NONE"
@@ -1447,8 +1447,6 @@ class CorePlayer(base.CoreAdvanced):
 		scene = base.SC_SCN
 		owner = self.objects["Root"]
 
-		self.doMoveAlign()
-
 		mx = 10
 		move = self.motion["Move"]
 		climb = self.motion["Climb"]
@@ -1457,7 +1455,7 @@ class CorePlayer(base.CoreAdvanced):
 		owner.applyForce(-self.gravity, False)
 		owner.applyForce((move[0]*mx, move[1]*mx, climb*mx), True)
 
-		self.alignToGravity(owner)
+		self.doMoveAlign()
 
 		self.doPlayerAnim("FALLING")
 
