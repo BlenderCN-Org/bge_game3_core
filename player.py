@@ -67,6 +67,7 @@ class CorePlayer(base.CoreAdvanced):
 	WALL_DIST = 0.4
 	OFFSET = (0, 0.0, 0.2)
 
+	CAM_TYPE = "FIRST"
 	CAM_FOV = 90
 	CAM_ORBIT = 2
 	CAM_SLOW = 10
@@ -473,9 +474,6 @@ class CorePlayer(base.CoreAdvanced):
 
 		if keymap.BINDS["TOGGLECAM"].tap() == True:
 			if self.data["CAMERA"]["State"] == "THIRD":
-				self.setCameraState("SHOULDER")
-
-			elif self.data["CAMERA"]["State"] == "SHOULDER":
 				self.setCameraState("FIRST")
 
 			elif self.data["CAMERA"]["State"] == "FIRST":
