@@ -720,7 +720,7 @@ class CorePlayer(base.CoreAdvanced):
 			if self.groundold != None and angle < 20:
 				gnddiff = self.groundold[1]-rayPNT
 				gnddiff = owner.worldOrientation.inverted()*gnddiff
-				if abs(gnddiff[2]) > 0.02:
+				if abs(gnddiff[2]) > 0.02 and abs(gnddiff[2]) < 0.3:
 					self.gndraybias += gnddiff[2]
 
 			self.getGroundPoint(rayOBJ)
@@ -862,24 +862,19 @@ class CorePlayer(base.CoreAdvanced):
 
 		owner.worldLinearVelocity = move*60
 
-	def doMoveAlign(self, axis=None, up=None, margin=0.01):
+	def doMoveAlign(self, axis=None, up=None, margin=0.001):
 		owner = self.objects["Root"]
-		zfix = True
 
 		if axis != None:
 			align = self.createVector(vec=axis)
-		elif self.data["STRAFE"] == True:
-			align = viewport.getDirection((0,1,0))
-		elif self.data["CAMERA"]["State"] != "THIRD":
+		elif self.data["STRAFE"] == True or self.data["CAMERA"]["State"] != "THIRD":
 			align = viewport.getDirection((0,1,0))
 		else:
-			zfix = False
-			align = self.motion["World"]*(1/60)
+			align = owner.worldLinearVelocity*(1/60)
 
-		if zfix == True:
-			align = owner.worldOrientation.inverted()*align
-			align[2] = 0
-			align = owner.worldOrientation*align
+		align = owner.worldOrientation.inverted()*align
+		align[2] = 0
+		align = owner.worldOrientation*align
 
 		if align.length >= margin:
 			align.normalize()
@@ -940,7 +935,7 @@ class CorePlayer(base.CoreAdvanced):
 			if self.ACCEL > 10 and self.accel_stand >= 0:
 				blend = self.ACCEL
 
-			if linLV.length <= (0.06*60):
+			if linLV.length < (0.05*60):
 				walk = True
 
 			action = "FORWARD"
@@ -1119,7 +1114,7 @@ class CorePlayer(base.CoreAdvanced):
 
 		self.doMovement((move[0], move[1], 0), mx)
 
-		self.doMoveAlign(axis=viewport.getDirection((move[0], move[1], 0)), margin=0.002)
+		self.doMoveAlign()
 
 		self.doInteract(rayfrom=[0,0,(self.EYE_H-self.GND_H)*cr_fac])
 		self.checkStability()
