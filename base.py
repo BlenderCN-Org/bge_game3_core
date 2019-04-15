@@ -469,13 +469,31 @@ class CoreObject:
 
 		return lp, lr
 
-	def teleportTo(self, pos=None, ori=None, vel=False):
+	def teleportTo(self, pos=None, ori=None, vel=False, cam=True):
 		owner = self.objects["Root"]
 
+		if cam == True and logic.VIEWPORT != None:
+			cam = False
+			if logic.VIEWPORT.control == self:
+				cam = True
+
 		if pos != None:
-			owner.worldPosition = pos
+			diff = pos-owner.worldPosition
+			owner.worldPosition += diff
+			if cam == True:
+				vertref = logic.VIEWPORT.objects["VertRef"]
+				if vertref.parent == None:
+					vertref.worldPosition += diff
+
 		if ori != None:
-			owner.worldOrientation = ori
+			qs = owner.worldOrientation.to_quaternion()
+			qt = ori.to_quaternion()
+			diff = qs.rotation_difference(qt)
+			owner.worldOrientation.rotate(diff)
+			if cam == True:
+				vertref = logic.VIEWPORT.objects["Root"]
+				vertref.worldOrientation.rotate(diff)
+
 		if vel == False:
 			owner.worldLinearVelocity = (0,0,0)
 
