@@ -1069,6 +1069,12 @@ class CorePlayer(base.CoreAdvanced):
 			char.setVisible(False, True)
 		else:
 			char.setVisible(True, True)
+		if "SKT" in self.objects:
+			for key in self.HAND:
+				hand = self.HAND[key]
+				skt = self.objects["SKT"].get(hand, None)
+				if skt != None:
+					skt.setVisible(True, True)
 
 	## WALKING STATE ##
 	def ST_Crouch(self):
