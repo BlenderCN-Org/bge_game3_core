@@ -862,7 +862,7 @@ class CorePlayer(base.CoreAdvanced):
 
 		owner.worldLinearVelocity = move*60
 
-	def doMoveAlign(self, axis=None, up=None, margin=0.001):
+	def doMoveAlign(self, axis=None, up=None, margin=0.002):
 		owner = self.objects["Root"]
 
 		if axis != None:

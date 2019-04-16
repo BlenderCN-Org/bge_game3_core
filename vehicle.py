@@ -349,7 +349,7 @@ class CoreVehicle(base.CoreAdvanced):
 		elif state == "THIRD":
 			viewport.setState("THIRD")
 			viewport.setCameraPosition([0,0,0])
-			self.setPlayerVisibility(True)
+			self.setPlayerVisibility()
 
 		viewport.setEyeHeight(0)
 		viewport.setEyePitch(0)
@@ -767,7 +767,7 @@ class CoreAircraft(CoreVehicle):
 		if self.data["POWER"] > self.AERO["POWER"]:
 			self.data["POWER"] = self.AERO["POWER"]
 
-		maxR = self.AERO["POWER"]/4
+		maxR = self.AERO["POWER"]*self.AERO.get("REVERSE", 0)
 		if self.data["POWER"] < -maxR:
 			self.data["POWER"] = -maxR
 		elif self.data["POWER"] < 0:
