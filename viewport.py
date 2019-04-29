@@ -160,6 +160,13 @@ class CoreViewport(base.CoreObject):
 			if set == True:
 				self.objects["Rotate"].localOrientation = self.pitch
 
+	def setCameraClip(clip=None):
+		if clip == None:
+			clip = list(config.CAMERA_CLIP)
+
+		self.objects["Camera"].near = clip[0]
+		self.objects["Camera"].far = clip[1]
+
 	def setCameraParent(self, obj):
 		self.parent = obj
 
@@ -171,6 +178,7 @@ class CoreViewport(base.CoreObject):
 		self.buildCameraData()
 		self.stateSwitch()
 
+		self.setCameraClip()
 		self.setCameraEye(pos=[0,0,0], ori=0)
 		keymap.MOUSELOOK.center()
 
@@ -226,6 +234,7 @@ class CoreViewport(base.CoreObject):
 			self.active_state = self.ST_Third
 			steps = (plr.CAM_RANGE[1]-plr.CAM_RANGE[0])/plr.CAM_STEPS
 			dist = (steps*self.camdata["Zoom"])+plr.CAM_RANGE[0]
+
 		if state == "SHOULDER":
 			self.active_state = self.ST_Shoulder
 			dist = plr.CAM_SHDIST
