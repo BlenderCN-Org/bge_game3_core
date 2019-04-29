@@ -160,7 +160,7 @@ class CoreViewport(base.CoreObject):
 			if set == True:
 				self.objects["Rotate"].localOrientation = self.pitch
 
-	def setCameraClip(clip=None):
+	def setCameraClip(self, clip=None):
 		if clip == None:
 			clip = list(config.CAMERA_CLIP)
 
