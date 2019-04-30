@@ -667,8 +667,11 @@ class CorePlayer(base.CoreAdvanced):
 		angle = 0
 		slope = 1.0
 		offset = self.GND_H
+		move = self.motion["World"].copy()
 		gndto = owner.getAxisVect((0,0,-1))+owner.worldPosition
 		gndbias = 0
+		dot = 0
+		tan = 0
 
 		if ray == None:
 			raylist = (gndto, None, offset)
@@ -708,28 +711,32 @@ class CorePlayer(base.CoreAdvanced):
 				ground = None
 
 		if ground != None:
-			if angle > 5 and angle < 90 and self.motion["World"].length > 0.01:
-				face = owner.worldOrientation.inverted()*rayNRM
-				face[2] = 0
-				face.normalize()
-				face = owner.worldOrientation*face
-				move = self.motion["World"].normalized()
-				dot = move.angle(face, 0)/1.571
-				slope = 1-(abs(dot-1)*((angle/90)))
+			self.getGroundPoint(rayOBJ)
+
+			if angle > 5 and angle < 90 and move.length > 0.01:
+				tango = rayNRM.angle(move.normalized(), 0)
+				tango = round(self.toDeg(tango), 2)
+
+				tan = self.getSlopeOffset(tango-90, move.length/60)
+				dot = abs((tango/90)-1)
+
+				slope = 1-(dot*(angle/90))
+				gndbias += tan
 
 			if self.groundold != None and angle < 20:
 				gnddiff = self.groundold[1]-rayPNT
 				gnddiff = owner.worldOrientation.inverted()*gnddiff
+				simdiff = self.groundpos[0]-self.groundpos[1]
+				simdiff = owner.worldOrientation.inverted()*simdiff
+				gnddiff = gnddiff+simdiff
 				if abs(gnddiff[2]) > 0.02 and abs(gnddiff[2]) < 0.3:
 					self.gndraybias += gnddiff[2]
-
-			self.getGroundPoint(rayOBJ)
 
 			self.rayorder = "NONE"
 
 			self.groundhit = ground
 			self.gndraybias += ((offset+gndbias)-self.gndraybias)*0.2
-
+		self.objects["Character"]["DEBUG2"] = tan
 		return ground, angle, slope
 
 	def doInteract(self, rayfrom=None):
@@ -1283,7 +1290,7 @@ class CorePlayer(base.CoreAdvanced):
 		self.alignToGravity()
 
 		self.objects["Character"]["DEBUG1"] = self.rayorder
-		self.objects["Character"]["DEBUG2"] = str(self.jump_state)
+		#self.objects["Character"]["DEBUG2"] = str(self.jump_state)
 
 		self.doInteract()
 		self.checkStability()

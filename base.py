@@ -364,6 +364,9 @@ class CoreObject:
 	def toDeg(self, rad):
 		return math.degrees(rad)
 
+	def getSlopeOffset(self, deg, dist=1):
+		return math.tan(math.radians(deg))*dist
+
 	def vecTuple(self, POS):
 		NEWPOS = list(POS)
 		return NEWPOS
