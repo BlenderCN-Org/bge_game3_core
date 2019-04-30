@@ -674,7 +674,7 @@ class CorePlayer(base.CoreAdvanced):
 		tan = 0
 
 		if ray == None:
-			raylist = (gndto, None, offset)
+			raylist = (gndto, None, self.gndraybias)
 		else:
 			raylist = ray
 
@@ -723,14 +723,14 @@ class CorePlayer(base.CoreAdvanced):
 				slope = 1-(dot*(angle/90))
 				gndbias += tan
 
-			if self.groundold != None and angle < 20:
+			if self.groundold != None:
 				gnddiff = self.groundold[1]-rayPNT
 				gnddiff = owner.worldOrientation.inverted()*gnddiff
 				simdiff = self.groundpos[0]-self.groundpos[1]
 				simdiff = owner.worldOrientation.inverted()*simdiff
 				gnddiff = gnddiff+simdiff
 				if abs(gnddiff[2]) > 0.02 and abs(gnddiff[2]) < 0.3:
-					self.gndraybias += gnddiff[2]
+					self.gndraybias += gnddiff[2]+tan
 
 			self.rayorder = "NONE"
 
