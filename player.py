@@ -736,7 +736,7 @@ class CorePlayer(base.CoreAdvanced):
 
 			self.groundhit = ground
 			self.gndraybias += ((offset+gndbias)-self.gndraybias)*0.2
-		self.objects["Character"]["DEBUG2"] = tan
+
 		return ground, angle, slope
 
 	def doInteract(self, rayfrom=None):
@@ -992,8 +992,8 @@ class CorePlayer(base.CoreAdvanced):
 		self.jump_timer = 0
 		if state == True or self.crouch != 0:
 			self.jump_state = "CROUCH"
-			self.objects["Root"].localScale[2] = 0.25
-			self.objects["Character"].localScale[2] = 4
+			self.objects["Root"].localScale[2] = 1/5
+			self.objects["Character"].localScale[2] = 5
 			self.active_state = self.ST_Crouch
 		elif state == False:
 			self.jump_state = "NONE"
@@ -1062,7 +1062,7 @@ class CorePlayer(base.CoreAdvanced):
 		rotOLD = self.groundori[0]*rotOLD
 		euler = yvec.rotation_difference(rotOLD).to_euler()
 
-		owner.applyRotation((0,0,euler[2]), True)
+		#owner.applyRotation((0,0,euler[2]), True)
 
 		owner.applyForce(-self.gravity, False)
 
