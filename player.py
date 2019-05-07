@@ -465,7 +465,7 @@ class CorePlayer(base.CoreAdvanced):
 			linWV = self.createVector()
 
 		gndvel = self.groundvel.copy()
-		gndvel[2] = 0
+
 		self.motion["Local"] = linLV-(owner.worldOrientation.inverted()*gndvel)
 		self.motion["World"] = linWV-gndvel
 
@@ -1036,11 +1036,12 @@ class CorePlayer(base.CoreAdvanced):
 			return
 
 		rayOBJ = self.groundobj
+		wp = owner.worldPosition - owner.getAxisVect([0,0,self.GND_H])
 
-		locOLD = owner.worldPosition - self.groundpos[1]
+		locOLD = wp - self.groundpos[1]
 		posOLD = self.groundori[1].inverted()*locOLD
 
-		locNEW = owner.worldPosition - self.groundpos[0]
+		locNEW = wp - self.groundpos[0]
 		posNEW = self.groundori[0].inverted()*locNEW
 
 		local = posOLD - posNEW
