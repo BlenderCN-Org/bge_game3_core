@@ -66,6 +66,7 @@ class CorePlayer(base.CoreAdvanced):
 	EDGE_H = 2.0
 	WALL_DIST = 0.4
 	OFFSET = (0, 0.0, 0.2)
+	SLOPE_BIAS = 0.0
 
 	CAM_TYPE = "FIRST"
 	CAM_FOV = 90
@@ -666,7 +667,6 @@ class CorePlayer(base.CoreAdvanced):
 		ground = None
 		angle = 0
 		slope = 1.0
-		offset = self.GND_H
 		move = self.motion["World"].copy()
 		gndto = owner.getAxisVect((0,0,-1))+owner.worldPosition
 		gndbias = 0
@@ -681,7 +681,7 @@ class CorePlayer(base.CoreAdvanced):
 		rayOBJ, rayPNT, rayNRM = owner.rayCast(raylist[0], raylist[1], raylist[2]+0.3, "GROUND", 1, 1, 0)
 
 		if rayOBJ == None or self.gravity.length < 0.1:
-			self.gndraybias = offset
+			self.gndraybias = self.GND_H
 
 			if simple == True:
 				return None
@@ -694,17 +694,17 @@ class CorePlayer(base.CoreAdvanced):
 
 			angle = owner.getAxisVect((0,0,1)).angle(rayNRM, 0)
 			angle = round(self.toDeg(angle), 2)
-			gndbias = (angle/90)*0.3
+			gndbias = (angle/90)*self.SLOPE_BIAS #0.3
 
 			if self.jump_state not in ["NONE", "CROUCH"] and ray == None:
 				dist = owner.worldPosition-rayPNT
-				if dist.length > offset+gndbias:
+				if dist.length > self.GND_H+gndbias:
 					ground = None
 				else:
-					self.gndraybias = offset+gndbias
+					self.gndraybias = self.GND_H+gndbias
 
 			if simple == True:
-				self.gndraybias = offset+gndbias
+				self.gndraybias = self.GND_H+gndbias
 				return ground
 
 			if angle > self.SLOPE:
@@ -735,7 +735,7 @@ class CorePlayer(base.CoreAdvanced):
 			self.rayorder = "NONE"
 
 			self.groundhit = ground
-			self.gndraybias += ((offset+gndbias)-self.gndraybias)*0.2
+			self.gndraybias += ((self.GND_H+gndbias)-self.gndraybias)*0.2
 
 		return ground, angle, slope
 

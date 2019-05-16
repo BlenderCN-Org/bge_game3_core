@@ -790,6 +790,9 @@ class SceneManager:
 		if logic.globalDict["SCREENSHOT"]["Trigger"] == True:
 			frameobj = base.SC_HUD.addObject("HUD.FreezeFrame", base.SC_HUD.active_camera, 0)
 			frameobj.applyMovement((0,0,-8), True)
+			if keymap.SYSTEM["SHIFT"].checkModifiers() != True and "HUD.Watermark" in base.SC_HUD.objectsInactive:
+				frameobj = base.SC_HUD.addObject("HUD.Watermark", base.SC_HUD.active_camera, 5)
+				frameobj.applyMovement((0,0,-8), True)
 
 
 class MenuPause:

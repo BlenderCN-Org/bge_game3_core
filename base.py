@@ -142,7 +142,7 @@ def GAME(cont):
 
 	if len(owner["LIBLIST"]) > 0:
 		libblend = owner["LIBLIST"].pop(0)
-		#if config.LIBLOAD_TYPE != "ASYNC" or config.ASYNC_FIX == True:
+		#if config.LIBLOAD_TYPE != "ASYNC":
 		logic.LibLoad(libblend, "Scene", load_actions=True, verbose=False, load_scripts=True)
 		print(libblend)
 		#elif config.LIBLOAD_TYPE == "ASYNC":
@@ -153,7 +153,7 @@ def GAME(cont):
 
 	## HUD SCENE ##
 	if timer == None:
-		owner["TIMER"] = (config.UPBGE_FIX == False)*25
+		owner["TIMER"] = (config.UPBGE_FIX == False)*100
 
 		owner.worldScale = [1,1,1]
 		logic.addScene("HUD", 1)
