@@ -66,6 +66,7 @@ class CorePlayer(base.CoreAdvanced):
 	EDGE_H = 2.0
 	WALL_DIST = 0.4
 	OFFSET = (0, 0.0, 0.2)
+	SLOPE_SPEED = 1.0
 	SLOPE_BIAS = 0.0
 
 	CAM_TYPE = "FIRST"
@@ -653,11 +654,9 @@ class CorePlayer(base.CoreAdvanced):
 		owner = self.objects["Root"]
 		ground = None
 		angle = 0
-		slope = 1.0
 		move = self.motion["World"].copy()
 		gndto = owner.getAxisVect((0,0,-1))+owner.worldPosition
 		gndbias = 0
-		dot = 0
 		tan = 0
 
 		if ray == None:
@@ -705,9 +704,6 @@ class CorePlayer(base.CoreAdvanced):
 				tango = round(self.toDeg(tango), 2)
 
 				tan = self.getSlopeOffset(tango-90, move.length/60)
-				dot = abs((tango/90)-1)
-
-				slope = 1-(dot*(angle/90))
 				gndbias += tan
 
 			if self.groundold != None:
@@ -724,7 +720,7 @@ class CorePlayer(base.CoreAdvanced):
 			self.groundhit = ground
 			self.gndraybias += ((self.GND_H+gndbias)-self.gndraybias)*0.2
 
-		return ground, angle, slope
+		return ground, angle
 
 	def doInteract(self, rayfrom=None):
 		scene = base.SC_SCN
@@ -811,8 +807,22 @@ class CorePlayer(base.CoreAdvanced):
 	def doMovement(self, vec, mx=0):
 		owner = self.objects["Root"]
 
+		angle = owner.getAxisVect((0,0,1)).angle(self.groundhit[2], 0)
+		angle = round(self.toDeg(angle), 2)
+		world = self.motion["World"].copy()
+
+		if angle > 5 and angle < 90 and world.length > 0.01:
+			tango = self.groundhit[2].angle(world.normalized(), 0)
+			tango = round(self.toDeg(tango), 2)*self.SLOPE_SPEED
+
+			dot = abs(1-(tango/90))
+		else:
+			dot = 0
+
+		slope = 1-(dot*(angle/90))
+
 		vref = viewport.getDirection(vec)
-		mref = (vref*mx)
+		mref = (vref*mx*slope)
 
 		if self.ACCEL < 1:
 			move = mref.copy()
@@ -882,6 +892,40 @@ class CorePlayer(base.CoreAdvanced):
 			self.alignToGravity()
 		elif up != False:
 			owner.alignAxisToVect(up, 2, 1.0)
+
+	def doPlayerOnGround(self):
+		scene = base.SC_SCN
+		owner = self.objects["Root"]
+		char = self.objects["Character"]
+
+		move = self.motion["Move"].normalized()
+
+		if self.data["RUN"] == False or self.motion["Move"].length <= 0.7 or self.data["SPEED"] <= 0:
+			mx = 0.035
+		else:
+			mx = self.data["SPEED"]
+
+		self.doMovement((move[0], move[1], 0), mx)
+		self.doMoveAlign(up=False)
+		self.doPlayerAnim("MOVE", blend=10)
+
+		## Jump/Crouch ##
+		if keymap.BINDS["PLR_DUCK"].active() == True:
+			self.doCrouch(True)
+
+		elif keymap.BINDS["PLR_JUMP"].tap() == True:
+			if self.jump_timer == 1:
+				self.jump_timer = 2
+		elif keymap.BINDS["PLR_JUMP"].active() == True:
+			if self.jump_timer >= 2:
+				self.jump_timer += 1
+			if self.jump_timer >= 7:
+				self.doJump(move=0.8, align=True)
+		elif keymap.BINDS["PLR_JUMP"].released() == True:
+			if self.jump_timer >= 1 and self.jump_timer < 7:
+				self.doJump(height=self.JUMP/1.5, move=1.0, align=False)
+		else:
+			self.jump_timer = 1
 
 	def doPlayerAnim(self, action="MOVE", blend=10):
 		if self.ANIMOBJ == None:
@@ -1100,7 +1144,7 @@ class CorePlayer(base.CoreAdvanced):
 
 		cr_fac = 1-(self.crouch*0.04)
 
-		ground, angle, slope = self.checkGround()
+		ground, angle = self.checkGround()
 
 		owner.setDamping(0, 0)
 
@@ -1172,7 +1216,7 @@ class CorePlayer(base.CoreAdvanced):
 
 		move = self.motion["Move"].normalized()
 
-		ground, angle, slope = self.checkGround()
+		ground, angle = self.checkGround()
 
 		self.checkEdge()
 
@@ -1198,32 +1242,7 @@ class CorePlayer(base.CoreAdvanced):
 				owner.worldPosition = gpos
 				owner.worldLinearVelocity = (0,0,0)
 
-				if self.data["RUN"] == False or self.motion["Move"].length <= 0.7 or self.data["SPEED"] <= 0:
-					mx = 0.035*slope
-				else:
-					mx = self.data["SPEED"]*slope
-
-				self.doMovement((move[0], move[1], 0), mx)
-				self.doMoveAlign(up=False)
-				self.doPlayerAnim("MOVE", blend=10)
-
-				## Jump/Crouch ##
-				if keymap.BINDS["PLR_DUCK"].active() == True:
-					self.doCrouch(True)
-
-				elif keymap.BINDS["PLR_JUMP"].tap() == True:
-					if self.jump_timer == 1:
-						self.jump_timer = 2
-				elif keymap.BINDS["PLR_JUMP"].active() == True:
-					if self.jump_timer >= 2:
-						self.jump_timer += 1
-					if self.jump_timer >= 7:
-						self.doJump(move=0.8, align=True)
-				elif keymap.BINDS["PLR_JUMP"].released() == True:
-					if self.jump_timer >= 1 and self.jump_timer < 7:
-						self.doJump(height=self.JUMP/1.5, move=1.0, align=False)
-				else:
-					self.jump_timer = 1
+				self.doPlayerOnGround()
 
 				if ground[0].getPhysicsId() != 0:
 					impulse = self.gravity*owner.mass*0.1
@@ -1296,7 +1315,7 @@ class CorePlayer(base.CoreAdvanced):
 		self.alignToGravity()
 
 		self.objects["Character"]["DEBUG1"] = self.rayorder
-		#self.objects["Character"]["DEBUG2"] = str(self.jump_state)
+		self.objects["Character"]["DEBUG2"] = str(self.jump_state)
 
 		self.doInteract()
 		self.checkStability()
