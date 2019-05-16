@@ -119,7 +119,8 @@ class CorePlayer(base.CoreAdvanced):
 			"Move": self.createVector(2),
 			"Rotate": self.createVector(3),
 			"Climb": 0,
-			"Velocity": self.createVector(3)
+			"Local": self.createVector(3),
+			"World": self.createVector(3)
 			}
 
 		self.data = {"HEALTH":100, "ENERGY":100, "RECHARGE":0.02, "SPEED":self.SPEED,
@@ -181,7 +182,7 @@ class CorePlayer(base.CoreAdvanced):
 		self.ST_Startup()
 
 	def defaultStates(self):
-		self.active_pre = []
+		self.active_pre = [self.PR_LastVelocity]
 		self.active_state = self.ST_Walking
 		self.active_post = [self.PS_Recharge, self.PS_GroundTrack, self.PS_SetVisible]
 
@@ -455,20 +456,6 @@ class CorePlayer(base.CoreAdvanced):
 		self.motion["Rotate"][0] = ROTATE[0]
 		self.motion["Rotate"][1] = 0
 		self.motion["Rotate"][2] = ROTATE[2]
-
-		owner = self.objects["Root"]
-		if owner != None:
-			linLV = owner.localLinearVelocity.copy()
-			linLV[2] = 0
-			linWV = owner.worldOrientation*linLV
-		else:
-			linLV = self.createVector()
-			linWV = self.createVector()
-
-		gndvel = self.groundvel.copy()
-
-		self.motion["Local"] = linLV-(owner.worldOrientation.inverted()*gndvel)
-		self.motion["World"] = linWV-gndvel
 
 		if keymap.BINDS["PLR_RUN"].tap() == True:
 			self.data["RUN"] ^= True
@@ -1005,6 +992,24 @@ class CorePlayer(base.CoreAdvanced):
 	def ST_Startup(self):
 		if self.jump_state == "FLYING" and self.objects["Root"] != None:
 			self.ST_Advanced_Set()
+
+	## PRE ##
+	def PR_LastVelocity(self):
+		owner = self.objects["Root"]
+
+		if owner != None:
+			linLV = owner.localLinearVelocity.copy()
+			linLV[2] = 0
+			linWV = owner.worldOrientation*linLV
+		else:
+			linLV = self.createVector()
+			linWV = self.createVector()
+
+		gndvel = self.groundvel.copy()
+
+		self.motion["Local"] = linLV-(owner.worldOrientation.inverted()*gndvel)
+		self.motion["World"] = linWV-gndvel
+
 
 	## POST ##
 	def PS_Recharge(self):
