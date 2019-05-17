@@ -68,6 +68,8 @@ class CorePlayer(base.CoreAdvanced):
 	OFFSET = (0, 0.0, 0.2)
 	SLOPE_SPEED = 1.0
 	SLOPE_BIAS = 0.0
+	CROUCH_H = 0.4
+	CROUCH_SCALE = 0.2 #Capsule is 50% effected by scale
 
 	CAM_TYPE = "FIRST"
 	CAM_FOV = 90
@@ -1023,13 +1025,14 @@ class CorePlayer(base.CoreAdvanced):
 		self.jump_timer = 0
 		if state == True or self.crouch != 0:
 			self.jump_state = "CROUCH"
-			self.objects["Root"].localScale[2] = 1/5
-			self.objects["Character"].localScale[2] = 5
+			self.objects["Root"].localScale[2] = self.CROUCH_SCALE
+			self.objects["Character"].localScale[2] = 1/self.CROUCH_SCALE
 			self.active_state = self.ST_Crouch
 		elif state == False:
 			self.jump_state = "NONE"
 			self.objects["Root"].localScale[2] = 1
 			self.objects["Character"].localScale[2] = 1
+			self.objects["Character"].localPosition = (0,0,0)
 			self.active_state = self.ST_Walking
 
 	## INIT STATE ##
@@ -1139,10 +1142,11 @@ class CorePlayer(base.CoreAdvanced):
 		owner = self.objects["Root"]
 		char = self.objects["Character"]
 
-		owner.localScale[2] = 0.25
-		char.localScale[2] = 4
+		owner.localScale[2] = self.CROUCH_SCALE
+		char.localScale[2] = 1/self.CROUCH_SCALE
+		char.localPosition[2] = (self.crouch*0.1)*(1/self.CROUCH_SCALE)*self.CROUCH_H
 
-		cr_fac = 1-(self.crouch*0.04)
+		cr_fac = self.GND_H-(self.crouch*0.1*self.CROUCH_H)
 
 		ground, angle = self.checkGround()
 
