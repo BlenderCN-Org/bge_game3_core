@@ -703,21 +703,11 @@ class CorePlayer(base.CoreAdvanced):
 		if ground != None:
 			self.getGroundPoint(rayOBJ)
 
-			#if angle > 5 and angle < 90 and move.length > 0.01:
-			#	tango = rayNRM.angle(move.normalized(), 0)
-			#	tango = round(self.toDeg(tango), 2)
-
-			#	tan = self.getSlopeOffset(tango-90, move.length/60)
-			#	gndbias += tan
-
 			if self.groundold != None:
 				gnddiff = self.groundold[1]-rayPNT
 				gnddiff = owner.worldOrientation.inverted()*gnddiff
-				simdiff = self.groundpos[0]-self.groundpos[1]
-				simdiff = owner.worldOrientation.inverted()*simdiff
-				gnddiff = gnddiff+simdiff
-				if abs(gnddiff[2]) > 0.02 and abs(gnddiff[2]) < 0.3:
-					self.gndraybias += gnddiff[2] #+tan
+				if abs(gnddiff[2]) < 0.4:
+					self.gndraybias += gnddiff[2]
 
 			self.rayorder = "NONE"
 
@@ -814,12 +804,17 @@ class CorePlayer(base.CoreAdvanced):
 		world = self.motion["World"].copy()
 		local = self.motion["Local"].copy()
 
-		angle = owner.getAxisVect((0,0,1)).angle(self.groundhit[2], 0)
+		if self.groundhit != None:
+			rayNRM = self.groundhit[2]
+		else:
+			rayNRM = owner.getAxisVect((0,0,1))
+
+		angle = owner.getAxisVect((0,0,1)).angle(rayNRM, 0)
 		angle = round(self.toDeg(angle), 2)
 
 		dot = 0
 		if angle > 5 and local.length > 0.01:
-			slvec = owner.worldOrientation.inverted()*self.groundhit[2]
+			slvec = owner.worldOrientation.inverted()*rayNRM
 			slvec[2] = 0
 
 			slang = slvec.normalized().angle(local.normalized(), 0)
@@ -847,12 +842,10 @@ class CorePlayer(base.CoreAdvanced):
 					self.accel_stand = 0
 
 			rate = (1/self.ACCEL)
-			#if self.ACCEL <= 10:
-			#	rate = rate
 			if self.accel_stand == -1:
 				rate = (1/self.ACCEL_FAST)
-			if self.accel_end.length < 0.001: # or self.accel_stand == -1:
-				rate = (1/self.ACCEL_STOP) #rate*2
+			if self.accel_end.length < 0.001:
+				rate = (1/self.ACCEL_STOP)
 
 			offset = mref-self.accel_start
 			self.accel_move += offset*rate
@@ -876,7 +869,7 @@ class CorePlayer(base.CoreAdvanced):
 			move = self.accel_move.copy()
 
 		if angle > 5 and angle <= self.SLOPE and world.length > 0.001:
-			tango = self.groundhit[2].angle(world.normalized(), 0)
+			tango = rayNRM.angle(world.normalized(), 0)
 			tango = round(self.toDeg(tango), 2)
 
 			tan = self.getSlopeOffset(tango-90, world.length/60)
@@ -1061,19 +1054,19 @@ class CorePlayer(base.CoreAdvanced):
 	def PR_LastVelocity(self):
 		owner = self.objects["Root"]
 
+		gndvel = self.groundvel.copy()
+
 		if owner != None:
-			linLV = owner.localLinearVelocity.copy()
+			linWV = owner.worldLinearVelocity-gndvel
+			linLV = owner.worldOrientation.inverted()*linWV
 			linLV[2] = 0
 			linWV = owner.worldOrientation*linLV
 		else:
-			linLV = self.createVector()
 			linWV = self.createVector()
+			linLV = self.createVector()
 
-		gndvel = self.groundvel.copy()
-
-		self.motion["Local"] = linLV-(owner.worldOrientation.inverted()*gndvel)
-		self.motion["World"] = linWV-gndvel
-
+		self.motion["Local"] = linLV
+		self.motion["World"] = linWV
 
 	## POST ##
 	def PS_Recharge(self):
@@ -1105,7 +1098,7 @@ class CorePlayer(base.CoreAdvanced):
 			return
 
 		rayOBJ = self.groundobj
-		wp = owner.worldPosition - owner.getAxisVect([0,0,self.GND_H])
+		wp = owner.worldPosition
 
 		locOLD = wp - self.groundpos[1]
 		posOLD = self.groundori[1].inverted()*locOLD
@@ -1115,13 +1108,11 @@ class CorePlayer(base.CoreAdvanced):
 
 		local = posOLD - posNEW
 		offset = self.groundori[0]*local
-		offset = owner.worldOrientation.inverted()*offset
-		offset[2] = 0
-		offset = owner.worldOrientation*offset
+		#offset = owner.worldOrientation.inverted()*offset
+		#offset[2] = 0
+		#offset = owner.worldOrientation*offset
 
 		if self.data["PHYSICS"] == "NONE":
-			#owner.worldPosition[0] += offset[0]
-			#owner.worldPosition[1] += offset[1]
 			owner.applyMovement(offset, False)
 		else:
 			owner.worldLinearVelocity += offset*60
@@ -1131,7 +1122,7 @@ class CorePlayer(base.CoreAdvanced):
 		rotOLD = self.groundori[0]*rotOLD
 		euler = yvec.rotation_difference(rotOLD).to_euler()
 
-		#owner.applyRotation((0,0,euler[2]), True)
+		owner.applyRotation((0,0,euler[2]), True)
 
 		owner.applyForce(-self.gravity, False)
 
