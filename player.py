@@ -54,6 +54,8 @@ class CorePlayer(base.CoreAdvanced):
 	SPEED = 0.1
 	JUMP = 6
 	ACCEL = 20
+	ACCEL_FAST = 10
+	ACCEL_STOP = 10
 	SLOPE = 60
 	MOVERUN = True
 	SIDESTEP = False
@@ -682,7 +684,7 @@ class CorePlayer(base.CoreAdvanced):
 
 			angle = owner.getAxisVect((0,0,1)).angle(rayNRM, 0)
 			angle = round(self.toDeg(angle), 2)
-			gndbias = (angle/90)*self.SLOPE_BIAS #0.3
+			gndbias = (angle/90)*self.SLOPE_BIAS
 
 			if self.jump_state not in ["NONE", "CROUCH"] and ray == None:
 				dist = owner.worldPosition-rayPNT
@@ -691,22 +693,22 @@ class CorePlayer(base.CoreAdvanced):
 				else:
 					self.gndraybias = self.GND_H+gndbias
 
+				#if angle > self.SLOPE:
+				#	ground = None
+
 			if simple == True:
 				self.gndraybias = self.GND_H+gndbias
 				return ground
 
-			if angle > self.SLOPE:
-				ground = None
-
 		if ground != None:
 			self.getGroundPoint(rayOBJ)
 
-			if angle > 5 and angle < 90 and move.length > 0.01:
-				tango = rayNRM.angle(move.normalized(), 0)
-				tango = round(self.toDeg(tango), 2)
+			#if angle > 5 and angle < 90 and move.length > 0.01:
+			#	tango = rayNRM.angle(move.normalized(), 0)
+			#	tango = round(self.toDeg(tango), 2)
 
-				tan = self.getSlopeOffset(tango-90, move.length/60)
-				gndbias += tan
+			#	tan = self.getSlopeOffset(tango-90, move.length/60)
+			#	gndbias += tan
 
 			if self.groundold != None:
 				gnddiff = self.groundold[1]-rayPNT
@@ -715,7 +717,7 @@ class CorePlayer(base.CoreAdvanced):
 				simdiff = owner.worldOrientation.inverted()*simdiff
 				gnddiff = gnddiff+simdiff
 				if abs(gnddiff[2]) > 0.02 and abs(gnddiff[2]) < 0.3:
-					self.gndraybias += gnddiff[2]+tan
+					self.gndraybias += gnddiff[2] #+tan
 
 			self.rayorder = "NONE"
 
@@ -809,20 +811,25 @@ class CorePlayer(base.CoreAdvanced):
 	def doMovement(self, vec, mx=0):
 		owner = self.objects["Root"]
 
+		world = self.motion["World"].copy()
+		local = self.motion["Local"].copy()
+
 		angle = owner.getAxisVect((0,0,1)).angle(self.groundhit[2], 0)
 		angle = round(self.toDeg(angle), 2)
-		world = self.motion["World"].copy()
 
-		if angle > 5 and angle < 90 and world.length > 0.01:
-			tango = self.groundhit[2].angle(world.normalized(), 0)
-			tango = round(self.toDeg(tango), 2)*self.SLOPE_SPEED
+		dot = 0
+		if angle > 5 and local.length > 0.01:
+			slvec = owner.worldOrientation.inverted()*self.groundhit[2]
+			slvec[2] = 0
 
-			dot = abs(1-(tango/90))
-		else:
-			dot = 0
+			slang = slvec.normalized().angle(local.normalized(), 0)
+			slang = round(self.toDeg(slang), 2)
+
+			if angle <= self.SLOPE:
+				dot = abs(1-(slang/90))*self.SLOPE_SPEED
 
 		slope = 1-(dot*(angle/90))
-
+		self.objects["Character"]["DEBUG2"] = slope
 		vref = viewport.getDirection(vec)
 		mref = (vref*mx*slope)
 
@@ -840,18 +847,20 @@ class CorePlayer(base.CoreAdvanced):
 					self.accel_stand = 0
 
 			rate = (1/self.ACCEL)
-			if self.ACCEL <= 10:
-				rate = rate
-			elif self.accel_end.length < 0.001 or self.accel_stand == -1:
-				rate = rate*2
+			#if self.ACCEL <= 10:
+			#	rate = rate
+			if self.accel_stand == -1:
+				rate = (1/self.ACCEL_FAST)
+			if self.accel_end.length < 0.001: # or self.accel_stand == -1:
+				rate = (1/self.ACCEL_STOP) #rate*2
 
 			offset = mref-self.accel_start
 			self.accel_move += offset*rate
 			check = mref-self.accel_move
 
-			angle = offset.normalized().dot(check.normalized())
+			greater = offset.normalized().dot(check.normalized())
 
-			if angle < 0 or check.length < 0.001:
+			if greater < 0 or check.length < 0.001:
 				self.accel_move = mref.copy()
 
 			if self.accel_timer < self.ACCEL:
@@ -865,6 +874,14 @@ class CorePlayer(base.CoreAdvanced):
 				self.accel_stand = -1
 
 			move = self.accel_move.copy()
+
+		if angle > 5 and angle <= self.SLOPE and world.length > 0.001:
+			tango = self.groundhit[2].angle(world.normalized(), 0)
+			tango = round(self.toDeg(tango), 2)
+
+			tan = self.getSlopeOffset(tango-90, world.length/60)
+			tangle = owner.getAxisVect((0,0,1))*tan
+			move += tangle
 
 		owner.worldLinearVelocity = move*60
 
@@ -990,7 +1007,7 @@ class CorePlayer(base.CoreAdvanced):
 			angle = self.objects["Character"].getAxisVect((0,0,1)).angle(self.groundhit[2], 0)
 			angle = round(self.toDeg(angle), 2)
 
-			if angle > 20:
+			if angle > 20 and angle <= self.SLOPE:
 				stair = ".Stairs"
 
 		## ANIMATIONS ##
@@ -1120,6 +1137,7 @@ class CorePlayer(base.CoreAdvanced):
 
 		self.groundvel = offset.copy()*60
 		self.groundold = self.groundhit.copy()
+		self.groundold[1] += owner.worldLinearVelocity/60
 		self.groundhit = None
 
 	def PS_SetVisible(self):
@@ -1319,7 +1337,7 @@ class CorePlayer(base.CoreAdvanced):
 		self.alignToGravity()
 
 		self.objects["Character"]["DEBUG1"] = self.rayorder
-		self.objects["Character"]["DEBUG2"] = str(self.jump_state)
+		#self.objects["Character"]["DEBUG2"] = str(self.jump_state)
 
 		self.doInteract()
 		self.checkStability()
