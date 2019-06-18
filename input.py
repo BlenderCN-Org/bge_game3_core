@@ -1,21 +1,22 @@
 ####
-# bge_game-3.0_template: Full python game structure for the Blender Game Engine
-# Copyright (C) 2018  DaedalusMDW @github.com (Daedalus_MDW @blenderartists.org)
+# bge_game3_core: Full python game structure for the Blender Game Engine
+# Copyright (C) 2019  DaedalusMDW @github.com (Daedalus_MDW @blenderartists.org)
+# https://github.com/DaedalusMDW/bge_game3_core
 #
-# This file is part of bge_game-3.0_template.
+# This file is part of bge_game3_core.
 #
-#    bge_game-3.0_template is free software: you can redistribute it and/or modify
+#    bge_game3_core is free software: you can redistribute it and/or modify
 #    it under the terms of the GNU General Public License as published by
 #    the Free Software Foundation, either version 3 of the License, or
 #    (at your option) any later version.
 #
-#    bge_game-3.0_template is distributed in the hope that it will be useful,
+#    bge_game3_core is distributed in the hope that it will be useful,
 #    but WITHOUT ANY WARRANTY; without even the implied warranty of
 #    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 #    GNU General Public License for more details.
 #
 #    You should have received a copy of the GNU General Public License
-#    along with bge_game-3.0_template.  If not, see <http://www.gnu.org/licenses/>.
+#    along with bge_game3_core.  If not, see <http://www.gnu.org/licenses/>.
 #
 ####
 
@@ -61,7 +62,10 @@ for JOYID in range(len(logic.joysticks)):
 			events.JOYBUTTONS[JOYID]["Hats"][HAT] = {"U":0, "D":0, "L":0, "R":0}
 
 
-## EXTRAS ##
+## FEATURES ##
+def GetInput(name, group):
+	pass
+
 def ClipAxis(value):
 	LZ = 0.2
 	HZ = 1.0
@@ -194,11 +198,15 @@ class KeyBase:
 
 		return True
 
-	def checkInput(self, INPUT):
+	def checkInput(self, INPUT, JOYID=None):
 		if self.sceneGamepadCheck() == False:
 			return False
 
-		JOYID = self.joy_index
+		if JOYID == None:
+			JOYID = self.joy_index
+		elif self.joy_index == None:
+			JOYID = None
+
 		BUTID = self.gamepad["Button"]
 		AXIS = self.gamepad["Axis"]
 		TYPE = self.gamepad["Type"]
@@ -280,39 +288,43 @@ class KeyBase:
 		return False
 
 	## KEY EVENTS ##
-	def active(self, exlusive=False):
-		if self.checkInput(logic.KX_INPUT_ACTIVE) == True:
+	def active(self, exlusive=False, JOYID=None):
+		if self.checkInput(logic.KX_INPUT_ACTIVE, JOYID) == True:
 			return True
 		elif exlusive == True:
 			return False
-		elif self.checkInput(logic.KX_INPUT_JUST_ACTIVATED) == True:
+		elif self.checkInput(logic.KX_INPUT_JUST_ACTIVATED, JOYID) == True:
 			return True
 
 		return False
 
-	def tap(self):
-		if self.checkInput(logic.KX_INPUT_JUST_ACTIVATED) == True:
+	def tap(self, JOYID=None):
+		if self.checkInput(logic.KX_INPUT_JUST_ACTIVATED, JOYID) == True:
 			return True
 
 		return False
 
-	def released(self):
-		if self.checkInput(logic.KX_INPUT_JUST_RELEASED) == True:
+	def released(self, JOYID=None):
+		if self.checkInput(logic.KX_INPUT_JUST_RELEASED, JOYID) == True:
 			return True
 
 		return False
 
-	def inactive(self):
-		if self.checkInput(logic.KX_INPUT_NONE) == True:
+	def inactive(self, JOYID=None):
+		if self.checkInput(logic.KX_INPUT_NONE, JOYID) == True:
 			return True
 
 		return False
 
-	def axis(self, key=False, clip=False):
+	def axis(self, key=False, clip=False, JOYID=None):
 		if self.sceneGamepadCheck() == False:
 			return 0.0
 
-		JOYID = self.joy_index
+		if JOYID == None:
+			JOYID = self.joy_index
+		elif self.joy_index == None:
+			JOYID = None
+
 		AXIS = self.gamepad["Axis"]
 		TYPE = self.gamepad["Type"]
 		CURVE = self.gamepad["Curve"]
@@ -503,7 +515,9 @@ def GAMEPADDER():
 	events.MOUSEMOVE["Position"] = (NEW_X-0.5, 0.5-NEW_Y)
 
 	if MS_CENTER == True:
-		if abs(NEW_X-0.5) > 0.25 or abs(NEW_Y-0.5) > 0.25:
+		xlm = int(WIN_DIM[0]*0.25)/WIN_DIM[0]
+		ylm = int(WIN_DIM[1]*0.25)/WIN_DIM[1]
+		if abs(NEW_X-0.5) > xlm or abs(NEW_Y-0.5) > ylm:
 			logic.mouse.position = (0.5, 0.5)
 			events.MOUSEMOVE["Old"] = (0.5, 0.5)
 	MS_CENTER = False

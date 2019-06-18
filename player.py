@@ -1,21 +1,22 @@
 ####
-# bge_game-3.0_template: Full python game structure for the Blender Game Engine
-# Copyright (C) 2018  DaedalusMDW @github.com (Daedalus_MDW @blenderartists.org)
+# bge_game3_core: Full python game structure for the Blender Game Engine
+# Copyright (C) 2019  DaedalusMDW @github.com (Daedalus_MDW @blenderartists.org)
+# https://github.com/DaedalusMDW/bge_game3_core
 #
-# This file is part of bge_game-3.0_template.
+# This file is part of bge_game3_core.
 #
-#    bge_game-3.0_template is free software: you can redistribute it and/or modify
+#    bge_game3_core is free software: you can redistribute it and/or modify
 #    it under the terms of the GNU General Public License as published by
 #    the Free Software Foundation, either version 3 of the License, or
 #    (at your option) any later version.
 #
-#    bge_game-3.0_template is distributed in the hope that it will be useful,
+#    bge_game3_core is distributed in the hope that it will be useful,
 #    but WITHOUT ANY WARRANTY; without even the implied warranty of
 #    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 #    GNU General Public License for more details.
 #
 #    You should have received a copy of the GNU General Public License
-#    along with bge_game-3.0_template.  If not, see <http://www.gnu.org/licenses/>.
+#    along with bge_game3_core.  If not, see <http://www.gnu.org/licenses/>.
 #
 ####
 
@@ -89,6 +90,10 @@ class CorePlayer(base.CoreAdvanced):
 		scene = base.SC_SCN
 		char = logic.getCurrentController().owner
 
+		char["Class"] = self
+		char["DICT"] = char.get("DICT", base.PROFILE["PLRData"].get(char.name, {"Object":char.name, "Data":None}))
+		char["DICT"]["ID"] = char["DICT"].get("ID", char.get("ID", None))
+
 		self.objects = {"Root":None, "Character":char}
 
 		if len(char.children) == 0:
@@ -128,11 +133,14 @@ class CorePlayer(base.CoreAdvanced):
 			"World": self.createVector(3)
 			}
 
+		self.dict = char["DICT"]
+
 		self.data = {"HEALTH":100, "ENERGY":100, "RECHARGE":0.02, "SPEED":self.SPEED,
 			"JUMP":self.JUMP, "RUN":self.MOVERUN, "STRAFE":self.SIDESTEP}
 
 		self.data["HUD"] = {"Text":"", "Color":(0,0,0,0.5), "Target":None, "Locked":None}
 
+		self.data["POS_LEVEL"] = None
 		self.data["PHYSICS"] = "DYNAMIC"
 		self.data["DAMPING"] = [0, 0]
 		self.data["LINVEL"] = [0,0,0]
@@ -147,7 +155,6 @@ class CorePlayer(base.CoreAdvanced):
 			if key not in self.data:
 				self.data[key] = dict[key]
 
-		char["Class"] = self
 		char["DEBUG1"] = ""
 		char["DEBUG2"] = ""
 		char["RAYTEXT"] = ""
@@ -161,30 +168,14 @@ class CorePlayer(base.CoreAdvanced):
 		self.loadInventory(char)
 		self.applyGravity()
 
-		if logic.PLAYERCLASS == None:
-			logic.PLAYERCLASS = self
-			HUD.SetBlackScreen(True)
-
-			if base.DATA["Portal"]["Vehicle"] != None:
-				dict = base.DATA["Portal"]["Vehicle"]
-				vehicle = scene.addObject(dict["Object"], base.SC_RUN, 0)
-				vehicle["DICT"] = dict
-				vehicle["RAYCAST"] = self
-
-			else:
-				owner = self.addPhysicsBox()
-				self.findObjects(owner)
-				self.parentArmature(owner)
-
-				self.assignCamera(load=True)
-
-				self.doPortal()
-
-				HUD.SetLayout(self)
-
-				self.doPlayerAnim("RESET")
+		self.doPlayerAnim("RESET")
 
 		self.ST_Startup()
+
+		if self.dict["ID"] != None and self.dict.get("Vehicle", None) == None:
+			self.switchPlayerActive(self.dict["ID"])
+			self.PS_SetVisible(True)
+			viewport.loadCamera()
 
 	def defaultStates(self):
 		self.active_pre = [self.PR_LastVelocity]
@@ -209,71 +200,51 @@ class CorePlayer(base.CoreAdvanced):
 		self.accel_timer = 0
 		self.accel_stand = -1
 
-	def doPortal(self):
-		scene = base.SC_SCN
-		owner = self.objects["Root"]
-
-		door = base.DATA["Portal"]["Door"]
-		zone = base.DATA["Portal"]["Zone"]
-		portal = scene.objects.get(str(door), None)
-
-		if portal != None:
-			pos = portal.worldPosition.copy()
-			ori = portal.worldOrientation.copy()
-
-			if zone != None:
-				pos = self.createVector(vec=zone[0])
-				pos = portal.worldPosition+(portal.worldOrientation*pos)
-
-				ori = ori*self.createMatrix(mat=zone[1])
-
-			owner.worldPosition = pos
-			owner.worldOrientation = ori
-
-		elif "POS" in base.LEVEL["PLAYER"]:
-			owner.worldPosition = base.LEVEL["PLAYER"]["POS"]
-			owner.worldOrientation = base.LEVEL["PLAYER"]["ORI"]
-
-		else:
-			base.LEVEL["PLAYER"]["POS"] = self.vecTuple(owner.worldPosition)
-			base.LEVEL["PLAYER"]["ORI"] = self.matTuple(owner.worldOrientation)
-
-		if portal != None and zone == None:
-			self.data["CAMERA"]["ZR"] = [0,0,0]
-			self.data["CAMERA"]["XR"] = 0
-
-		owner.localLinearVelocity = self.data["LINVEL"]
-
-		viewport.updateCamera(self, owner, load=True)
-
-		if base.DATA["Portal"]["Vehicle"] == None or portal == None:
-			base.DATA["Portal"]["Door"] = None
-			base.DATA["Portal"]["Zone"] = None
-
 	def doLoad(self):
-		if self.NAME in base.PROFILE["PLRData"]:
-			self.data = base.PROFILE["PLRData"][self.NAME]
-			self.active_state = getattr(self, self.data["ACTIVE_STATE"])
-		else:
-			base.PROFILE["PLRData"][self.NAME] = self.data
-			self.data["ACTIVE_STATE"] = self.active_state.__name__
+		char = self.objects["Character"]
 
+		base.PROFILE["PLRData"][char.name] = char["DICT"]
+
+		if self.dict["Data"] == None:
+			self.dict["Data"] =  self.data
+			self.data["ACTIVE_STATE"] = self.active_state.__name__
+		else:
+			self.data = self.dict["Data"]
+			self.active_state = getattr(self, self.data["ACTIVE_STATE"])
 
 		self.jump_state = self.data["JP_STATE"]
 		self.jump_timer = self.data["JP_TIMER"]
 		self.rayorder = self.data["GB_STATE"]
 		self.crouch = self.data["CROUCH"]
 
+		newmap = str(base.CURRENT["Level"])+str(base.CURRENT["Scene"])
+
+		if self.data["POS_LEVEL"] == newmap:
+			char.worldPosition = self.data["POS"]
+			char.worldOrientation = self.data["ORI"]
+		else:
+			self.data["POS_LEVEL"] = newmap
+			self.data["POS"] = self.vecTuple(char.worldPosition)
+			self.data["ORI"] = self.matTuple(char.worldOrientation)
+
+		if "Add" in self.dict:
+			base.LEVEL["SPAWN"].append(self.dict["Add"])
+			del self.dict["Add"]
+
 		if self not in logic.UPDATELIST:
 			logic.UPDATELIST.append(self)
 
 	def doUpdate(self):
-
 		self.data["JP_STATE"] = self.jump_state
 		self.data["JP_TIMER"] = self.jump_timer
 		self.data["GB_STATE"] = self.rayorder
 		self.data["CROUCH"] = self.crouch
 		self.data["ACTIVE_STATE"] = self.active_state.__name__
+
+		char = self.objects["Character"]
+
+		self.data["POS"] = self.vecTuple(char.worldPosition)
+		self.data["ORI"] = self.matTuple(char.worldOrientation)
 
 		owner = self.objects["Root"]
 		if owner == None:
@@ -281,9 +252,6 @@ class CorePlayer(base.CoreAdvanced):
 
 		self.data["LINVEL"] = self.vecTuple(owner.localLinearVelocity)
 		self.data["DAMPING"] = [owner.linearDamping, owner.angularDamping]
-
-		base.LEVEL["PLAYER"]["POS"] = self.vecTuple(owner.worldPosition)
-		base.LEVEL["PLAYER"]["ORI"] = self.matTuple(owner.worldOrientation)
 
 	def addPhysicsBox(self):
 		char = self.objects["Character"]
@@ -297,6 +265,8 @@ class CorePlayer(base.CoreAdvanced):
 		self.addCollisionCallBack()
 		self.setPhysicsType()
 
+		owner.localLinearVelocity = self.data["LINVEL"]
+
 		return owner
 
 	def removePhysicsBox(self):
@@ -304,6 +274,7 @@ class CorePlayer(base.CoreAdvanced):
 		self.jump_timer = 0
 		self.rayorder = "NONE"
 		self.crouch = 0
+		self.data["LINVEL"] = [0,0,0]
 
 		if self.objects["Root"] != None:
 			self.doCrouch(False)
@@ -325,39 +296,30 @@ class CorePlayer(base.CoreAdvanced):
 		char.localPosition = POS
 		char.localOrientation = self.createMatrix()
 
-	def assignCamera(self, load=False):
-		viewport.setCamera(self, load)
+	def assignCamera(self):
+		viewport.setCamera(self)
 		viewport.setParent(self.objects["Root"])
-		self.setCameraState(None, load)
+		self.setCameraState(None)
 		print("CAMERA")
 
-	def enterVehicle(self, seat):
-		self.resetGroundRay()
-		self.resetAcceleration()
-		self.data["HUD"]["Target"] = None
-		self.data["HUD"]["Text"] = ""
-
-		self.removePhysicsBox()
-
-		self.parentArmature(seat, True)
-
-	def exitVehicle(self, spawn):
+	def switchPlayerActive(self, ID=None):
 		keymap.MOUSELOOK.center()
 
-		self.objects["Character"].removeParent() 
+		self.doAnim(STOP=True)
 
 		owner = self.addPhysicsBox()
-		self.alignToGravity(owner)
-		owner.worldPosition = spawn
 
 		self.findObjects(owner)
 		self.parentArmature(owner)
 		self.assignCamera()
-		self.PS_SetVisible()
 
 		self.doPlayerAnim("RESET")
+		self.PS_SetVisible()
 
 		HUD.SetLayout(self)
+		if ID != None:
+			self.dict["ID"] = ID
+			base.WORLD["PLAYERS"][ID] = self.dict["Object"]
 
 	def switchPlayerPassive(self):
 		self.resetGroundRay()
@@ -369,21 +331,29 @@ class CorePlayer(base.CoreAdvanced):
 
 		self.doPlayerAnim("RESET")
 
-	def switchPlayerActive(self):
-		keymap.MOUSELOOK.center()
+		ID = self.dict["ID"]
+		self.dict["ID"] = None
+		if ID in base.WORLD["PLAYERS"]:
+			del base.WORLD["PLAYERS"][ID]
+		return ID
 
-		self.doAnim(STOP=True)
+	def enterVehicle(self, seat):
+		self.dict["Vehicle"] = True
+		self.dict["ID"] = self.switchPlayerPassive()
 
-		owner = self.addPhysicsBox()
+		self.parentArmature(seat, True)
 
-		self.findObjects(owner)
-		self.parentArmature(owner)
-		self.assignCamera(load=True)
+	def exitVehicle(self, spawn):
+		self.objects["Character"].removeParent() 
 
-		HUD.SetLayout(self)
+		self.switchPlayerActive(self.dict["ID"])
 
-		logic.PLAYERCLASS = self
-		base.CURRENT["Player"] = self.objects["Character"].name
+		self.dict["Vehicle"] = None
+
+		owner = self.objects["Root"]
+		owner.worldPosition = spawn
+
+		self.alignToGravity(owner)
 
 	def alignCamera(self, factor=1.0, axis=(0,1,0), up=None):
 		vref = self.objects["Root"].getAxisVect(axis)
@@ -501,12 +471,12 @@ class CorePlayer(base.CoreAdvanced):
 			self.data["CAMERA"]["State"] = state
 
 		if state == "SHOULDER":
-			eye = [self.CAM_SHSIDE, 0, self.EYE_H-self.GND_H-self.CAM_MIN]
+			pos = [self.CAM_SHSIDE, 0, self.EYE_H-self.GND_H-self.CAM_MIN]
 		else:
-			eye = [0, 0, self.EYE_H-self.GND_H]
+			pos = [0, 0, self.EYE_H-self.GND_H]
 
 		viewport.setState(state)
-		viewport.setEyeHeight(eye=eye, set=load)
+		viewport.setEyeHeight(eye=pos)
 
 		#self.data["CAMERA"]["FOV"] = self.CAM_FOV
 		self.data["CAMERA"]["State"] = state
@@ -706,6 +676,9 @@ class CorePlayer(base.CoreAdvanced):
 			if self.groundold != None:
 				gnddiff = self.groundold[1]-rayPNT
 				gnddiff = owner.worldOrientation.inverted()*gnddiff
+				#simdiff = self.groundpos[0]-self.groundpos[1]
+				#simdiff = owner.worldOrientation.inverted()*simdiff
+				#gnddiff = gnddiff+simdiff
 				if abs(gnddiff[2]) < 0.4:
 					self.gndraybias += gnddiff[2]
 
@@ -1131,10 +1104,12 @@ class CorePlayer(base.CoreAdvanced):
 		self.groundold[1] += owner.worldLinearVelocity/60
 		self.groundhit = None
 
-	def PS_SetVisible(self):
+	def PS_SetVisible(self, state=None):
 		owner = self.objects["Root"]
 		char = self.objects["Character"]
-		if self.data["CAMERA"]["State"] == "FIRST":
+		if state != None:
+			char.setVisible(state, True)
+		elif self.data["CAMERA"]["State"] == "FIRST" and viewport.getController() == self:
 			char.setVisible(False, True)
 		else:
 			char.setVisible(True, True)
@@ -1512,9 +1487,13 @@ class CorePlayer(base.CoreAdvanced):
 		self.data["HUD"]["Target"] = None
 		self.active_state = self.ST_FlySimple
 
+	def ST_Freeze(self):
+		pass
+
 	## RUN ##
 	def RUN(self):
 		if self.objects["Root"] == None:
+			self.ST_Freeze()
 			self.PS_Attachments()
 			return
 		self.runPre()

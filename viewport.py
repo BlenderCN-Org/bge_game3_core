@@ -1,21 +1,22 @@
 ####
-# bge_game-3.0_template: Full python game structure for the Blender Game Engine
-# Copyright (C) 2018  DaedalusMDW @github.com (Daedalus_MDW @blenderartists.org)
+# bge_game3_core: Full python game structure for the Blender Game Engine
+# Copyright (C) 2019  DaedalusMDW @github.com (Daedalus_MDW @blenderartists.org)
+# https://github.com/DaedalusMDW/bge_game3_core
 #
-# This file is part of bge_game-3.0_template.
+# This file is part of bge_game3_core.
 #
-#    bge_game-3.0_template is free software: you can redistribute it and/or modify
+#    bge_game3_core is free software: you can redistribute it and/or modify
 #    it under the terms of the GNU General Public License as published by
 #    the Free Software Foundation, either version 3 of the License, or
 #    (at your option) any later version.
 #
-#    bge_game-3.0_template is distributed in the hope that it will be useful,
+#    bge_game3_core is distributed in the hope that it will be useful,
 #    but WITHOUT ANY WARRANTY; without even the implied warranty of
 #    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 #    GNU General Public License for more details.
 #
 #    You should have received a copy of the GNU General Public License
-#    along with bge_game-3.0_template.  If not, see <http://www.gnu.org/licenses/>.
+#    along with bge_game3_core.  If not, see <http://www.gnu.org/licenses/>.
 #
 ####
 
@@ -49,14 +50,17 @@ def pointCamera(vec=None, factor=1):
 def getRayVec():
 	return VIEWCLASS.objects["Rotate"].getAxisVect((0,1,0))
 
-def setCamera(plr, load=False):
-	if load == True:
-		VIEWCLASS.dist = None
-
+def setCamera(plr):
 	VIEWCLASS.setCameraActive(plr)
 
 def setParent(obj):
 	VIEWCLASS.setCameraParent(obj)
+
+def getParent():
+	return VIEWCLASS.parent
+
+def getController():
+	return VIEWCLASS.control
 
 def setCameraPosition(pos):
 	VIEWCLASS.position[0] = pos[0]
@@ -71,23 +75,27 @@ def setEyeHeight(offset=0, axis=2, eye=None, set=False):
 			if x == axis:
 				eye[x] = offset
 
-	VIEWCLASS.setCameraEye(pos=eye, set=set)
+	VIEWCLASS.setCameraEye(pos=eye)
+	if set == True:
+		VIEWCLASS.objects["Rotate"].localPosition = VIEWCLASS.offset
 
 def setEyePitch(ang, set=False):
-	VIEWCLASS.setCameraEye(ori=ang, set=set)
+	VIEWCLASS.setCameraEye(ori=ang)
+	if set == True:
+		VIEWCLASS.objects["Rotate"].localOrientation = VIEWCLASS.pitch
 
-def updateCamera(plr, parent, dist=None, slow=0, orbit=True, load=False):
-	if plr != None and plr.gravity.length >= 0.1:
+def loadCamera():
+	VIEWCLASS.doLoad()
+
+def updateCamera(plr, parent, dist=None, slow=0, orbit=True):
+	if plr.gravity.length >= 0.1:
 		up = -plr.gravity.normalized()
 	else:
 		up = None
 
 	VIEWCLASS.doCameraFollow(parent, slow, orbit, up)
 
-	if dist != None and plr != None:
-		VIEWCLASS.doCameraCollision(plr, dist)
-	if load == True:
-		VIEWCLASS.doLoad()
+	VIEWCLASS.doCameraCollision(plr, dist)
 
 def setState(state):
 	VIEWCLASS.stateSwitch(state)
@@ -112,6 +120,7 @@ class CoreViewport(base.CoreObject):
 
 		self.control = None
 		self.parent = None
+		self.children = []
 
 		self.position = self.createVector()
 		self.offset = self.createVector()
@@ -133,8 +142,25 @@ class CoreViewport(base.CoreObject):
 		return {}
 
 	def doLoad(self):
+		self.objects["Rotate"].localPosition = self.offset
+		self.objects["Rotate"].localOrientation = self.pitch
+
 		if self.camdata == None or self.parent == None:
 			return
+
+		tpos = self.parent.worldPosition.copy()
+		lpos = self.parent.worldOrientation*self.position
+
+		vertex = self.objects["VertRef"]
+
+		vertex.worldPosition = tpos+lpos
+
+		if self.camdata["Orbit"] == True or self.camdata["Slow"] == 0:
+			if vertex.parent == None or vertex.parent != self.parent:
+				vertex.setParent(self.parent)
+		else:
+			if vertex.parent != None:
+				vertex.removeParent()
 
 		camzr = self.parent.worldOrientation*self.createMatrix(rot=self.camdata["ZR"], deg=False)
 		self.objects["Root"].worldOrientation = camzr
@@ -146,19 +172,16 @@ class CoreViewport(base.CoreObject):
 			return
 
 		camzr = self.parent.worldOrientation.inverted()*self.objects["Root"].worldOrientation
-		self.camdata["ZR"] = list(camzr.to_euler())
 		camxr = self.objects["Rotate"].localOrientation.to_euler()
+
+		self.camdata["ZR"] = list(camzr.to_euler())
 		self.camdata["XR"] = list(camxr)[0]
 
-	def setCameraEye(self, pos=None, ori=None, set=False):
+	def setCameraEye(self, pos=None, ori=None):
 		if pos != None:
 			self.offset = self.createVector(vec=pos)
-			if set == True:
-				self.objects["Rotate"].localPosition = self.offset
 		if ori != None:
 			self.pitch = self.createMatrix(rot=(ori,0,0))
-			if set == True:
-				self.objects["Rotate"].localOrientation = self.pitch
 
 	def setCameraClip(self, clip=None):
 		if clip == None:
@@ -421,10 +444,9 @@ class CoreViewport(base.CoreObject):
 		if up == None:
 			if self.control != None and self.control.gravity.length >= 0.1:
 				up = -self.control.gravity.normalized()
-			else:
-				#up = (0,0,1)
-				#up = parent.getAxisVect((0,0,1))
-				up = None
+			#else:
+			#	up = (0,0,1)
+			#	up = parent.getAxisVect((0,0,1))
 
 		tpos = parent.worldPosition.copy()
 		vpos = vertex.worldPosition.copy()
@@ -484,7 +506,6 @@ class CoreViewport(base.CoreObject):
 		rotate.localOrientation = slowQ.to_matrix()
 
 	def doCameraCollision(self, plr, dist=None):
-		owner = plr.objects["Root"]
 
 		camera = self.objects["Camera"]
 		rotate = self.objects["Rotate"]
@@ -499,22 +520,24 @@ class CoreViewport(base.CoreObject):
 		camLY = -dist
 		camLZ = dist*height
 
-		ray = dist+margin
-		rayto = self.createVector(vec=(0, -ray, ray*height))
-		rayto = self.getWorldSpace(rotate, rayto)
+		obj = plr.objects["Root"]
+		if obj != None:
+			ray = dist+margin
+			rayto = self.createVector(vec=(0, -ray, ray*height))
+			rayto = self.getWorldSpace(rotate, rayto)
 
-		hyp = ray**2 + (ray*height)**2
+			hyp = ray**2 + (ray*height)**2
 
-		rayOBJ, rayPNT, rayNRM = owner.rayCast(rayto, rotate, hyp**0.5, "CAMERA", 1, 1, 0)
+			rayOBJ, rayPNT, rayNRM = obj.rayCast(rayto, rotate, hyp**0.5, "CAMERA", 1, 1, 0)
 
-		if rayOBJ:
-			local = self.getLocalSpace(rotate, rayPNT)
+			if rayOBJ:
+				local = self.getLocalSpace(rotate, rayPNT)
 
-			margin = margin*((local.length)/ray)
+				margin = margin*((local.length)/ray)
 
-			camLX = 0
-			camLY = local[1]+margin
-			camLZ = local[2]-(margin*height)
+				camLX = 0
+				camLY = local[1]+margin
+				camLZ = local[2]-(margin*height)
 
 		if camLY > 0:
 			camLY = 0

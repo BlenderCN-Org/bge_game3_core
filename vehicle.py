@@ -1,21 +1,22 @@
 ####
-# bge_game-3.0_template: Full python game structure for the Blender Game Engine
-# Copyright (C) 2018  DaedalusMDW @github.com (Daedalus_MDW @blenderartists.org)
+# bge_game3_core: Full python game structure for the Blender Game Engine
+# Copyright (C) 2019  DaedalusMDW @github.com (Daedalus_MDW @blenderartists.org)
+# https://github.com/DaedalusMDW/bge_game3_core
 #
-# This file is part of bge_game-3.0_template.
+# This file is part of bge_game3_core.
 #
-#    bge_game-3.0_template is free software: you can redistribute it and/or modify
+#    bge_game3_core is free software: you can redistribute it and/or modify
 #    it under the terms of the GNU General Public License as published by
 #    the Free Software Foundation, either version 3 of the License, or
 #    (at your option) any later version.
 #
-#    bge_game-3.0_template is distributed in the hope that it will be useful,
+#    bge_game3_core is distributed in the hope that it will be useful,
 #    but WITHOUT ANY WARRANTY; without even the implied warranty of
 #    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 #    GNU General Public License for more details.
 #
 #    You should have received a copy of the GNU General Public License
-#    along with bge_game-3.0_template.  If not, see <http://www.gnu.org/licenses/>.
+#    along with bge_game3_core.  If not, see <http://www.gnu.org/licenses/>.
 #
 ####
 
@@ -34,17 +35,17 @@ class CoreVehicle(base.CoreAdvanced):
 	MOUSE_CENTER = True
 	MOUSE_SCALE = [0,0]
 
-	WH_OBJECT = "Empty"  # wheel contsraint object
-	WH_MESH = None            # Visual wheel object
-	WH_RADIUS = 0.2           # Wheel radius
+	WH_OBJECT = "Empty"   # wheel contsraint object
+	WH_MESH = None        # Visual wheel object
+	WH_RADIUS = 0.2       # Wheel radius
 	WH_COLOR = None
 
-	WH_FRONT = 1      # Forward axle offset
-	WH_REAR = -1      # Backward axle offset
-	WH_WIDTH = 1      # Axle width
-	WH_HEIGHT = 0.25  # Axle Z offset
+	WH_FRONT = 1        # Forward axle offset
+	WH_REAR = -1        # Backward axle offset
+	WH_WIDTH = 1        # Axle width
+	WH_HEIGHT = 0.25    # Axle Z offset
 
-	VEH_LENGTH = 0.25  # Suspension length
+	VEH_LENGTH = 0.25   # Suspension length
 
 	VEH_ROLL = 0.1
 	VEH_SPRING = 50
@@ -64,15 +65,16 @@ class CoreVehicle(base.CoreAdvanced):
 		owner = logic.getCurrentController().owner
 
 		owner["Class"] = self
-
+		owner["DICT"] = owner.get("DICT", {"Object":owner.name, "Data":None})
 		owner["RAYNAME"] = self.NAME
 
 		self.objects = {"Root":owner}
 
 		self.defaultStates()
 
-		self.driving_player = owner.get("RAYCAST", None)
 		self.driving_seat = None
+		self.players_loaded = None
+		self.player_seats = {".":None}
 
 		self.vehicle_constraint = None
 		self.wheel_id = []
@@ -88,7 +90,8 @@ class CoreVehicle(base.CoreAdvanced):
 		self.data["HEALTH"] = 100
 		self.data["ENERGY"] = 100
 		self.data["HUD"] = {"Text":"", "Color":(0,0,0,0.5), "Target":None}
-		self.data["PORTAL"] = False
+		self.data["PLAYERSEATS"] = {".":None}
+		self.data["ACTIVE_SEAT"] = self.driving_seat
 		self.data["LINVEL"] = (0,0,0)
 		self.data["ANGVEL"] = (0,0,0)
 
@@ -115,43 +118,17 @@ class CoreVehicle(base.CoreAdvanced):
 	def doPortal(self):
 		owner = self.objects["Root"]
 
-		if self.data["PORTAL"] == True:
-			door = base.DATA["Portal"]["Door"]
-			zone = base.DATA["Portal"]["Zone"]
-			portal = owner.scene.objects.get(str(door), None)
+		owner.localLinearVelocity = self.data["LINVEL"]
+		owner.localAngularVelocity = self.data["ANGVEL"]
 
-			if portal != None:
-				pos = portal.worldPosition.copy()
-				ori = portal.worldOrientation.copy()
+		self.driving_seat = self.data["ACTIVE_SEAT"]
 
-				if zone != None:
-					pos = self.createVector(vec=zone[0])
-					pos = portal.worldPosition+(portal.worldOrientation*pos)
-
-					ori = ori*self.createMatrix(mat=zone[1])
-
-				owner.worldPosition = pos
-				owner.worldOrientation = ori
-
-			elif "POS" in base.LEVEL["PLAYER"]:
-				owner.worldPosition = base.LEVEL["PLAYER"]["POS"]
-				owner.worldOrientation = base.LEVEL["PLAYER"]["ORI"]
-
-			else:
-				base.LEVEL["PLAYER"]["POS"] = self.vecTuple(owner.worldPosition)
-				base.LEVEL["PLAYER"]["ORI"] = self.matTuple(owner.worldOrientation)
-
-			owner.localLinearVelocity = self.data["LINVEL"]
-			owner.localAngularVelocity = self.data["ANGVEL"]
-
-			base.DATA["Portal"]["Door"] = None
-			base.DATA["Portal"]["Zone"] = None
-			base.DATA["Portal"]["Vehicle"] = None
-
-			self.driving_seat = self.data["ACTIVE_SEAT"]
-
-			self.ST_Active_Set()
-			viewport.updateCamera(self, owner, load=True)
+		for seat in self.data["PLAYERSEATS"]:
+			dict = self.data["PLAYERSEATS"][seat]
+			if dict != None:
+				self.player_seats[seat] = owner.scene.addObject(dict["Object"], owner, 0)
+				self.player_seats[seat]["DICT"] = dict
+				self.players_loaded = False
 
 	def doUpdate(self):
 		owner = self.objects["Root"]
@@ -161,17 +138,15 @@ class CoreVehicle(base.CoreAdvanced):
 
 		self.data["ACTIVE_SEAT"] = self.driving_seat
 
-		if self.driving_player != None:
-			self.data["PORTAL"] = True
-			base.LEVEL["PLAYER"]["POS"] = self.vecTuple(owner.worldPosition)
-			base.LEVEL["PLAYER"]["ORI"] = self.matTuple(owner.worldOrientation)
-			base.DATA["Portal"]["Vehicle"] = self.dict
+		self.saveWorldPos()
 
-		else:
-			self.saveWorldPos()
-
-			if self.UPDATE == True and self.dict not in base.LEVEL["DROP"]:
-				base.LEVEL["DROP"].append(self.dict)
+		if self.dict.get("Portal", None) == None:
+			if self.driving_seat != None:
+				if self.dict not in base.WORLD["DROP"]:
+					base.WORLD["DROP"].append(self.dict)
+			elif self.UPDATE == True:
+				if self.dict not in base.LEVEL["DROP"]:
+					base.LEVEL["DROP"].append(self.dict)
 
 	def getConstraint(self):
 		owner = self.objects["Root"]
@@ -189,6 +164,8 @@ class CoreVehicle(base.CoreAdvanced):
 
 	def findSeats(self):
 		for key in self.SEATS:
+			self.data["PLAYERSEATS"][key] = None
+			self.player_seats[key] = None
 			dict = self.SEATS[key]
 			seat = self.objects.get(key, None)
 			door = self.objects.get(dict.get("DOOR", None), None)
@@ -345,11 +322,11 @@ class CoreVehicle(base.CoreAdvanced):
 			viewport.setState("SEAT")
 			pos = self.SEATS.get(self.driving_seat, {}).get("CAMERA", [0,0,0])
 			viewport.setCameraPosition(pos)
-			self.setPlayerVisibility(False)
+			self.setPlayerVisibility(self.driving_seat, False)
 		elif state == "THIRD":
 			viewport.setState("THIRD")
 			viewport.setCameraPosition([0,0,0])
-			self.setPlayerVisibility()
+			self.setPlayerVisibility(self.driving_seat)
 
 		viewport.setEyeHeight(0)
 		viewport.setEyePitch(0)
@@ -376,19 +353,18 @@ class CoreVehicle(base.CoreAdvanced):
 			owner.localAngularVelocity = (0,0,0)
 		return True
 
-	def setPlayerVisibility(self, vis=None):
-		if self.driving_player == None or self.driving_seat == None:
-			return
+	def setPlayerVisibility(self, seat, vis=None):
+		plr = self.player_seats[seat]
 
-		char = self.driving_player.objects["Character"]
-		mesh = self.driving_player.objects.get("Mesh", None)
+		char = plr.objects["Character"]
+		mesh = plr.objects.get("Mesh", None)
 
 		char.setVisible(False, True)
 
-		if self.driving_seat == ".":
+		if seat == ".":
 			vis = False
 		elif vis == None:
-			dict = self.SEATS[self.driving_seat]
+			dict = self.SEATS[seat]
 			vis = dict.get("VISIBLE", True)
 
 		if mesh != None:
@@ -434,13 +410,55 @@ class CoreVehicle(base.CoreAdvanced):
 			else:
 				self.setCameraState("THIRD")
 
+	def attachToSeat(self, cls, key):
+		self.data["PLAYERSEATS"][key] = cls.dict
+		self.player_seats[key] = cls
+
+		self.setPlayerVisibility(key, False)
+
+		seat = self.seatobj[key]
+		door = self.doorobj[key]
+
+		cls.enterVehicle(seat)
+
+		action = "Jumping"
+		if key in self.SEATS:
+			action = self.SEATS[key].get("ACTION", action)
+		cls.doAnim(NAME=action, FRAME=(0,0), MODE="LOOP")
+
+	def removeFromSeat(self, key):
+		owner = self.objects["Root"]
+		cls = self.player_seats[key]
+
+		spawn = self.createVector(vec=(-1,0,0))
+
+		if key != ".":
+			spawn = self.createVector(vec=self.SEATS[key].get("SPAWN", spawn))
+
+		dist = spawn.length+0.5
+		spawn = self.getWorldSpace(self.objects["Root"], spawn)
+		rayfrom = self.seatobj[key].worldPosition.copy()
+
+		#rayOBJ = owner.rayCast(spawn, rayfrom, dist, "GROUND", 1, 1, 0)
+		#if rayOBJ != None:
+		#	print("door")
+		#	return False
+
+		cls.doAnim(STOP=True)
+		cls.exitVehicle(spawn)
+
+		self.data["PLAYERSEATS"][key] = None
+		self.player_seats[key] = None
+
+		return True
+
 	def checkClicked(self, OBJ=None):
 		for key in self.doorobj:
 			obj = self.doorobj[key]
 			if obj["RAYCAST"] != None:
 				if keymap.BINDS["ENTERVEH"].tap() == True or keymap.BINDS["ACTIVATE"].tap() == True:
-					self.driving_player = obj["RAYCAST"]
 					self.driving_seat = key
+					self.attachToSeat(obj["RAYCAST"], key)
 					return True
 		return False
 
@@ -449,6 +467,15 @@ class CoreVehicle(base.CoreAdvanced):
 		for key in self.doorobj:
 			obj = self.doorobj[key]
 			obj["RAYCAST"] = None
+
+	def stateSwitch(self, state):
+		HUD.SetLayout(self)
+
+		if state == "DRIVER":
+			self.active_state = self.ST_Active
+
+		elif state == "PASSIVE":
+			self.active_state = self.ST_Passive
 
 	## IDLE STATE ##
 	def ST_Idle(self):
@@ -459,24 +486,11 @@ class CoreVehicle(base.CoreAdvanced):
 
 	def ST_Idle_Set(self):
 		owner = self.objects["Root"]
-		if self.driving_seat == ".":
-			spawn = self.createVector(vec=(-1,0,0))
-		else:
-			spawn = self.createVector(vec=self.SEATS[self.driving_seat]["SPAWN"])
 
-		dist = spawn.length
-		spawn = self.getWorldSpace(owner, spawn)
+		if self.removeFromSeat(self.driving_seat) == True:
+			self.driving_seat = None
 
-		rayOBJ = owner.rayCastTo(spawn, dist+0.5, "GROUND")
-		if rayOBJ != None:
-			return
-
-		self.driving_player.doAnim(STOP=True)
-		self.driving_player.exitVehicle(spawn)
-		self.driving_player = None
-		self.driving_seat = None
-		self.active_state = self.ST_Idle
-		self.data["PORTAL"] = False
+			self.active_state = self.ST_Idle
 
 	## ACTIVE STATE ##
 	def ST_Active(self):
@@ -488,32 +502,32 @@ class CoreVehicle(base.CoreAdvanced):
 			self.ST_Idle_Set()
 
 	def ST_Active_Set(self):
-		if self.data["PORTAL"] == False:
-			if self.alignObject() == True:
-				self.driving_player = None
-				self.driving_seat = None
-				return
+		#if self.data["PORTAL"] == False:
+		#	if self.alignObject() == True:
+		#		return
 
-		plr = self.driving_player
 		key = self.driving_seat
-		seat = self.seatobj[key]
-		door = self.doorobj[key]
-
-		self.setPlayerVisibility(False)
-		plr.enterVehicle(seat)
-
-		self.assignCamera()
-
-		HUD.SetLayout(self)
 
 		if key == ".":
-			action = "Jumping"
+			state = "DRIVER"
 		else:
-			action = self.SEATS[key].get("ACTION", None)
-		plr.doAnim(NAME=action, FRAME=(0,0), MODE="LOOP")
+			state = self.SEATS[key].get("STATE", "DRIVER")
 
-		self.active_state = self.ST_Active
-		self.data["PORTAL"] = True
+		self.stateSwitch(state)
+		self.assignCamera()
+
+	## PASSIVE STATE ##
+	def ST_Passive(self):
+		owner = self.objects["Root"]
+
+		if keymap.BINDS["TOGGLECAM"].tap() == True:
+			if self.data["CAMERA"]["State"] == "THIRD":
+				self.setCameraState("SEAT")
+			else:
+				self.setCameraState("THIRD")
+
+		if keymap.BINDS["ENTERVEH"].tap() == True:
+			self.ST_Idle_Set()
 
 	## RUN ##
 	def PR_SuspensionRig(self):
@@ -531,12 +545,35 @@ class CoreVehicle(base.CoreAdvanced):
 				offset = ch.bone.arm_head
 				ch.location = lp-offset
 
+	def ST_Portal_Wait(self):
+		for seat in self.player_seats:
+			obj = self.player_seats[seat]
+			if obj != None:
+				if self.players_loaded == True:
+					self.attachToSeat(obj, seat)
+				elif obj.get("Class", None) != None:
+					self.player_seats[seat] = obj["Class"]
+				else:
+					return
+
+		if self.players_loaded == False:
+			self.players_loaded = True
+			return
+
+		self.assignCamera()
+		viewport.loadCamera()
+		HUD.SetLayout(self)
+		self.players_loaded = None
+
 	def RUN(self):
+		if self.players_loaded != None:
+			self.ST_Portal_Wait()
+			return
 		self.runPre()
 		self.runStates()
 		self.runPost()
 		self.clearRayProps()
-		if self.driving_player != None:
+		if self.driving_seat != None:
 			self.checkStability(True, offset=2.0)
 
 
@@ -840,7 +877,7 @@ class CoreAircraft(CoreVehicle):
 			if self.data["LANDFRAME"] != abs(end-start):
 				self.data["LANDFRAME"] += 1
 
-		if self.driving_player == None:
+		if self.driving_seat == None:
 			return
 
 		owner = self.objects["Root"]
