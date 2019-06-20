@@ -190,6 +190,8 @@ class CoreAttachment(base.CoreObject):
 		if cls.cls_dict.get(slot, None) == self:
 			del cls.cls_dict[slot]
 
+		self.gravity = cls.gravity.copy()
+
 	def attachToSocket(self, obj=None, socket=None):
 		if socket == None:
 			return
@@ -245,18 +247,16 @@ class CoreAttachment(base.CoreObject):
 				self.stateSwitch(True, run=True, force=True)
 			else:
 				self.data["ENABLE"] = False
+
 		elif self.data["ENABLE"] == True and load == False:
 			self.stateSwitch(True, run=True, force=True)
 
 	def dropItem(self, pos=None, load=False):
-		cls = self.owning_player
 		owner = self.objects["Root"]
 
 		if load == False:
 			self.dict["Equiped"] = "DROP"
 			self.ST_Stop()
-
-			self.gravity = cls.gravity.copy()
 
 		self.buildBox()
 
@@ -337,19 +337,24 @@ class CoreAttachment(base.CoreObject):
 			state = False
 
 		if force == False:
-			if self.box != None or self.data["COOLDOWN"] != 0 or self.data["ENABLE"] == state:
+			if self.data["COOLDOWN"] != 0:
 				return False
+			if self.data["ENABLE"] == state:
+				return True
 
-		if state == True:
-			self.active_state = self.ST_Enable
-		else:
-			self.active_state = self.ST_Stop
 		self.data["ENABLE"] = state
 
-		if run == True:
-			self.active_state()
+		if self.box != None:
+			return False
 
-		return True
+		if state == True:
+			newstate = self.ST_Enable
+		else:
+			newstate = self.ST_Stop
+
+		self.active_state = newstate
+
+		return False
 
 	def PR_Modifiers(self):
 		if self.owning_player == None:
@@ -368,8 +373,6 @@ class CoreAttachment(base.CoreObject):
 		if self.checkClicked(self.box) == True:
 			self.equipItem(self.box["RAYCAST"])
 
-		#self.clearRayProps()
-
 	## STATE TRIGGER ##
 	def ST_Enable(self):
 		self.active_state = self.ST_Active
@@ -385,12 +388,6 @@ class CoreAttachment(base.CoreObject):
 		pass
 
 	def RUN(self):
-		#if self.owning_player != None and self.box == None:
-		#	if self.owning_player.objects["Root"] == None:
-		#		return
-		#if self.box != None:
-		#	self.ST_Box()
-		#	return
 		self.runPre()
 		self.runStates()
 		self.runPost()

@@ -840,7 +840,10 @@ class CoreAdvanced(CoreObject):
 					weap["CURRENT"] = "MELEE"
 
 		else:
+			self.active_weapon = None
 			weap["CURRENT"] = "NONE"
+			weap["ACTIVE"] = "NONE"
+			weap["TIMER"] = 0
 			return
 
 		dict = weap["WHEEL"][weap["CURRENT"]]
@@ -853,42 +856,39 @@ class CoreAdvanced(CoreObject):
 			if len(dict["LIST"]) >= 1:
 				dict["ID"] = 0
 			else:
+				self.active_weapon = None
+				weap["ACTIVE"] = "NONE"
+				weap["TIMER"] = 0
 				return
 
-		elif keymap.BINDS["WP_UP"].tap() == True and weap["ACTIVE"] != "SWITCH":
+		elif keymap.BINDS["WP_UP"].tap() == True: #and weap["ACTIVE"] != "SWITCH":
 			dict["ID"] += 1
 			weap["TIMER"] = 0
 			if dict["ID"] == len(dict["LIST"]):
 				dict["ID"] = 0
 
-		elif keymap.BINDS["WP_DOWN"].tap() == True and weap["ACTIVE"] != "SWITCH":
+		elif keymap.BINDS["WP_DOWN"].tap() == True: #and weap["ACTIVE"] != "SWITCH":
 			dict["ID"] -= 1
 			weap["TIMER"] = 0
 			if dict["ID"] == -1:
 				dict["ID"] = len(dict["LIST"])-1
 
+		slot = dict["LIST"][dict["ID"]]
+
 		## STATE MANAGER ##
 		if weap["ACTIVE"] == "ACTIVE":
 			if self.active_weapon != None:
-
-				slot = dict["LIST"][dict["ID"]]
-
 				if self.active_weapon != self.cls_dict[slot]:
 					if weap["TIMER"] == 10:
-						check = self.active_weapon.stateSwitch(False)
-						if check == True:
-							weap["TIMER"] = 0
-							weap["ACTIVE"] = "SWITCH"
-
+						weap["TIMER"] = 0
+						weap["ACTIVE"] = "SWITCH"
 					else:
 						weap["TIMER"] += 1
 
 				## STATE PASSIVE ##
 				if keymap.BINDS["SHEATH"].tap() == True:
-					check = self.active_weapon.stateSwitch(False)
-					if check == True:
-						weap["TIMER"] = 0
-						weap["ACTIVE"] = "NONE"
+					weap["TIMER"] = 0
+					weap["ACTIVE"] = "NONE"
 
 			else:
 				weap["TIMER"] = 0
@@ -896,10 +896,14 @@ class CoreAdvanced(CoreObject):
 
 		elif weap["ACTIVE"] == "SWITCH":
 			if self.active_weapon == None:
-
-				slot = dict["LIST"][dict["ID"]]
 				self.active_weapon = self.cls_dict[slot]
 
+			if self.active_weapon != self.cls_dict[slot]:
+				check = self.active_weapon.stateSwitch(False)
+				if check == True:
+					self.active_weapon = self.cls_dict[slot]
+
+			else:
 				check = self.active_weapon.stateSwitch(True)
 
 				if check == True:
@@ -907,28 +911,18 @@ class CoreAdvanced(CoreObject):
 					weap["ACTIVE"] = "ACTIVE"
 
 		elif weap["ACTIVE"] == "NONE":
-			if self.active_weapon == None:
+			if self.active_weapon != None:
+				check = self.active_weapon.stateSwitch(False)
+				if check == True:
+					self.active_weapon = None
 
+			else:
 				## STATE ACTIVE ##
 				if keymap.BINDS["SHEATH"].tap() == True:
 					weap["TIMER"] = 0
 					weap["ACTIVE"] = "SWITCH"
 
-			else:
-				weap["TIMER"] = 0
-				self.active_weapon.stateSwitch(False)
 
-
-		#char = self.objects.get("Character", None)
-		#if char == None:
-		#	return
-
-		#char["WP_ACTIVE"] = str(weap["ACTIVE"])
-		#char["WP_TIMER"] = str(weap["TIMER"])
-		#if self.active_weapon != None:
-		#	char["WP_CLASS"] = self.active_weapon.NAME+str(dict["ID"])
-		#else:
-		#	char["WP_CLASS"] = "None"+str(dict["ID"])
 
 
 
