@@ -318,7 +318,7 @@ class CoreVehicle(base.CoreAdvanced):
 		else:
 			self.data["CAMERA"]["State"] = state
 
-		if state == "SEAT":
+		if state in ["SEAT", "FIRST"]:
 			viewport.setState("SEAT")
 			pos = self.SEATS.get(self.driving_seat, {}).get("CAMERA", [0,0,0])
 			viewport.setCameraPosition(pos)

@@ -471,7 +471,6 @@ class CoreObject:
 		if self.dict["Data"] == None:
 			self.dict["Data"] = self.data
 			self.data["ACTIVE_STATE"] = self.active_state.__name__
-			#self.saveWorldPos()
 		else:
 			self.data = self.dict["Data"]
 			self.active_state = getattr(self, self.data["ACTIVE_STATE"])
@@ -653,7 +652,8 @@ class CoreObject:
 		return False
 
 	def clearRayProps(self):
-		self.objects["Root"]["RAYCAST"] = None
+		if "RAYCAST" in self.objects["Root"]:
+			self.objects["Root"]["RAYCAST"] = None
 
 	## INIT STATE ##
 	def ST_Startup(self):

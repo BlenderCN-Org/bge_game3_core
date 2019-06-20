@@ -253,6 +253,8 @@ class CoreViewport(base.CoreObject):
 		if state == None:
 			state = self.camdata["State"]
 
+		self.camdata["State"] = state
+
 		if state == "THIRD":
 			self.active_state = self.ST_Third
 			steps = (plr.CAM_RANGE[1]-plr.CAM_RANGE[0])/plr.CAM_STEPS
