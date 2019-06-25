@@ -105,10 +105,11 @@ class CoreVehicle(base.CoreAdvanced):
 		self.findSeats()
 		self.doLoad()
 		self.createVehicle()
-		self.ST_Startup()
-		self.doPortal()
 
 		self.loadInventory(owner)
+
+		self.ST_Startup()
+		self.doPortal()
 
 	def defaultStates(self):
 		self.active_pre = [self.PR_SuspensionRig]
