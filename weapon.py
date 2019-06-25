@@ -52,6 +52,9 @@ class CoreWeapon(attachment.CoreAttachment):
 
 		cls.data["INVSLOT"][slot] = self.dict
 
+		if self.TYPE not in cls.data["WPDATA"]["WHEEL"]:
+			cls.data["WPDATA"]["WHEEL"][self.TYPE] = {"ID":-1, "LIST":[]}
+
 		if slot not in cls.data["WPDATA"]["WHEEL"][self.TYPE]["LIST"]:
 			cls.data["WPDATA"]["WHEEL"][self.TYPE]["LIST"].append(slot)
 
@@ -91,7 +94,7 @@ class CoreWeapon(attachment.CoreAttachment):
 
 		plr = self.owning_player
 		if plr != None and "SKT" in plr.objects and self.data.get("HAND", None) != None:
-			sock = plr.objects["SKT"][ self.data["HAND"] ]
+			sock = plr.objects["SKT"][ plr.HAND[self.HAND] ]
 
 		if mesh.parent != sock:
 			self.attachToSocket(mesh, sock)
@@ -121,8 +124,7 @@ class CoreWeapon(attachment.CoreAttachment):
 	## STATE TRANSITION ##
 	def ST_Enable(self):
 		if self.data["COOLDOWN"] >= self.WAIT*0.5:
-			plr = self.owning_player
-			self.data["HAND"] = plr.HAND[self.HAND]
+			self.data["HAND"] = True
 
 		self.data["COOLDOWN"] += 1
 		self.doPlayerAnim(self.data["COOLDOWN"])

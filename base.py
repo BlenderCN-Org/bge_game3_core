@@ -491,7 +491,7 @@ class CoreObject:
 		self.saveWorldPos()
 
 		global LEVEL
-		if self.dict not in LEVEL["DROP"]:
+		if self.dict not in LEVEL["DROP"] and self.UPDATE == True:
 			LEVEL["DROP"].append(self.dict)
 
 	def getLocalSpace(self, obj, pnt):
@@ -768,8 +768,8 @@ class CoreAdvanced(CoreObject):
 			obj["DICT"] = dict
 			obj["RAYCAST"] = self
 
-		if self.data["WPDATA"]["ACTIVE"] == "ACTIVE":
-			type = self.data["WPDATA"]["CURRENT"]
+		#if self.data["WPDATA"]["ACTIVE"] == "ACTIVE":
+		#	type = self.data["WPDATA"]["CURRENT"]
 
 		#char = self.objects.get("Character", None)
 		#if char == None:
@@ -788,8 +788,7 @@ class CoreAdvanced(CoreObject):
 
 		self.data["WPDATA"] = {"ACTIVE":"NONE", "CURRENT":"NONE", "TIMER":0, "WHEEL":{}}
 
-		for mode in ["MELEE", "RANGED"]:
-			self.data["WPDATA"]["WHEEL"][mode] = {"ID":-1, "LIST":[]}
+		self.data["WPDATA"]["WHEEL"][self.WP_TYPE] = {"ID":-1, "LIST":[]}
 
 		defaults = self.SLOTS
 		self.data["SLOTS"] = {}
@@ -842,8 +841,6 @@ class CoreAdvanced(CoreObject):
 		else:
 			self.active_weapon = None
 			weap["CURRENT"] = "NONE"
-			weap["ACTIVE"] = "NONE"
-			weap["TIMER"] = 0
 			return
 
 		dict = weap["WHEEL"][weap["CURRENT"]]
@@ -891,8 +888,9 @@ class CoreAdvanced(CoreObject):
 					weap["ACTIVE"] = "NONE"
 
 			else:
-				weap["TIMER"] = 0
-				weap["ACTIVE"] = "NONE"
+				self.active_weapon = self.cls_dict[slot]
+				#weap["TIMER"] = 0
+				#weap["ACTIVE"] = "SWITCH"
 
 		elif weap["ACTIVE"] == "SWITCH":
 			if self.active_weapon == None:
