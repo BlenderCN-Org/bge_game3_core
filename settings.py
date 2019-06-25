@@ -224,10 +224,10 @@ def applyGraphics():
 
 	## VSYNC ##
 	if graphics["Vsync"] == True:
-		#render.setVsync(render.VSYNC_ON)
+		render.setVsync(render.VSYNC_ON)
 		print("\tVsync ON")
 	elif graphics["Vsync"] == False:
-		#render.setVsync(render.VSYNC_OFF)
+		render.setVsync(render.VSYNC_OFF)
 		print("\tVsync OFF")
 
 	## SHADERS ##
