@@ -55,6 +55,14 @@ def MAIN(cont):
 		#	print("FATAL RUNTIME ERROR:", cls.__class__)
 		#	print("\t", ex)
 
+	for cls in logic.PLAYERLIST:
+		#try:
+		cls.RUN()
+		#except Exception as ex:
+		#	logic.UPDATELIST.remove(cls)
+		#	print("FATAL RUNTIME ERROR:", cls.__class__)
+		#	print("\t", ex)
+
 	if logic.VIEWPORT != None:
 		try:
 			logic.VIEWPORT.RUN()

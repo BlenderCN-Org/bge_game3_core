@@ -84,7 +84,7 @@ from bge import logic
 
 logic.UPDATELIST = []
 logic.PLAYERLIST = []
-logic.PLAYERCLASS = None
+logic.PLAYERLIST = []
 logic.HUDCLASS = None
 logic.VIEWPORT = None
 

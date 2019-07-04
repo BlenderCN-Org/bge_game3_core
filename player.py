@@ -231,8 +231,8 @@ class CorePlayer(base.CoreAdvanced):
 			base.LEVEL["SPAWN"].append(self.dict["Add"])
 			del self.dict["Add"]
 
-		if self not in logic.UPDATELIST:
-			logic.UPDATELIST.append(self)
+		if self not in logic.PLAYERLIST:
+			logic.PLAYERLIST.append(self)
 
 	def doUpdate(self):
 		self.data["JP_STATE"] = self.jump_state
