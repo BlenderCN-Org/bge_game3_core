@@ -119,13 +119,13 @@ def GAME(cont):
 	if WORLD.get("NEWLEVEL", None) != None:
 		CURRENT["Level"] = WORLD["NEWLEVEL"]
 
-	#WORLD["NEWLEVEL"] = None
-	#WORLD["NEWSCENE"] = None
-
 	if CURRENT["Level"] == None and owner.get("MAP", None) != None:
 		CURRENT["Level"] = owner["MAP"]+".blend"
 
 	newmap = str(CURRENT["Level"])+scene.name
+
+	WORLD["NEWLEVEL"] = CURRENT["Level"]
+	WORLD["NEWSCENE"] = CURRENT["Scene"]
 
 	if newmap not in PROFILE["LVLData"]:
 		print("Initializing Level Data...", newmap)
@@ -160,12 +160,12 @@ def GAME(cont):
 
 	if len(owner["LIBLIST"]) > 0:
 		libblend = owner["LIBLIST"].pop(0)
-		if config.LIBLOAD_TYPE != "ASYNC":
-			logic.LibLoad(libblend, "Scene", load_actions=True, verbose=False, load_scripts=True)
-			print(libblend)
-		elif config.LIBLOAD_TYPE == "ASYNC":
-			ACTIVE_LIBLOAD = logic.LibLoad(libblend, "Scene", load_actions=True, verbose=False, load_scripts=True, async=True)
-			ACTIVE_LIBLOAD.onFinish = LIBCB
+		#if config.LIBLOAD_TYPE != "ASYNC":
+		logic.LibLoad(libblend, "Scene", load_actions=True, verbose=False, load_scripts=True)
+		print(libblend)
+		#elif config.LIBLOAD_TYPE == "ASYNC":
+		#	ACTIVE_LIBLOAD = logic.LibLoad(libblend, "Scene", load_actions=True, verbose=False, load_scripts=True, async=True)
+		#	ACTIVE_LIBLOAD.onFinish = LIBCB
 
 		GAME_STATE = "LIBLOAD"
 		return "LIBLOAD"

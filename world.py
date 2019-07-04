@@ -21,7 +21,7 @@
 
 from bge import logic
 
-from game3 import base, keymap, config
+from game3 import base, keymap, config, settings
 
 
 def sendObjects(door, send, zone=None):
@@ -104,7 +104,7 @@ def openBlend(map, scn=None):
 	print("OPEN MAP:\n\t"+blend)
 
 	if config.UPBGE_FIX == True:
-		SaveJSON(gd["DATA"]["GAMEPATH"]+"gd_dump", gd, "\t")
+		settings.SaveJSON(gd["DATA"]["GAMEPATH"]+"gd_dump", gd, "\t")
 	logic.startGame(gd["DATA"]["GAMEPATH"]+blend)
 	base.GAME_STATE = "BLEND"
 
