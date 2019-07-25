@@ -32,7 +32,7 @@ from . import config
 
 
 ## Mouse ##
-events.MOUSEMOVE = {"Old":(0.5,0.5), "Move":(0,0), "Position":(0.5,0.5)}
+events.MOUSEMOVE = {"Old":(0,0), "Move":(0,0), "Position":(0,0)}
 MS_CENTER = False
 WIN_DIM = (render.getWindowWidth(), render.getWindowHeight())
 
@@ -440,10 +440,10 @@ class MouseLook:
 		RAW_X, RAW_Y = events.MOUSEMOVE["Move"]
 
 		if ui == True:
-			return (RAW_X, RAW_Y)
+			return (RAW_X/WIN_DIM[0], RAW_Y/WIN_DIM[1])
 
-		X = RAW_X*(self.input/-5)
-		Y = RAW_Y*(self.input/5)*self.ratio
+		X = RAW_X*(self.input/10)/-1000
+		Y = RAW_Y*(self.input/10)/1000
 
 		if look != None:
 			X += look[0]*self.ts_rate
@@ -502,24 +502,31 @@ class NumPad:
 def GAMEPADDER():
 	global MS_CENTER, WIN_DIM, JOY_CALIBRATE, JOY_HATSDIR
 
-	NEW_X, NEW_Y = logic.mouse.position
+	POS_X, POS_Y = logic.mouse.position
 	OLD_X, OLD_Y = events.MOUSEMOVE["Old"]
 
-	if getattr(config, "MOUSE_FIX", False) == True:
-		NEW_X = (NEW_X*WIN_DIM[0])/(WIN_DIM[0]-1)
-		NEW_Y = (NEW_Y*WIN_DIM[1])/(WIN_DIM[1]-1)
+	POS_X = round( (POS_X*WIN_DIM[0]) )
+	POS_Y = round( (POS_Y*WIN_DIM[1]) )
+	CNT_X = round( (WIN_DIM[0]/2) )
+	CNT_Y = round( (WIN_DIM[1]/2) )
+	NEW_X = POS_X-CNT_X
+	NEW_Y = CNT_Y-POS_Y
 
-	events.MOUSEMOVE["Move"] = (NEW_X-OLD_X, OLD_Y-NEW_Y)
+	events.MOUSEMOVE["Move"] = (NEW_X-OLD_X, NEW_Y-OLD_Y)
 	events.MOUSEMOVE["Old"] = (NEW_X, NEW_Y)
 
-	events.MOUSEMOVE["Position"] = (NEW_X-0.5, 0.5-NEW_Y)
+	#if getattr(config, "MOUSE_FIX", False) == True:
+	#	POS_X -= 1 #(NEW_X*WIN_DIM[0])/(WIN_DIM[0]-1)
+	#	POS_Y -= 1 #(NEW_Y*WIN_DIM[1])/(WIN_DIM[1]-1)
+
+	events.MOUSEMOVE["Position"] = (POS_X, POS_Y)
 
 	if MS_CENTER == True:
-		xlm = int(WIN_DIM[0]*0.25)/WIN_DIM[0]
-		ylm = int(WIN_DIM[1]*0.25)/WIN_DIM[1]
-		if abs(NEW_X-0.5) > xlm or abs(NEW_Y-0.5) > ylm:
+		xlm = round(WIN_DIM[0]/4)
+		ylm = round(WIN_DIM[1]/4)
+		if abs(NEW_X) > xlm or abs(NEW_Y) > ylm:
 			logic.mouse.position = (0.5, 0.5)
-			events.MOUSEMOVE["Old"] = (0.5, 0.5)
+			events.MOUSEMOVE["Old"] = (0, 0)
 	MS_CENTER = False
 
 	for JOYID in events.JOYBUTTONS:

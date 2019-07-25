@@ -47,7 +47,7 @@ def START(cont):
 	logic.LibLoad(libblend, "Scene", load_actions=True, verbose=False, load_scripts=True)
 
 	logic.HUDCLASS = SceneManager()
-	logic.HUDCLASS.doBlackOut(True, que=True)
+	#logic.HUDCLASS.doBlackOut(True, que=True)
 
 
 def RUN(cont):
@@ -869,8 +869,8 @@ class MenuPause:
 		click = None
 
 		X, Y = keymap.MOUSELOOK.axis(ui=True)
-		X = X*64
-		Y = Y*36
+		X *= 64
+		Y *= 36
 
 		for JOYID in keymap.events.JOYBUTTONS:
 			AXREF = keymap.events.JOYBUTTONS[JOYID]["Axis"]
