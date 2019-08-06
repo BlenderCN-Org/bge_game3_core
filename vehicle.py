@@ -172,11 +172,11 @@ class CoreVehicle(base.CoreAdvanced):
 			door = self.objects.get(dict.get("DOOR", None), None)
 			if seat != None:
 				self.seatobj[key] = seat
-			if door != None:
-				name = dict.get("NAME", key)
-				door["RAYNAME"] = self.NAME+": "+name
-				door["RAYCAST"] = door.get("RAYCAST", None)
-				self.doorobj[key] = door
+				if door != None:
+					name = dict.get("NAME", key)
+					door["RAYNAME"] = self.NAME+": "+name
+					door["RAYCAST"] = door.get("RAYCAST", None)
+					self.doorobj[key] = door
 
 		owner = self.objects["Root"]
 		if len(self.seatobj) == 0 or len(self.doorobj) == 0:
