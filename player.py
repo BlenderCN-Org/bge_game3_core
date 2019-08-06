@@ -300,7 +300,6 @@ class CorePlayer(base.CoreAdvanced):
 		viewport.setCamera(self)
 		viewport.setParent(self.objects["Root"])
 		self.setCameraState(None)
-		print("CAMERA")
 
 	def switchPlayerActive(self, ID=None):
 		keymap.MOUSELOOK.center()

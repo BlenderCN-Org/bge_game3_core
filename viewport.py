@@ -220,6 +220,7 @@ class CoreViewport(base.CoreObject):
 				"State": plr.CAM_TYPE,
 				"Orbit": (plr.CAM_ORBIT>=1),
 				"Zoom": plr.CAM_ZOOM,
+				"Distance": None,
 				"FOV": plr.CAM_FOV,
 				"Slow": plr.CAM_SLOW,
 				"POS": [0,0,0],
@@ -292,15 +293,20 @@ class CoreViewport(base.CoreObject):
 
 	def ST_Third(self, plr):
 		## SET ZOOM ##
-		steps = (plr.CAM_RANGE[1]-plr.CAM_RANGE[0])/plr.CAM_STEPS
-		dist = (steps*self.camdata["Zoom"])+plr.CAM_RANGE[0]
+		if self.camdata["Distance"] == None:
+			if keymap.BINDS["ZOOM_IN"].tap() == True and self.camdata["Zoom"] > 0:
+				self.camdata["Zoom"] -= 1
+
+			elif keymap.BINDS["ZOOM_OUT"].tap() == True and self.camdata["Zoom"] < plr.CAM_STEPS:
+				self.camdata["Zoom"] += 1
+
+			steps = (plr.CAM_RANGE[1]-plr.CAM_RANGE[0])/plr.CAM_STEPS
+			dist = (steps*self.camdata["Zoom"])+plr.CAM_RANGE[0]
+
+		else:
+			dist = self.camdata["Distance"]
+
 		self.dist += (dist-self.dist)*0.1
-
-		if keymap.BINDS["ZOOM_IN"].tap() == True and self.camdata["Zoom"] > 0:
-			self.camdata["Zoom"] -= 1
-
-		elif keymap.BINDS["ZOOM_OUT"].tap() == True and self.camdata["Zoom"] < plr.CAM_STEPS:
-			self.camdata["Zoom"] += 1
 
 		## SET ORBIT ##
 		if self.camdata["Orbit"] == False:
@@ -347,9 +353,12 @@ class CoreViewport(base.CoreObject):
 		self.dist = 0
 
 		if self.camdata["State"] == "FIRST":
-			axis = self.parent.getAxisVect((0,0,1))
-			self.doCameraRotate(plr)
-			self.doCameraFollow(self.parent, slow=0, orbit=True, up=axis)
+			if self.camdata["Orbit"] == False:
+				self.doCameraFollow(self.parent, slow=0, orbit=False)
+			elif self.camdata["Orbit"] == True:
+				axis = self.parent.getAxisVect((0,0,1))
+				self.doCameraRotate(plr)
+				self.doCameraFollow(self.parent, slow=0, orbit=True, up=axis)
 
 		else:
 			## SET ORBIT ##
