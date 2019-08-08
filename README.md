@@ -3,15 +3,14 @@ Full python game structure for the Blender Game Engine. This is the core, link o
 
 Currently, the setup is:
 - Always (true pulse) -> Python Module `game3.base.GAME`
-- Game objects have a module that points to a class.  see "CoreAssets.blend"
+- Game objects have a module that points to a class. see "CoreAssets.blend"
 
 ## Latest Releases  
 https://github.com/DaedalusMDW/bge_game-3.0_template/releases  
 
-
-## DEMO Content  
-https://github.com/DaedalusMDW/bge_game3_demo  
-Here is a repository with gui, demo content, and examples. This is a great place to learn how to use the core.  
+## WIP Help Page
+Various tutorials and info being worked on.  
+http://upbge.wikidot.com/bge-game3-core  
 
 ## Suggestions? Comments?  
 blenderartists.org thread:  
