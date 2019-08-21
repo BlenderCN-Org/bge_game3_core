@@ -119,7 +119,6 @@ class CorePlayer(base.CoreAdvanced):
 		self.jump_state = "NONE"
 		self.jump_timer = 0
 		self.rayorder = "NONE"
-		self.crouch = 0
 		self.lastaction = [None,0]
 
 		self.resetGroundRay()
@@ -142,13 +141,13 @@ class CorePlayer(base.CoreAdvanced):
 
 		self.data["POS_LEVEL"] = None
 		self.data["PHYSICS"] = "DYNAMIC"
+		self.data["CROUCH"] = 0
 		self.data["DAMPING"] = [0, 0]
 		self.data["LINVEL"] = [0,0,0]
 
 		self.data["JP_STATE"] = self.jump_state
 		self.data["JP_TIMER"] = self.jump_timer
 		self.data["GB_STATE"] = self.rayorder
-		self.data["CROUCH"] = self.crouch
 
 		dict = self.defaultData()
 		for key in dict:
@@ -215,7 +214,6 @@ class CorePlayer(base.CoreAdvanced):
 		self.jump_state = self.data["JP_STATE"]
 		self.jump_timer = self.data["JP_TIMER"]
 		self.rayorder = self.data["GB_STATE"]
-		self.crouch = self.data["CROUCH"]
 
 		newmap = str(base.CURRENT["Level"])+str(base.CURRENT["Scene"])
 
@@ -238,7 +236,6 @@ class CorePlayer(base.CoreAdvanced):
 		self.data["JP_STATE"] = self.jump_state
 		self.data["JP_TIMER"] = self.jump_timer
 		self.data["GB_STATE"] = self.rayorder
-		self.data["CROUCH"] = self.crouch
 		self.data["ACTIVE_STATE"] = self.active_state.__name__
 
 		char = self.objects["Character"]
@@ -273,7 +270,7 @@ class CorePlayer(base.CoreAdvanced):
 		self.jump_state = "NONE"
 		self.jump_timer = 0
 		self.rayorder = "NONE"
-		self.crouch = 0
+		self.data["CROUCH"] = 0
 		self.data["LINVEL"] = [0,0,0]
 
 		if self.objects["Root"] != None:
@@ -1003,7 +1000,7 @@ class CorePlayer(base.CoreAdvanced):
 
 	def doCrouch(self, state):
 		self.jump_timer = 0
-		if state == True or self.crouch != 0:
+		if state == True or self.data["CROUCH"] != 0:
 			self.jump_state = "CROUCH"
 			self.objects["Root"].localScale[2] = self.CROUCH_SCALE
 			self.objects["Character"].localScale[2] = 1/self.CROUCH_SCALE
@@ -1120,12 +1117,28 @@ class CorePlayer(base.CoreAdvanced):
 		owner = self.objects["Root"]
 		char = self.objects["Character"]
 
+		fac = self.data["CROUCH"]*0.1
+		if self.data["CROUCH"] < 0:
+			fac = (self.data["CROUCH"]+10)*-0.1
+
+		## EYE HEIGHT ##
 		owner.localScale[2] = self.CROUCH_SCALE
 		char.localScale[2] = 1/self.CROUCH_SCALE
-		char.localPosition[2] = (self.crouch*0.1)*(1/self.CROUCH_SCALE)*self.CROUCH_H
+		char.localPosition[2] = fac*(1/self.CROUCH_SCALE)*self.CROUCH_H
 
-		cr_fac = self.GND_H-(self.crouch*0.1*self.CROUCH_H)
+		cr_fac = self.GND_H-(fac*self.CROUCH_H)
 
+		eyevec = [0, 0, (self.EYE_H-self.GND_H)]
+
+		if self.data["CAMERA"]["State"] == "SHOULDER":
+			eyevec[0] = self.CAM_SHSIDE
+			eyevec[2] -= self.CAM_MIN
+
+		eyevec[2] *= cr_fac
+
+		viewport.setEyeHeight(eye=eyevec, set=True)
+
+		## MOVEMENT ##
 		ground, angle = self.checkGround()
 
 		owner.setDamping(0, 0)
@@ -1142,13 +1155,17 @@ class CorePlayer(base.CoreAdvanced):
 			axis = owner.getAxisVect((0,0,2))
 			point = ground[1]+axis
 			dist = point-owner.worldPosition
-			chkwall = False
-			if self.checkWall(axis=axis.normalized(), simple=dist.length) != None:
-				chkwall = True
-			if keymap.BINDS["PLR_DUCK"].active() == True or self.crouch == 10:
-				chkwall = True
+
+			chkwall = True
+			if self.data["CROUCH"] == -20:
 				if keymap.BINDS["PLR_DUCK"].released() == True:
 					chkwall = False
+			elif self.data["CROUCH"] < -5:
+				chkwall = False
+
+			if self.checkWall(axis=axis.normalized(), simple=dist.length) != None:
+				chkwall = True
+
 		else:
 			chkwall = False
 
@@ -1158,38 +1175,30 @@ class CorePlayer(base.CoreAdvanced):
 			mx = 0.02
 
 		self.doMovement((move[0], move[1], 0), mx)
-
 		self.doMoveAlign()
 
 		self.doInteract(rayfrom=[0,0,(self.EYE_H-self.GND_H)*cr_fac])
 		self.checkStability()
 		self.weaponManager()
 
-		if chkwall == False:
-			self.doPlayerAnim("IDLE")
+		if chkwall == False and self.data["CROUCH"] < -5:
+			self.doPlayerAnim("IDLE", blend=10)
 
-			if self.crouch <= 0:
-				self.crouch = 0
+			if self.data["CROUCH"] == -10:
+				self.data["CROUCH"] = 0
 				self.doCrouch(False)
-			elif self.crouch > 0:
-				self.crouch -= 1
+			else:
+				self.data["CROUCH"] += 1
 
 		else:
 			self.doPlayerAnim("CROUCH", blend=10)
 
-			if self.crouch < 10:
-				self.crouch += 1
+			if self.data["CROUCH"] == 10:
+				self.data["CROUCH"] = -20
+			elif self.data["CROUCH"] >= 0:
+				self.data["CROUCH"] += 1
 
-		## EYE HEIGHT ##
-		eyevec = [0, 0, (self.EYE_H-self.GND_H)]
-
-		if self.data["CAMERA"]["State"] == "SHOULDER":
-			eyevec[0] = self.CAM_SHSIDE
-			eyevec[2] -= self.CAM_MIN
-
-		eyevec[2] *= cr_fac
-
-		viewport.setEyeHeight(eye=eyevec, set=True)
+		self.objects["Character"]["DEBUG1"] = self.data["CROUCH"]
 
 	def ST_Walking(self):
 		scene = base.SC_SCN
@@ -1296,7 +1305,7 @@ class CorePlayer(base.CoreAdvanced):
 
 		self.alignToGravity()
 
-		self.objects["Character"]["DEBUG1"] = self.rayorder
+		self.objects["Character"]["DEBUG1"] = self.data["CROUCH"]
 		#self.objects["Character"]["DEBUG2"] = str(self.jump_state)
 
 		self.doInteract()
