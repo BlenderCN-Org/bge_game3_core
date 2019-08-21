@@ -675,9 +675,6 @@ class CorePlayer(base.CoreAdvanced):
 			if self.groundold != None:
 				gnddiff = self.groundold[1]-rayPNT
 				gnddiff = owner.worldOrientation.inverted()*gnddiff
-				#simdiff = self.groundpos[0]-self.groundpos[1]
-				#simdiff = owner.worldOrientation.inverted()*simdiff
-				#gnddiff = gnddiff+simdiff
 				if abs(gnddiff[2]) < 0.4:
 					self.gndraybias += gnddiff[2]
 
@@ -725,17 +722,18 @@ class CorePlayer(base.CoreAdvanced):
 			if self.rayvec.length < self.INTERACT:
 				RAYOBJ = RAYHIT[0]
 
-				if self.rayvec.dot(RAYHIT[2]) < 0 and config.DO_STABILITY == True:
-					self.data["HUD"]["Color"] = (0,0,1,1)
-					self.data["HUD"]["Text"] = "Press "+keymap.BINDS["ACTIVATE"].input_name+" To Ghost Jump"
-					if keymap.BINDS["ACTIVATE"].tap() == True:
-						owner.worldPosition = RAYHIT[1]+(RAYHIT[2]*self.WALL_DIST)
-				elif "RAYCAST" in RAYOBJ:
+				if "RAYCAST" in RAYOBJ:
 					if self.active_weapon != None:
 						self.data["HUD"]["Color"] = (1,0,0,1)
 					else:
 						self.data["HUD"]["Color"] = (0,1,0,1)
 						RAYOBJ["RAYCAST"] = self
+
+				elif self.rayvec.dot(RAYHIT[2]) < 0 and config.DO_STABILITY == True:
+					self.data["HUD"]["Color"] = (0,0,1,1)
+					self.data["HUD"]["Text"] = "Press "+keymap.BINDS["ACTIVATE"].input_name+" To Ghost Jump"
+					if keymap.BINDS["ACTIVATE"].tap() == True:
+						owner.worldPosition = RAYHIT[1]+(RAYHIT[2]*self.WALL_DIST)
 
 				if RAYOBJ.get("RAYNAME", None) != None:
 					self.data["HUD"]["Text"] = RAYOBJ["RAYNAME"]
@@ -1080,9 +1078,6 @@ class CorePlayer(base.CoreAdvanced):
 
 		local = posOLD - posNEW
 		offset = self.groundori[0]*local
-		#offset = owner.worldOrientation.inverted()*offset
-		#offset[2] = 0
-		#offset = owner.worldOrientation*offset
 
 		if self.data["PHYSICS"] == "NONE":
 			owner.applyMovement(offset, False)
