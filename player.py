@@ -109,16 +109,11 @@ class CorePlayer(base.CoreAdvanced):
 
 		self.defaultStates()
 
-		self.wallraydist = self.WALL_DIST
-		self.wallrayto = self.createVector(vec=(0, self.WALL_DIST, 0))
-		self.wallrayup = self.createVector(vec=(0, self.WALL_DIST, self.EDGE_H-self.GND_H+0.3))
-
 		self.rayhit = None
 		self.rayvec = None
 
 		self.jump_state = "NONE"
 		self.jump_timer = 0
-		self.rayorder = "NONE"
 		self.lastaction = [None,0]
 
 		self.resetGroundRay()
@@ -147,7 +142,6 @@ class CorePlayer(base.CoreAdvanced):
 
 		self.data["JP_STATE"] = self.jump_state
 		self.data["JP_TIMER"] = self.jump_timer
-		self.data["GB_STATE"] = self.rayorder
 
 		dict = self.defaultData()
 		for key in dict:
@@ -213,7 +207,6 @@ class CorePlayer(base.CoreAdvanced):
 
 		self.jump_state = self.data["JP_STATE"]
 		self.jump_timer = self.data["JP_TIMER"]
-		self.rayorder = self.data["GB_STATE"]
 
 		newmap = str(base.CURRENT["Level"])+str(base.CURRENT["Scene"])
 
@@ -235,7 +228,6 @@ class CorePlayer(base.CoreAdvanced):
 	def doUpdate(self):
 		self.data["JP_STATE"] = self.jump_state
 		self.data["JP_TIMER"] = self.jump_timer
-		self.data["GB_STATE"] = self.rayorder
 		self.data["ACTIVE_STATE"] = self.active_state.__name__
 
 		char = self.objects["Character"]
@@ -269,7 +261,6 @@ class CorePlayer(base.CoreAdvanced):
 	def removePhysicsBox(self):
 		self.jump_state = "NONE"
 		self.jump_timer = 0
-		self.rayorder = "NONE"
 		self.data["CROUCH"] = 0
 		self.data["LINVEL"] = [0,0,0]
 
@@ -549,77 +540,6 @@ class CorePlayer(base.CoreAdvanced):
 
 		return angle, WALLNRM
 
-	def checkEdge(self, simple=False):
-		owner = self.objects["Root"]
-		rayup = self.getWorldSpace(owner, self.wallrayup)
-		rayto = self.getWorldSpace(owner, self.wallrayto)
-
-		#if owner.get("XX", None) == None:
-		#	owner["XX"] = owner.scene.addObject("Gimbal", owner, 0)
-		#	owner["XX"].setParent(owner)
-
-		#guide = owner["XX"]
-
-		EDGEOBJ, EDGEPNT, EDGENRM = owner.rayCast(rayto, rayup, self.EDGE_H+0.6, "GROUND", 1, 1, 0)
-
-		if simple == True:
-			if EDGEOBJ == None:
-				return None
-
-		#	guide.worldPosition = EDGEPNT
-			angle = owner.getAxisVect((0,0,1)).angle(EDGENRM, 0)
-			angle = round(self.toDeg(angle), 2)
-
-			if angle > self.SLOPE:
-				return None
-
-			return EDGEOBJ, EDGEPNT, EDGENRM
-
-		CHK = owner.rayCastTo(rayup, 0, "GROUND")
-
-		if EDGEOBJ != None and CHK == None:
-		#	guide.worldPosition = EDGEPNT
-			angle = owner.getAxisVect((0,0,1)).angle(EDGENRM, 0)
-			angle = round(self.toDeg(angle), 2)
-			ledge = self.getLocalSpace(owner, EDGEPNT)
-			dist = ledge[2]
-			offset = self.EDGE_H-self.GND_H
-
-			if self.rayorder == "END":
-				if abs(dist-offset) > 0.11:
-					self.rayorder = "NONE"
-
-			## Vault ##
-			if dist > -0.5 and dist < 0.3: # and self.jump_state == "NONE":
-				if self.motion["Move"].length > 0.01 and keymap.BINDS["PLR_JUMP"].tap() == True:
-					if self.jump_state == "NONE" and dist < -0.5:
-						pass
-					elif self.jump_state in ["NONE","FALLING"]:
-						self.resetAcceleration()
-						owner.worldPosition = EDGEPNT+owner.getAxisVect((0,0,1))
-						self.jump_state = "FALLING"
-						self.doPlayerAnim("JUMP")
-
-			## Ledge Grab ##
-			if owner.localLinearVelocity[2] < 0 and self.rayorder == "GRAB" and self.jump_state == "FALLING":
-				if angle > self.SLOPE or abs(dist-offset) > 0.1 or self.gravity.length < 0.1:
-					self.rayorder = "GRAB"
-				else:
-					WP = self.getLocalSpace(owner, EDGEPNT)
-					WP[2] = offset
-					WP = EDGEPNT-(owner.worldOrientation*WP)
-					RP = EDGEPNT+owner.getAxisVect((0,0,self.GND_H))
-					self.rayorder = [WP, RP]
-					self.jump_state = "EDGE"
-
-		else:
-		#	guide.worldPosition = rayup-owner.getAxisVect((0,0,self.EDGE_H+0.6))
-			if self.rayorder == "END":
-				self.rayorder = "NONE"
-			if self.jump_state == "EDGE":
-				self.rayorder = "NONE"
-				self.jump_state = "FALLING"
-
 	def checkGround(self, simple=False, ray=None):
 		owner = self.objects["Root"]
 		ground = None
@@ -641,9 +561,6 @@ class CorePlayer(base.CoreAdvanced):
 
 			if simple == True:
 				return None
-
-			if self.rayorder == "NONE":
-				self.rayorder = "GRAB"
 
 		else:
 			ground = [rayOBJ, rayPNT, rayNRM]
@@ -674,8 +591,6 @@ class CorePlayer(base.CoreAdvanced):
 				gnddiff = owner.worldOrientation.inverted()*gnddiff
 				if abs(gnddiff[2]) < 0.4:
 					self.gndraybias += gnddiff[2]
-
-			self.rayorder = "NONE"
 
 			self.groundhit = ground
 			self.gndraybias += ((self.GND_H+gndbias)-self.gndraybias)*0.2
@@ -1209,8 +1124,6 @@ class CorePlayer(base.CoreAdvanced):
 
 		ground, angle = self.checkGround()
 
-		self.checkEdge()
-
 		owner.setDamping(0, 0)
 
 		if ground != None:
@@ -1258,11 +1171,6 @@ class CorePlayer(base.CoreAdvanced):
 				else:
 					self.doAnim(STOP=True)
 					self.jump_state = "FALLING"
-
-		elif self.jump_state == "EDGE":
-			self.resetAcceleration()
-			self.ST_Hanging_Set()
-			return
 
 		else:
 			self.doPlayerAnim("FALLING")
@@ -1318,150 +1226,6 @@ class CorePlayer(base.CoreAdvanced):
 	def ST_Walking_Set(self):
 		self.doAnim(STOP=True)
 		self.resetAcceleration()
-		self.active_state = self.ST_Walking
-
-	## EDGE HANG STATE ##
-	def ST_Hanging_Set(self):
-		self.objects["Root"].worldLinearVelocity = (0,0,0)
-		self.objects["Root"].worldPosition = self.rayorder[0]
-
-		self.jump_state = "HANG_INIT"
-		self.jump_timer = 0
-		self.data["HUD"]["Target"] = None
-
-		self.active_state = self.ST_Hanging
-
-	def ST_Hanging(self):
-		owner = self.objects["Root"]
-
-		owner.worldLinearVelocity = (0,0,0)
-
-		if self.checkGround(simple=True) == None:
-			offset = self.EDGE_H-self.GND_H
-
-			ray = (self.getWorldSpace(owner, self.wallrayto), self.getWorldSpace(owner, self.wallrayup), 0.3)
-
-			edge = self.checkGround(simple=True, ray=ray)
-
-			if edge != None:
-				EDPNT = self.getLocalSpace(owner, edge[1])
-				diff = EDPNT[2]-offset
-				if abs(diff) > 0.1:
-					edge = None
-				else:
-					self.groundhit = edge
-					self.getGroundPoint(edge[0])
-
-
-			rayfrom = owner.worldPosition+owner.getAxisVect((0,0,offset-0.05))
-			rayto = rayfrom.copy()+owner.getAxisVect((0,1,0))
-
-			TROBJ, TRPNT, TRNRM = owner.rayCast(rayto, rayfrom, self.WALL_DIST+0.3, "GROUND", 1, 1, 0)
-
-			X = 0
-			if self.jump_state == "HANG_INIT":
-				self.jump_state = "HANGING"
-				self.alignToGravity()
-			elif TROBJ != None and edge != None:
-				wall = owner.worldOrientation.inverted()*TRNRM
-				wall[2] = 0
-				wall = wall.normalized()
-
-				point = wall*(self.WALL_DIST-0.05)
-				point = owner.worldOrientation*point
-				owner.worldPosition = (TRPNT+point)-owner.getAxisVect((0,0,offset-0.05-diff))
-
-				move = self.motion["Move"]
-				mref = viewport.getDirection((move[0], move[1], 0))
-				mref = owner.worldOrientation.inverted()*mref
-				if abs(mref[0]) > 0.5:
-					X = 1-(2*(mref[0]<0))
-				owner.localLinearVelocity[0] = (X*0.01)*60
-
-				align = owner.worldOrientation*wall
-				self.alignPlayer(0.5, axis=-align)
-			else:
-				self.alignToGravity()
-
-			if self.ANIMOBJ == None:
-				pass
-			elif abs(X) > 0.01:
-				self.doAnim(NAME="EdgeTR", FRAME=(1,60), MODE="LOOP", BLEND=10)
-			else:
-				self.doAnim(NAME="EdgeClimb", FRAME=(0,0), MODE="LOOP", BLEND=5)
-
-		else:
-			print("GROUND")
-			edge = None
-
-		if edge == None:
-			self.ST_EdgeFall_Set()
-
-		if keymap.BINDS["PLR_DUCK"].active() == True:
-			self.ST_EdgeFall_Set()
-			self.rayorder = "END"
-
-		elif keymap.BINDS["PLR_JUMP"].tap() == True:
-			self.ST_EdgeClimb_Set()
-
-	def ST_EdgeClimb_Set(self):
-		owner = self.objects["Root"]
-
-		rayto = self.groundhit[1].copy()+owner.getAxisVect((0,0.3,2))
-		rayfrom = owner.worldPosition+owner.getAxisVect((0,0,self.EDGE_H-self.GND_H))
-
-		SH, SP, SN = owner.rayCast(rayto, rayfrom, 0, "GROUND", 1, 1, 0)
-
-		if SH == None:
-			self.setPhysicsType("NONE")
-			self.doAnim(STOP=True)
-			self.doAnim(NAME="EdgeClimb", FRAME=(0,60), MODE="PLAY")
-			target = self.groundhit[1].copy()+owner.getAxisVect((0,0,1))
-			self.rayorder = self.getLocalSpace(owner, target)
-			self.jump_state = "NONE"
-			self.jump_timer = 0
-			self.active_state = self.ST_EdgeClimb
-
-	def ST_EdgeClimb(self):
-		owner = self.objects["Root"]
-
-		self.jump_state = "NONE"
-		self.jump_timer += 1
-
-		owner.worldLinearVelocity = (0,0,0)
-
-		time = 60
-		fac = self.jump_timer/time
-
-		gvec = (owner.worldOrientation*self.rayorder)
-		gpnt = (gvec*(1-fac))+owner.worldPosition
-
-		rayto = gpnt.copy()-owner.getAxisVect((0,0,1))
-
-		ray = (rayto, gpnt, 3)
-		ground = self.checkGround(simple=True, ray=ray)
-
-		owner.worldPosition += gvec*(1/time)
-
-		if ground != None:
-			self.groundhit = ground
-			self.getGroundPoint(ground[0])
-
-		self.alignToGravity()
-
-		if self.jump_timer == time or ground == None:
-			self.setPhysicsType("DYNAMIC")
-			self.rayorder = "NONE"
-			self.jump_state = "NONE"
-			self.jump_timer = 0
-			self.doAnim(STOP=True)
-			self.active_state = self.ST_Walking
-
-	def ST_EdgeFall_Set(self):
-		self.rayorder = "NONE"
-		self.jump_state = "FALLING"
-		self.jump_timer = 0
-		self.doAnim(STOP=True)
 		self.active_state = self.ST_Walking
 
 	## FLY STATE ##
