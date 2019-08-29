@@ -1,21 +1,22 @@
 ####
-# bge_game-3.0_template: Full python game structure for the Blender Game Engine
-# Copyright (C) 2018  DaedalusMDW @github.com (Daedalus_MDW @blenderartists.org)
+# bge_game3_core: Full python game structure for the Blender Game Engine
+# Copyright (C) 2019  DaedalusMDW @github.com (Daedalus_MDW @blenderartists.org)
+# https://github.com/DaedalusMDW/bge_game3_core
 #
-# This file is part of bge_game-3.0_template.
+# This file is part of bge_game3_core.
 #
-#    bge_game-3.0_template is free software: you can redistribute it and/or modify
+#    bge_game3_core is free software: you can redistribute it and/or modify
 #    it under the terms of the GNU General Public License as published by
 #    the Free Software Foundation, either version 3 of the License, or
 #    (at your option) any later version.
 #
-#    bge_game-3.0_template is distributed in the hope that it will be useful,
+#    bge_game3_core is distributed in the hope that it will be useful,
 #    but WITHOUT ANY WARRANTY; without even the implied warranty of
 #    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 #    GNU General Public License for more details.
 #
 #    You should have received a copy of the GNU General Public License
-#    along with bge_game-3.0_template.  If not, see <http://www.gnu.org/licenses/>.
+#    along with bge_game3_core.  If not, see <http://www.gnu.org/licenses/>.
 #
 ####
 
@@ -89,6 +90,10 @@ class CorePlayer(base.CoreAdvanced):
 		scene = base.SC_SCN
 		char = logic.getCurrentController().owner
 
+		char["Class"] = self
+		char["DICT"] = char.get("DICT", base.PROFILE["PLRData"].get(char.name, {"Object":char.name, "Data":None}))
+		char["DICT"]["ID"] = char["DICT"].get("ID", char.get("ID", None))
+
 		self.objects = {"Root":None, "Character":char}
 
 		if len(char.children) == 0:
@@ -104,17 +109,11 @@ class CorePlayer(base.CoreAdvanced):
 
 		self.defaultStates()
 
-		self.wallraydist = self.WALL_DIST
-		self.wallrayto = self.createVector(vec=(0, self.WALL_DIST, 0))
-		self.wallrayup = self.createVector(vec=(0, self.WALL_DIST, self.EDGE_H-self.GND_H+0.3))
-
 		self.rayhit = None
 		self.rayvec = None
 
 		self.jump_state = "NONE"
 		self.jump_timer = 0
-		self.rayorder = "NONE"
-		self.crouch = 0
 		self.lastaction = [None,0]
 
 		self.resetGroundRay()
@@ -128,26 +127,27 @@ class CorePlayer(base.CoreAdvanced):
 			"World": self.createVector(3)
 			}
 
+		self.dict = char["DICT"]
+
 		self.data = {"HEALTH":100, "ENERGY":100, "RECHARGE":0.02, "SPEED":self.SPEED,
 			"JUMP":self.JUMP, "RUN":self.MOVERUN, "STRAFE":self.SIDESTEP}
 
 		self.data["HUD"] = {"Text":"", "Color":(0,0,0,0.5), "Target":None, "Locked":None}
 
+		self.data["POS_LEVEL"] = None
 		self.data["PHYSICS"] = "DYNAMIC"
+		self.data["CROUCH"] = 0
 		self.data["DAMPING"] = [0, 0]
 		self.data["LINVEL"] = [0,0,0]
 
 		self.data["JP_STATE"] = self.jump_state
 		self.data["JP_TIMER"] = self.jump_timer
-		self.data["GB_STATE"] = self.rayorder
-		self.data["CROUCH"] = self.crouch
 
 		dict = self.defaultData()
 		for key in dict:
 			if key not in self.data:
 				self.data[key] = dict[key]
 
-		char["Class"] = self
 		char["DEBUG1"] = ""
 		char["DEBUG2"] = ""
 		char["RAYTEXT"] = ""
@@ -161,35 +161,19 @@ class CorePlayer(base.CoreAdvanced):
 		self.loadInventory(char)
 		self.applyGravity()
 
-		if logic.PLAYERCLASS == None:
-			logic.PLAYERCLASS = self
-			HUD.SetBlackScreen(True)
-
-			if base.DATA["Portal"]["Vehicle"] != None:
-				dict = base.DATA["Portal"]["Vehicle"]
-				vehicle = scene.addObject(dict["Object"], base.SC_RUN, 0)
-				vehicle["DICT"] = dict
-				vehicle["RAYCAST"] = self
-
-			else:
-				owner = self.addPhysicsBox()
-				self.findObjects(owner)
-				self.parentArmature(owner)
-
-				self.assignCamera(load=True)
-
-				self.doPortal()
-
-				HUD.SetLayout(self)
-
-				self.doPlayerAnim("RESET")
+		self.doPlayerAnim("RESET")
 
 		self.ST_Startup()
+
+		if self.dict["ID"] != None and self.dict.get("Vehicle", None) == None:
+			self.switchPlayerActive(self.dict["ID"])
+			self.PS_SetVisible(True)
+			viewport.loadCamera()
 
 	def defaultStates(self):
 		self.active_pre = [self.PR_LastVelocity]
 		self.active_state = self.ST_Walking
-		self.active_post = [self.PS_Recharge, self.PS_GroundTrack, self.PS_SetVisible]
+		self.active_post = [self.PS_Recharge, self.PS_SetVisible, self.PS_GroundTrack]
 
 	def resetGroundRay(self):
 		self.groundhit = None
@@ -209,71 +193,47 @@ class CorePlayer(base.CoreAdvanced):
 		self.accel_timer = 0
 		self.accel_stand = -1
 
-	def doPortal(self):
-		scene = base.SC_SCN
-		owner = self.objects["Root"]
-
-		door = base.DATA["Portal"]["Door"]
-		zone = base.DATA["Portal"]["Zone"]
-		portal = scene.objects.get(str(door), None)
-
-		if portal != None:
-			pos = portal.worldPosition.copy()
-			ori = portal.worldOrientation.copy()
-
-			if zone != None:
-				pos = self.createVector(vec=zone[0])
-				pos = portal.worldPosition+(portal.worldOrientation*pos)
-
-				ori = ori*self.createMatrix(mat=zone[1])
-
-			owner.worldPosition = pos
-			owner.worldOrientation = ori
-
-		elif "POS" in base.LEVEL["PLAYER"]:
-			owner.worldPosition = base.LEVEL["PLAYER"]["POS"]
-			owner.worldOrientation = base.LEVEL["PLAYER"]["ORI"]
-
-		else:
-			base.LEVEL["PLAYER"]["POS"] = self.vecTuple(owner.worldPosition)
-			base.LEVEL["PLAYER"]["ORI"] = self.matTuple(owner.worldOrientation)
-
-		if portal != None and zone == None:
-			self.data["CAMERA"]["ZR"] = [0,0,0]
-			self.data["CAMERA"]["XR"] = 0
-
-		owner.localLinearVelocity = self.data["LINVEL"]
-
-		viewport.updateCamera(self, owner, load=True)
-
-		if base.DATA["Portal"]["Vehicle"] == None or portal == None:
-			base.DATA["Portal"]["Door"] = None
-			base.DATA["Portal"]["Zone"] = None
-
 	def doLoad(self):
-		if self.NAME in base.PROFILE["PLRData"]:
-			self.data = base.PROFILE["PLRData"][self.NAME]
-			self.active_state = getattr(self, self.data["ACTIVE_STATE"])
-		else:
-			base.PROFILE["PLRData"][self.NAME] = self.data
-			self.data["ACTIVE_STATE"] = self.active_state.__name__
+		char = self.objects["Character"]
 
+		base.PROFILE["PLRData"][char.name] = char["DICT"]
+
+		if self.dict["Data"] == None:
+			self.dict["Data"] =  self.data
+			self.data["ACTIVE_STATE"] = self.active_state.__name__
+		else:
+			self.data = self.dict["Data"]
+			self.active_state = getattr(self, self.data["ACTIVE_STATE"])
 
 		self.jump_state = self.data["JP_STATE"]
 		self.jump_timer = self.data["JP_TIMER"]
-		self.rayorder = self.data["GB_STATE"]
-		self.crouch = self.data["CROUCH"]
 
-		if self not in logic.UPDATELIST:
-			logic.UPDATELIST.append(self)
+		newmap = str(base.CURRENT["Level"])+str(base.CURRENT["Scene"])
+
+		if self.data["POS_LEVEL"] == newmap:
+			char.worldPosition = self.data["POS"]
+			char.worldOrientation = self.data["ORI"]
+		else:
+			self.data["POS_LEVEL"] = newmap
+			self.data["POS"] = self.vecTuple(char.worldPosition)
+			self.data["ORI"] = self.matTuple(char.worldOrientation)
+
+		if "Add" in self.dict:
+			base.LEVEL["SPAWN"].append(self.dict["Add"])
+			del self.dict["Add"]
+
+		if self not in logic.PLAYERLIST:
+			logic.PLAYERLIST.append(self)
 
 	def doUpdate(self):
-
 		self.data["JP_STATE"] = self.jump_state
 		self.data["JP_TIMER"] = self.jump_timer
-		self.data["GB_STATE"] = self.rayorder
-		self.data["CROUCH"] = self.crouch
 		self.data["ACTIVE_STATE"] = self.active_state.__name__
+
+		char = self.objects["Character"]
+
+		self.data["POS"] = self.vecTuple(char.worldPosition)
+		self.data["ORI"] = self.matTuple(char.worldOrientation)
 
 		owner = self.objects["Root"]
 		if owner == None:
@@ -281,9 +241,6 @@ class CorePlayer(base.CoreAdvanced):
 
 		self.data["LINVEL"] = self.vecTuple(owner.localLinearVelocity)
 		self.data["DAMPING"] = [owner.linearDamping, owner.angularDamping]
-
-		base.LEVEL["PLAYER"]["POS"] = self.vecTuple(owner.worldPosition)
-		base.LEVEL["PLAYER"]["ORI"] = self.matTuple(owner.worldOrientation)
 
 	def addPhysicsBox(self):
 		char = self.objects["Character"]
@@ -297,13 +254,15 @@ class CorePlayer(base.CoreAdvanced):
 		self.addCollisionCallBack()
 		self.setPhysicsType()
 
+		owner.localLinearVelocity = self.data["LINVEL"]
+
 		return owner
 
 	def removePhysicsBox(self):
 		self.jump_state = "NONE"
 		self.jump_timer = 0
-		self.rayorder = "NONE"
-		self.crouch = 0
+		self.data["CROUCH"] = 0
+		self.data["LINVEL"] = [0,0,0]
 
 		if self.objects["Root"] != None:
 			self.doCrouch(False)
@@ -325,39 +284,29 @@ class CorePlayer(base.CoreAdvanced):
 		char.localPosition = POS
 		char.localOrientation = self.createMatrix()
 
-	def assignCamera(self, load=False):
-		viewport.setCamera(self, load)
+	def assignCamera(self):
+		viewport.setCamera(self)
 		viewport.setParent(self.objects["Root"])
-		self.setCameraState(None, load)
-		print("CAMERA")
+		self.setCameraState(None)
 
-	def enterVehicle(self, seat):
-		self.resetGroundRay()
-		self.resetAcceleration()
-		self.data["HUD"]["Target"] = None
-		self.data["HUD"]["Text"] = ""
-
-		self.removePhysicsBox()
-
-		self.parentArmature(seat, True)
-
-	def exitVehicle(self, spawn):
+	def switchPlayerActive(self, ID=None):
 		keymap.MOUSELOOK.center()
 
-		self.objects["Character"].removeParent() 
+		self.doAnim(STOP=True)
 
 		owner = self.addPhysicsBox()
-		self.alignToGravity(owner)
-		owner.worldPosition = spawn
 
 		self.findObjects(owner)
 		self.parentArmature(owner)
 		self.assignCamera()
-		self.PS_SetVisible()
 
 		self.doPlayerAnim("RESET")
+		self.PS_SetVisible()
 
 		HUD.SetLayout(self)
+		if ID != None:
+			self.dict["ID"] = ID
+			base.WORLD["PLAYERS"][ID] = self.dict["Object"]
 
 	def switchPlayerPassive(self):
 		self.resetGroundRay()
@@ -369,21 +318,29 @@ class CorePlayer(base.CoreAdvanced):
 
 		self.doPlayerAnim("RESET")
 
-	def switchPlayerActive(self):
-		keymap.MOUSELOOK.center()
+		ID = self.dict["ID"]
+		self.dict["ID"] = None
+		if ID in base.WORLD["PLAYERS"]:
+			del base.WORLD["PLAYERS"][ID]
+		return ID
 
-		self.doAnim(STOP=True)
+	def enterVehicle(self, seat):
+		self.dict["Vehicle"] = True
+		self.dict["ID"] = self.switchPlayerPassive()
 
-		owner = self.addPhysicsBox()
+		self.parentArmature(seat, True)
 
-		self.findObjects(owner)
-		self.parentArmature(owner)
-		self.assignCamera(load=True)
+	def exitVehicle(self, spawn):
+		self.objects["Character"].removeParent() 
 
-		HUD.SetLayout(self)
+		self.switchPlayerActive(self.dict["ID"])
 
-		logic.PLAYERCLASS = self
-		base.CURRENT["Player"] = self.objects["Character"].name
+		self.dict["Vehicle"] = None
+
+		owner = self.objects["Root"]
+		owner.worldPosition = spawn
+
+		self.alignToGravity(owner)
 
 	def alignCamera(self, factor=1.0, axis=(0,1,0), up=None):
 		vref = self.objects["Root"].getAxisVect(axis)
@@ -501,12 +458,12 @@ class CorePlayer(base.CoreAdvanced):
 			self.data["CAMERA"]["State"] = state
 
 		if state == "SHOULDER":
-			eye = [self.CAM_SHSIDE, 0, self.EYE_H-self.GND_H-self.CAM_MIN]
+			pos = [self.CAM_SHSIDE, 0, self.EYE_H-self.GND_H-self.CAM_MIN]
 		else:
-			eye = [0, 0, self.EYE_H-self.GND_H]
+			pos = [0, 0, self.EYE_H-self.GND_H]
 
 		viewport.setState(state)
-		viewport.setEyeHeight(eye=eye, set=load)
+		viewport.setEyeHeight(eye=pos)
 
 		#self.data["CAMERA"]["FOV"] = self.CAM_FOV
 		self.data["CAMERA"]["State"] = state
@@ -583,77 +540,6 @@ class CorePlayer(base.CoreAdvanced):
 
 		return angle, WALLNRM
 
-	def checkEdge(self, simple=False):
-		owner = self.objects["Root"]
-		rayup = self.getWorldSpace(owner, self.wallrayup)
-		rayto = self.getWorldSpace(owner, self.wallrayto)
-
-		#if owner.get("XX", None) == None:
-		#	owner["XX"] = owner.scene.addObject("Gimbal", owner, 0)
-		#	owner["XX"].setParent(owner)
-
-		#guide = owner["XX"]
-
-		EDGEOBJ, EDGEPNT, EDGENRM = owner.rayCast(rayto, rayup, self.EDGE_H+0.6, "GROUND", 1, 1, 0)
-
-		if simple == True:
-			if EDGEOBJ == None:
-				return None
-
-		#	guide.worldPosition = EDGEPNT
-			angle = owner.getAxisVect((0,0,1)).angle(EDGENRM, 0)
-			angle = round(self.toDeg(angle), 2)
-
-			if angle > self.SLOPE:
-				return None
-
-			return EDGEOBJ, EDGEPNT, EDGENRM
-
-		CHK = owner.rayCastTo(rayup, 0, "GROUND")
-
-		if EDGEOBJ != None and CHK == None:
-		#	guide.worldPosition = EDGEPNT
-			angle = owner.getAxisVect((0,0,1)).angle(EDGENRM, 0)
-			angle = round(self.toDeg(angle), 2)
-			ledge = self.getLocalSpace(owner, EDGEPNT)
-			dist = ledge[2]
-			offset = self.EDGE_H-self.GND_H
-
-			if self.rayorder == "END":
-				if abs(dist-offset) > 0.11:
-					self.rayorder = "NONE"
-
-			## Vault ##
-			if dist > -0.5 and dist < 0.3: # and self.jump_state == "NONE":
-				if self.motion["Move"].length > 0.01 and keymap.BINDS["PLR_JUMP"].tap() == True:
-					if self.jump_state == "NONE" and dist < -0.5:
-						pass
-					elif self.jump_state in ["NONE","FALLING"]:
-						self.resetAcceleration()
-						owner.worldPosition = EDGEPNT+owner.getAxisVect((0,0,1))
-						self.jump_state = "FALLING"
-						self.doPlayerAnim("JUMP")
-
-			## Ledge Grab ##
-			if owner.localLinearVelocity[2] < 0 and self.rayorder == "GRAB" and self.jump_state == "FALLING":
-				if angle > self.SLOPE or abs(dist-offset) > 0.1 or self.gravity.length < 0.1:
-					self.rayorder = "GRAB"
-				else:
-					WP = self.getLocalSpace(owner, EDGEPNT)
-					WP[2] = offset
-					WP = EDGEPNT-(owner.worldOrientation*WP)
-					RP = EDGEPNT+owner.getAxisVect((0,0,self.GND_H))
-					self.rayorder = [WP, RP]
-					self.jump_state = "EDGE"
-
-		else:
-		#	guide.worldPosition = rayup-owner.getAxisVect((0,0,self.EDGE_H+0.6))
-			if self.rayorder == "END":
-				self.rayorder = "NONE"
-			if self.jump_state == "EDGE":
-				self.rayorder = "NONE"
-				self.jump_state = "FALLING"
-
 	def checkGround(self, simple=False, ray=None):
 		owner = self.objects["Root"]
 		ground = None
@@ -675,9 +561,6 @@ class CorePlayer(base.CoreAdvanced):
 
 			if simple == True:
 				return None
-
-			if self.rayorder == "NONE":
-				self.rayorder = "GRAB"
 
 		else:
 			ground = [rayOBJ, rayPNT, rayNRM]
@@ -708,8 +591,6 @@ class CorePlayer(base.CoreAdvanced):
 				gnddiff = owner.worldOrientation.inverted()*gnddiff
 				if abs(gnddiff[2]) < 0.4:
 					self.gndraybias += gnddiff[2]
-
-			self.rayorder = "NONE"
 
 			self.groundhit = ground
 			self.gndraybias += ((self.GND_H+gndbias)-self.gndraybias)*0.2
@@ -753,17 +634,18 @@ class CorePlayer(base.CoreAdvanced):
 			if self.rayvec.length < self.INTERACT:
 				RAYOBJ = RAYHIT[0]
 
-				if self.rayvec.dot(RAYHIT[2]) < 0 and config.DO_STABILITY == True:
-					self.data["HUD"]["Color"] = (0,0,1,1)
-					self.data["HUD"]["Text"] = "Press "+keymap.BINDS["ACTIVATE"].input_name+" To Ghost Jump"
-					if keymap.BINDS["ACTIVATE"].tap() == True:
-						owner.worldPosition = RAYHIT[1]+(RAYHIT[2]*self.WALL_DIST)
-				elif "RAYCAST" in RAYOBJ:
+				if "RAYCAST" in RAYOBJ:
 					if self.active_weapon != None:
 						self.data["HUD"]["Color"] = (1,0,0,1)
 					else:
 						self.data["HUD"]["Color"] = (0,1,0,1)
 						RAYOBJ["RAYCAST"] = self
+
+				elif self.rayvec.dot(RAYHIT[2]) < 0 and config.DO_STABILITY == True:
+					self.data["HUD"]["Color"] = (0,0,1,1)
+					self.data["HUD"]["Text"] = "Press "+keymap.BINDS["ACTIVATE"].input_name+" To Ghost Jump"
+					if keymap.BINDS["ACTIVATE"].tap() == True:
+						owner.worldPosition = RAYHIT[1]+(RAYHIT[2]*self.WALL_DIST)
 
 				if RAYOBJ.get("RAYNAME", None) != None:
 					self.data["HUD"]["Text"] = RAYOBJ["RAYNAME"]
@@ -1033,7 +915,7 @@ class CorePlayer(base.CoreAdvanced):
 
 	def doCrouch(self, state):
 		self.jump_timer = 0
-		if state == True or self.crouch != 0:
+		if state == True or self.data["CROUCH"] != 0:
 			self.jump_state = "CROUCH"
 			self.objects["Root"].localScale[2] = self.CROUCH_SCALE
 			self.objects["Character"].localScale[2] = 1/self.CROUCH_SCALE
@@ -1085,7 +967,7 @@ class CorePlayer(base.CoreAdvanced):
 		owner = self.objects["Root"]
 		self.groundchk = False
 
-		if self.groundhit == None or self.jump_state not in ["NONE", "CROUCH", "JUMP", "HANGING"]:
+		if self.groundhit == None or self.jump_state not in ["NONE", "CROUCH", "JUMP"]:
 			drag = self.AIR_DRAG
 			dragX = owner.localLinearVelocity[0]*drag[0] #0.67
 			dragY = owner.localLinearVelocity[1]*drag[1] #0.67
@@ -1108,9 +990,6 @@ class CorePlayer(base.CoreAdvanced):
 
 		local = posOLD - posNEW
 		offset = self.groundori[0]*local
-		#offset = owner.worldOrientation.inverted()*offset
-		#offset[2] = 0
-		#offset = owner.worldOrientation*offset
 
 		if self.data["PHYSICS"] == "NONE":
 			owner.applyMovement(offset, False)
@@ -1131,10 +1010,12 @@ class CorePlayer(base.CoreAdvanced):
 		self.groundold[1] += owner.worldLinearVelocity/60
 		self.groundhit = None
 
-	def PS_SetVisible(self):
+	def PS_SetVisible(self, state=None):
 		owner = self.objects["Root"]
 		char = self.objects["Character"]
-		if self.data["CAMERA"]["State"] == "FIRST":
+		if state != None:
+			char.setVisible(state, True)
+		elif self.data["CAMERA"]["State"] == "FIRST" and viewport.getController() == self:
 			char.setVisible(False, True)
 		else:
 			char.setVisible(True, True)
@@ -1151,12 +1032,28 @@ class CorePlayer(base.CoreAdvanced):
 		owner = self.objects["Root"]
 		char = self.objects["Character"]
 
+		fac = self.data["CROUCH"]*0.1
+		if self.data["CROUCH"] < 0:
+			fac = (self.data["CROUCH"]+10)*-0.1
+
+		## EYE HEIGHT ##
 		owner.localScale[2] = self.CROUCH_SCALE
 		char.localScale[2] = 1/self.CROUCH_SCALE
-		char.localPosition[2] = (self.crouch*0.1)*(1/self.CROUCH_SCALE)*self.CROUCH_H
+		char.localPosition[2] = fac*(1/self.CROUCH_SCALE)*self.CROUCH_H
 
-		cr_fac = self.GND_H-(self.crouch*0.1*self.CROUCH_H)
+		cr_fac = self.GND_H-(fac*self.CROUCH_H)
 
+		eyevec = [0, 0, (self.EYE_H-self.GND_H)]
+
+		if self.data["CAMERA"]["State"] == "SHOULDER":
+			eyevec[0] = self.CAM_SHSIDE
+			eyevec[2] -= self.CAM_MIN
+
+		eyevec[2] *= cr_fac
+
+		viewport.setEyeHeight(eye=eyevec, set=True)
+
+		## MOVEMENT ##
 		ground, angle = self.checkGround()
 
 		owner.setDamping(0, 0)
@@ -1173,13 +1070,17 @@ class CorePlayer(base.CoreAdvanced):
 			axis = owner.getAxisVect((0,0,2))
 			point = ground[1]+axis
 			dist = point-owner.worldPosition
-			chkwall = False
-			if self.checkWall(axis=axis.normalized(), simple=dist.length) != None:
-				chkwall = True
-			if keymap.BINDS["PLR_DUCK"].active() == True or self.crouch == 10:
-				chkwall = True
+
+			chkwall = True
+			if self.data["CROUCH"] == -20:
 				if keymap.BINDS["PLR_DUCK"].released() == True:
 					chkwall = False
+			elif self.data["CROUCH"] < -5:
+				chkwall = False
+
+			if self.checkWall(axis=axis.normalized(), simple=dist.length) != None:
+				chkwall = True
+
 		else:
 			chkwall = False
 
@@ -1189,38 +1090,30 @@ class CorePlayer(base.CoreAdvanced):
 			mx = 0.02
 
 		self.doMovement((move[0], move[1], 0), mx)
-
 		self.doMoveAlign()
 
 		self.doInteract(rayfrom=[0,0,(self.EYE_H-self.GND_H)*cr_fac])
 		self.checkStability()
 		self.weaponManager()
 
-		if chkwall == False:
-			self.doPlayerAnim("IDLE")
+		if chkwall == False and self.data["CROUCH"] < -5:
+			self.doPlayerAnim("IDLE", blend=10)
 
-			if self.crouch <= 0:
-				self.crouch = 0
+			if self.data["CROUCH"] == -10:
+				self.data["CROUCH"] = 0
 				self.doCrouch(False)
-			elif self.crouch > 0:
-				self.crouch -= 1
+			else:
+				self.data["CROUCH"] += 1
 
 		else:
 			self.doPlayerAnim("CROUCH", blend=10)
 
-			if self.crouch < 10:
-				self.crouch += 1
+			if self.data["CROUCH"] == 10:
+				self.data["CROUCH"] = -20
+			elif self.data["CROUCH"] >= 0:
+				self.data["CROUCH"] += 1
 
-		## EYE HEIGHT ##
-		eyevec = [0, 0, (self.EYE_H-self.GND_H)]
-
-		if self.data["CAMERA"]["State"] == "SHOULDER":
-			eyevec[0] = self.CAM_SHSIDE
-			eyevec[2] -= self.CAM_MIN
-
-		eyevec[2] *= cr_fac
-
-		viewport.setEyeHeight(eye=eyevec, set=True)
+		self.objects["Character"]["DEBUG1"] = self.data["CROUCH"]
 
 	def ST_Walking(self):
 		scene = base.SC_SCN
@@ -1230,8 +1123,6 @@ class CorePlayer(base.CoreAdvanced):
 		move = self.motion["Move"].normalized()
 
 		ground, angle = self.checkGround()
-
-		self.checkEdge()
 
 		owner.setDamping(0, 0)
 
@@ -1281,11 +1172,6 @@ class CorePlayer(base.CoreAdvanced):
 					self.doAnim(STOP=True)
 					self.jump_state = "FALLING"
 
-		elif self.jump_state == "EDGE":
-			self.resetAcceleration()
-			self.ST_Hanging_Set()
-			return
-
 		else:
 			self.doPlayerAnim("FALLING")
 
@@ -1327,7 +1213,7 @@ class CorePlayer(base.CoreAdvanced):
 
 		self.alignToGravity()
 
-		self.objects["Character"]["DEBUG1"] = self.rayorder
+		self.objects["Character"]["DEBUG1"] = self.data["CROUCH"]
 		#self.objects["Character"]["DEBUG2"] = str(self.jump_state)
 
 		self.doInteract()
@@ -1340,150 +1226,6 @@ class CorePlayer(base.CoreAdvanced):
 	def ST_Walking_Set(self):
 		self.doAnim(STOP=True)
 		self.resetAcceleration()
-		self.active_state = self.ST_Walking
-
-	## EDGE HANG STATE ##
-	def ST_Hanging_Set(self):
-		self.objects["Root"].worldLinearVelocity = (0,0,0)
-		self.objects["Root"].worldPosition = self.rayorder[0]
-
-		self.jump_state = "HANG_INIT"
-		self.jump_timer = 0
-		self.data["HUD"]["Target"] = None
-
-		self.active_state = self.ST_Hanging
-
-	def ST_Hanging(self):
-		owner = self.objects["Root"]
-
-		owner.worldLinearVelocity = (0,0,0)
-
-		if self.checkGround(simple=True) == None:
-			offset = self.EDGE_H-self.GND_H
-
-			ray = (self.getWorldSpace(owner, self.wallrayto), self.getWorldSpace(owner, self.wallrayup), 0.3)
-
-			edge = self.checkGround(simple=True, ray=ray)
-
-			if edge != None:
-				EDPNT = self.getLocalSpace(owner, edge[1])
-				diff = EDPNT[2]-offset
-				if abs(diff) > 0.1:
-					edge = None
-				else:
-					self.groundhit = edge
-					self.getGroundPoint(edge[0])
-
-
-			rayfrom = owner.worldPosition+owner.getAxisVect((0,0,offset-0.05))
-			rayto = rayfrom.copy()+owner.getAxisVect((0,1,0))
-
-			TROBJ, TRPNT, TRNRM = owner.rayCast(rayto, rayfrom, self.WALL_DIST+0.3, "GROUND", 1, 1, 0)
-
-			X = 0
-			if self.jump_state == "HANG_INIT":
-				self.jump_state = "HANGING"
-				self.alignToGravity()
-			elif TROBJ != None and edge != None:
-				wall = owner.worldOrientation.inverted()*TRNRM
-				wall[2] = 0
-				wall = wall.normalized()
-
-				point = wall*(self.WALL_DIST-0.05)
-				point = owner.worldOrientation*point
-				owner.worldPosition = (TRPNT+point)-owner.getAxisVect((0,0,offset-0.05-diff))
-
-				move = self.motion["Move"]
-				mref = viewport.getDirection((move[0], move[1], 0))
-				mref = owner.worldOrientation.inverted()*mref
-				if abs(mref[0]) > 0.5:
-					X = 1-(2*(mref[0]<0))
-				owner.localLinearVelocity[0] = (X*0.01)*60
-
-				align = owner.worldOrientation*wall
-				self.alignPlayer(0.5, axis=-align)
-			else:
-				self.alignToGravity()
-
-			if self.ANIMOBJ == None:
-				pass
-			elif abs(X) > 0.01:
-				self.doAnim(NAME="EdgeTR", FRAME=(1,60), MODE="LOOP", BLEND=10)
-			else:
-				self.doAnim(NAME="EdgeClimb", FRAME=(0,0), MODE="LOOP", BLEND=5)
-
-		else:
-			print("GROUND")
-			edge = None
-
-		if edge == None:
-			self.ST_EdgeFall_Set()
-
-		if keymap.BINDS["PLR_DUCK"].active() == True:
-			self.ST_EdgeFall_Set()
-			self.rayorder = "END"
-
-		elif keymap.BINDS["PLR_JUMP"].tap() == True:
-			self.ST_EdgeClimb_Set()
-
-	def ST_EdgeClimb_Set(self):
-		owner = self.objects["Root"]
-
-		rayto = self.groundhit[1].copy()+owner.getAxisVect((0,0.3,2))
-		rayfrom = owner.worldPosition+owner.getAxisVect((0,0,self.EDGE_H-self.GND_H))
-
-		SH, SP, SN = owner.rayCast(rayto, rayfrom, 0, "GROUND", 1, 1, 0)
-
-		if SH == None:
-			self.setPhysicsType("NONE")
-			self.doAnim(STOP=True)
-			self.doAnim(NAME="EdgeClimb", FRAME=(0,60), MODE="PLAY")
-			target = self.groundhit[1].copy()+owner.getAxisVect((0,0,1))
-			self.rayorder = self.getLocalSpace(owner, target)
-			self.jump_state = "NONE"
-			self.jump_timer = 0
-			self.active_state = self.ST_EdgeClimb
-
-	def ST_EdgeClimb(self):
-		owner = self.objects["Root"]
-
-		self.jump_state = "NONE"
-		self.jump_timer += 1
-
-		owner.worldLinearVelocity = (0,0,0)
-
-		time = 60
-		fac = self.jump_timer/time
-
-		gvec = (owner.worldOrientation*self.rayorder)
-		gpnt = (gvec*(1-fac))+owner.worldPosition
-
-		rayto = gpnt.copy()-owner.getAxisVect((0,0,1))
-
-		ray = (rayto, gpnt, 3)
-		ground = self.checkGround(simple=True, ray=ray)
-
-		owner.worldPosition += gvec*(1/time)
-
-		if ground != None:
-			self.groundhit = ground
-			self.getGroundPoint(ground[0])
-
-		self.alignToGravity()
-
-		if self.jump_timer == time or ground == None:
-			self.setPhysicsType("DYNAMIC")
-			self.rayorder = "NONE"
-			self.jump_state = "NONE"
-			self.jump_timer = 0
-			self.doAnim(STOP=True)
-			self.active_state = self.ST_Walking
-
-	def ST_EdgeFall_Set(self):
-		self.rayorder = "NONE"
-		self.jump_state = "FALLING"
-		self.jump_timer = 0
-		self.doAnim(STOP=True)
 		self.active_state = self.ST_Walking
 
 	## FLY STATE ##
@@ -1512,9 +1254,13 @@ class CorePlayer(base.CoreAdvanced):
 		self.data["HUD"]["Target"] = None
 		self.active_state = self.ST_FlySimple
 
+	def ST_Freeze(self):
+		pass
+
 	## RUN ##
 	def RUN(self):
 		if self.objects["Root"] == None:
+			self.ST_Freeze()
 			self.PS_Attachments()
 			return
 		self.runPre()

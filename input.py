@@ -1,21 +1,22 @@
 ####
-# bge_game-3.0_template: Full python game structure for the Blender Game Engine
-# Copyright (C) 2018  DaedalusMDW @github.com (Daedalus_MDW @blenderartists.org)
+# bge_game3_core: Full python game structure for the Blender Game Engine
+# Copyright (C) 2019  DaedalusMDW @github.com (Daedalus_MDW @blenderartists.org)
+# https://github.com/DaedalusMDW/bge_game3_core
 #
-# This file is part of bge_game-3.0_template.
+# This file is part of bge_game3_core.
 #
-#    bge_game-3.0_template is free software: you can redistribute it and/or modify
+#    bge_game3_core is free software: you can redistribute it and/or modify
 #    it under the terms of the GNU General Public License as published by
 #    the Free Software Foundation, either version 3 of the License, or
 #    (at your option) any later version.
 #
-#    bge_game-3.0_template is distributed in the hope that it will be useful,
+#    bge_game3_core is distributed in the hope that it will be useful,
 #    but WITHOUT ANY WARRANTY; without even the implied warranty of
 #    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 #    GNU General Public License for more details.
 #
 #    You should have received a copy of the GNU General Public License
-#    along with bge_game-3.0_template.  If not, see <http://www.gnu.org/licenses/>.
+#    along with bge_game3_core.  If not, see <http://www.gnu.org/licenses/>.
 #
 ####
 
@@ -31,7 +32,7 @@ from . import config
 
 
 ## Mouse ##
-events.MOUSEMOVE = {"Old":(0.5,0.5), "Move":(0,0), "Position":(0.5,0.5)}
+events.MOUSEMOVE = {"Old":(0,0), "Move":(0,0), "Position":(0,0)}
 MS_CENTER = False
 WIN_DIM = (render.getWindowWidth(), render.getWindowHeight())
 
@@ -61,7 +62,10 @@ for JOYID in range(len(logic.joysticks)):
 			events.JOYBUTTONS[JOYID]["Hats"][HAT] = {"U":0, "D":0, "L":0, "R":0}
 
 
-## EXTRAS ##
+## FEATURES ##
+def GetInput(name, group):
+	pass
+
 def ClipAxis(value):
 	LZ = 0.2
 	HZ = 1.0
@@ -194,11 +198,15 @@ class KeyBase:
 
 		return True
 
-	def checkInput(self, INPUT):
+	def checkInput(self, INPUT, JOYID=None):
 		if self.sceneGamepadCheck() == False:
 			return False
 
-		JOYID = self.joy_index
+		if JOYID == None:
+			JOYID = self.joy_index
+		elif self.joy_index == None:
+			JOYID = None
+
 		BUTID = self.gamepad["Button"]
 		AXIS = self.gamepad["Axis"]
 		TYPE = self.gamepad["Type"]
@@ -280,39 +288,43 @@ class KeyBase:
 		return False
 
 	## KEY EVENTS ##
-	def active(self, exlusive=False):
-		if self.checkInput(logic.KX_INPUT_ACTIVE) == True:
+	def active(self, exlusive=False, JOYID=None):
+		if self.checkInput(logic.KX_INPUT_ACTIVE, JOYID) == True:
 			return True
 		elif exlusive == True:
 			return False
-		elif self.checkInput(logic.KX_INPUT_JUST_ACTIVATED) == True:
+		elif self.checkInput(logic.KX_INPUT_JUST_ACTIVATED, JOYID) == True:
 			return True
 
 		return False
 
-	def tap(self):
-		if self.checkInput(logic.KX_INPUT_JUST_ACTIVATED) == True:
+	def tap(self, JOYID=None):
+		if self.checkInput(logic.KX_INPUT_JUST_ACTIVATED, JOYID) == True:
 			return True
 
 		return False
 
-	def released(self):
-		if self.checkInput(logic.KX_INPUT_JUST_RELEASED) == True:
+	def released(self, JOYID=None):
+		if self.checkInput(logic.KX_INPUT_JUST_RELEASED, JOYID) == True:
 			return True
 
 		return False
 
-	def inactive(self):
-		if self.checkInput(logic.KX_INPUT_NONE) == True:
+	def inactive(self, JOYID=None):
+		if self.checkInput(logic.KX_INPUT_NONE, JOYID) == True:
 			return True
 
 		return False
 
-	def axis(self, key=False, clip=False):
+	def axis(self, key=False, clip=False, JOYID=None):
 		if self.sceneGamepadCheck() == False:
 			return 0.0
 
-		JOYID = self.joy_index
+		if JOYID == None:
+			JOYID = self.joy_index
+		elif self.joy_index == None:
+			JOYID = None
+
 		AXIS = self.gamepad["Axis"]
 		TYPE = self.gamepad["Type"]
 		CURVE = self.gamepad["Curve"]
@@ -428,10 +440,10 @@ class MouseLook:
 		RAW_X, RAW_Y = events.MOUSEMOVE["Move"]
 
 		if ui == True:
-			return (RAW_X, RAW_Y)
+			return (RAW_X/WIN_DIM[0], RAW_Y/WIN_DIM[1])
 
-		X = RAW_X*(self.input/-5)
-		Y = RAW_Y*(self.input/5)*self.ratio
+		X = RAW_X*(self.input/10)/-1000
+		Y = RAW_Y*(self.input/10)/1000
 
 		if look != None:
 			X += look[0]*self.ts_rate
@@ -490,22 +502,31 @@ class NumPad:
 def GAMEPADDER():
 	global MS_CENTER, WIN_DIM, JOY_CALIBRATE, JOY_HATSDIR
 
-	NEW_X, NEW_Y = logic.mouse.position
+	POS_X, POS_Y = logic.mouse.position
 	OLD_X, OLD_Y = events.MOUSEMOVE["Old"]
 
-	if getattr(config, "MOUSE_FIX", False) == True:
-		NEW_X = (NEW_X*WIN_DIM[0])/(WIN_DIM[0]-1)
-		NEW_Y = (NEW_Y*WIN_DIM[1])/(WIN_DIM[1]-1)
+	POS_X = round( (POS_X*WIN_DIM[0]) )
+	POS_Y = round( (POS_Y*WIN_DIM[1]) )
+	CNT_X = round( (WIN_DIM[0]/2) )
+	CNT_Y = round( (WIN_DIM[1]/2) )
+	NEW_X = POS_X-CNT_X
+	NEW_Y = CNT_Y-POS_Y
 
-	events.MOUSEMOVE["Move"] = (NEW_X-OLD_X, OLD_Y-NEW_Y)
+	events.MOUSEMOVE["Move"] = (NEW_X-OLD_X, NEW_Y-OLD_Y)
 	events.MOUSEMOVE["Old"] = (NEW_X, NEW_Y)
 
-	events.MOUSEMOVE["Position"] = (NEW_X-0.5, 0.5-NEW_Y)
+	#if getattr(config, "MOUSE_FIX", False) == True:
+	#	POS_X -= 1 #(NEW_X*WIN_DIM[0])/(WIN_DIM[0]-1)
+	#	POS_Y -= 1 #(NEW_Y*WIN_DIM[1])/(WIN_DIM[1]-1)
+
+	events.MOUSEMOVE["Position"] = (POS_X, POS_Y)
 
 	if MS_CENTER == True:
-		if abs(NEW_X-0.5) > 0.25 or abs(NEW_Y-0.5) > 0.25:
+		xlm = round(WIN_DIM[0]/4)
+		ylm = round(WIN_DIM[1]/4)
+		if abs(NEW_X) > xlm or abs(NEW_Y) > ylm:
 			logic.mouse.position = (0.5, 0.5)
-			events.MOUSEMOVE["Old"] = (0.5, 0.5)
+			events.MOUSEMOVE["Old"] = (0, 0)
 	MS_CENTER = False
 
 	for JOYID in events.JOYBUTTONS:

@@ -1,21 +1,22 @@
 ####
-# bge_game-3.0_template: Full python game structure for the Blender Game Engine
-# Copyright (C) 2018  DaedalusMDW @github.com (Daedalus_MDW @blenderartists.org)
+# bge_game3_core: Full python game structure for the Blender Game Engine
+# Copyright (C) 2019  DaedalusMDW @github.com (Daedalus_MDW @blenderartists.org)
+# https://github.com/DaedalusMDW/bge_game3_core
 #
-# This file is part of bge_game-3.0_template.
+# This file is part of bge_game3_core.
 #
-#    bge_game-3.0_template is free software: you can redistribute it and/or modify
+#    bge_game3_core is free software: you can redistribute it and/or modify
 #    it under the terms of the GNU General Public License as published by
 #    the Free Software Foundation, either version 3 of the License, or
 #    (at your option) any later version.
 #
-#    bge_game-3.0_template is distributed in the hope that it will be useful,
+#    bge_game3_core is distributed in the hope that it will be useful,
 #    but WITHOUT ANY WARRANTY; without even the implied warranty of
 #    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 #    GNU General Public License for more details.
 #
 #    You should have received a copy of the GNU General Public License
-#    along with bge_game-3.0_template.  If not, see <http://www.gnu.org/licenses/>.
+#    along with bge_game3_core.  If not, see <http://www.gnu.org/licenses/>.
 #
 ####
 
@@ -30,7 +31,7 @@ from bge import logic, events, render
 
 from mathutils import Vector, Matrix
 
-from . import keymap, config
+from game3 import keymap, config
 
 
 def SaveJSON(name, dict, pretty=None):
@@ -113,33 +114,6 @@ def LoadBinds():
 	print("NOTICE: Keybinds Loaded...\n\t", name)
 
 
-def openWorldBlend(map, scn=None):
-	gd = logic.globalDict
-
-	gd["TRAVELING"] = True
-	if map == "LAUNCHER":
-		blend = config.LAUNCHER_BLEND+".blend"
-	elif map == "KEYMAP":
-		blend = config.KEYMAP_BLEND+".blend"
-	else:
-		gd["CURRENT"]["Level"] = map
-		gd["CURRENT"]["Scene"] = scn
-		blend = "MAPS\\"+map
-
-	for cls in logic.UPDATELIST:
-		if cls.UPDATE == True:
-			cls.doUpdate()
-	if logic.VIEWPORT != None:
-		logic.VIEWPORT.doUpdate()
-	logic.UPDATELIST = []
-
-	print("OPEN MAP:\n\t"+blend)
-
-	if config.UPBGE_FIX == True:
-		SaveJSON(gd["DATA"]["GAMEPATH"]+"gd_dump", gd, "\t")
-	logic.startGame(gd["DATA"]["GAMEPATH"]+blend)
-
-
 def checkWorldData(path, launcher=False):
 	path = path+"\\"
 	print(path)
@@ -163,18 +137,18 @@ def GenerateGlobalDict(path):
 	logic.globalDict["PROFILES"]["__guest__"] = GenerateProfileData()
 
 	logic.globalDict["BLENDS"] = logic.getBlendFileList(path+"MAPS")
-	logic.globalDict["DATA"] = {"GAMEPATH":path, "Portal":{"Door":None, "Vehicle":None, "Zone":None}}
-	logic.globalDict["CURRENT"] = {"Profile":"__guest__", "Level":None, "Player":None, "Scene":None}
+	logic.globalDict["DATA"] = {"GAMEPATH":path, "PROFILES":[]}
 	logic.globalDict["GRAPHICS"] = GenerateGraphicsData()
-	logic.globalDict["TRAVELING"] = False
+	logic.globalDict["CURRENT"] = {"Profile":"__guest__", "Level":None, "Scene":None}
 
+	logic.globalDict["TRAVELING"] = False
 	logic.globalDict["SCREENSHOT"] = {"Trigger":False, "Count":None}
 
 def GenerateProfileData():
-	return {"LVLData":{}, "PLRData":{}, "Last":{}, "Settings":{}}
+	return {"LVLData":{}, "PLRData":{}, "GLBData":{}, "Portal":{}, "Settings":{}}
 
 def GenerateLevelData():
-	return {"SPAWN":[], "DROP":[], "CLIP":config.LOW_CLIP, "PLAYER":{}}
+	return {"SPAWN":[], "DROP":[], "CLIP":config.LOW_CLIP}
 
 def GenerateGraphicsData():
 	save = False
@@ -182,6 +156,7 @@ def GenerateGraphicsData():
 	data = LoadJSON(file)
 
 	if data == None:
+		print("NOTICE: No Graphics Config...")
 		save = True
 		data = {}
 
@@ -249,10 +224,10 @@ def applyGraphics():
 
 	## VSYNC ##
 	if graphics["Vsync"] == True:
-		#render.setVsync(render.VSYNC_ON)
+		render.setVsync(render.VSYNC_ON)
 		print("\tVsync ON")
 	elif graphics["Vsync"] == False:
-		#render.setVsync(render.VSYNC_OFF)
+		render.setVsync(render.VSYNC_OFF)
 		print("\tVsync OFF")
 
 	## SHADERS ##

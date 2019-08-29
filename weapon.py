@@ -1,21 +1,22 @@
 ####
-# bge_game-3.0_template: Full python game structure for the Blender Game Engine
-# Copyright (C) 2018  DaedalusMDW @github.com (Daedalus_MDW @blenderartists.org)
+# bge_game3_core: Full python game structure for the Blender Game Engine
+# Copyright (C) 2019  DaedalusMDW @github.com (Daedalus_MDW @blenderartists.org)
+# https://github.com/DaedalusMDW/bge_game3_core
 #
-# This file is part of bge_game-3.0_template.
+# This file is part of bge_game3_core.
 #
-#    bge_game-3.0_template is free software: you can redistribute it and/or modify
+#    bge_game3_core is free software: you can redistribute it and/or modify
 #    it under the terms of the GNU General Public License as published by
 #    the Free Software Foundation, either version 3 of the License, or
 #    (at your option) any later version.
 #
-#    bge_game-3.0_template is distributed in the hope that it will be useful,
+#    bge_game3_core is distributed in the hope that it will be useful,
 #    but WITHOUT ANY WARRANTY; without even the implied warranty of
 #    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 #    GNU General Public License for more details.
 #
 #    You should have received a copy of the GNU General Public License
-#    along with bge_game-3.0_template.  If not, see <http://www.gnu.org/licenses/>.
+#    along with bge_game3_core.  If not, see <http://www.gnu.org/licenses/>.
 #
 ####
 
@@ -40,7 +41,7 @@ class CoreWeapon(attachment.CoreAttachment):
 	def defaultStates(self):
 		self.active_pre = []
 		self.active_state = self.ST_Box
-		self.active_post = []
+		self.active_post = [self.ST_HandSocket]
 
 	def assignToPlayer(self):
 		slot = self.owning_slot
@@ -51,16 +52,13 @@ class CoreWeapon(attachment.CoreAttachment):
 
 		cls.data["INVSLOT"][slot] = self.dict
 
+		if self.TYPE not in cls.data["WPDATA"]["WHEEL"]:
+			cls.data["WPDATA"]["WHEEL"][self.TYPE] = {"ID":-1, "LIST":[]}
+
 		if slot not in cls.data["WPDATA"]["WHEEL"][self.TYPE]["LIST"]:
 			cls.data["WPDATA"]["WHEEL"][self.TYPE]["LIST"].append(slot)
 
 		cls.cls_dict[slot] = self
-
-		if self.data["ENABLE"] == True:
-			cls.active_weapon = self
-			hand = cls.objects["SKT"][cls.HAND[self.HAND]]
-			self.attachToSocket(self.objects["Mesh"], hand)
-			self.doPlayerAnim("LOOP")
 
 	def removeFromPlayer(self):
 		slot = self.owning_slot
@@ -88,6 +86,19 @@ class CoreWeapon(attachment.CoreAttachment):
 		if cls.cls_dict.get(slot, None) == self:
 			del cls.cls_dict[slot]
 
+		self.gravity = cls.gravity.copy()
+
+	def ST_HandSocket(self):
+		mesh = self.objects["Mesh"]
+		sock = self.objects["Socket"]
+
+		plr = self.owning_player
+		if plr != None and "SKT" in plr.objects and self.data.get("HAND", None) != None:
+			sock = plr.objects["SKT"][ plr.HAND[self.HAND] ]
+
+		if mesh.parent != sock:
+			self.attachToSocket(mesh, sock)
+
 	def doPlayerAnim(self, frame=0):
 		plr = self.owning_player
 		anim = self.TYPE+plr.HAND[self.HAND]+self.owning_slot
@@ -106,50 +117,43 @@ class CoreWeapon(attachment.CoreAttachment):
 				fac = 1+fac
 			plr.doAnim(LAYER=lyr, SET=fac*end)
 
-	def getEffectValue(self):
-		scale = -1
-
-		if self.active_state in [self.ST_Stop, self.ST_Enable]:
-			fac = (self.data["COOLDOWN"]/self.WAIT)
-			if fac < 0:
-				fac = 1+fac
-
-			scale = (fac*2)-1
-
-		return scale
-
 	def ST_Startup(self):
 		self.data["HUD"]["Stat"] = 100
 		self.data["HUD"]["Text"] = ""
 
 	## STATE TRANSITION ##
 	def ST_Enable(self):
-		if self.data["COOLDOWN"] == int(self.WAIT*0.5):
-			hand = self.owning_player.HAND[self.HAND]
-			hand = self.owning_player.objects["SKT"][hand]
-			self.attachToSocket(self.objects["Mesh"], hand)
+		if self.data["COOLDOWN"] >= self.WAIT*0.5:
+			self.data["HAND"] = True
 
 		self.data["COOLDOWN"] += 1
 		self.doPlayerAnim(self.data["COOLDOWN"])
 
-		if self.data["COOLDOWN"] == self.WAIT:
-			self.doPlayerAnim("LOOP")
+		if self.data["COOLDOWN"] >= self.WAIT:
 			self.data["COOLDOWN"] = 0
 			self.active_state = self.ST_Active
 
 	def ST_Stop(self):
-		self.data["COOLDOWN"] -= 1
-		self.doPlayerAnim(self.data["COOLDOWN"])
+		self.data["COOLDOWN"] += 1
+		if self.dict["Equiped"] == "DROP":
+			self.data["COOLDOWN"] = self.WAIT
+		else:
+			self.doPlayerAnim(self.WAIT-self.data["COOLDOWN"])
 
-		if self.data["COOLDOWN"] == int(-self.WAIT*0.5) or self.dict["Equiped"] == "DROP":
-			self.attachToSocket(self.objects["Mesh"], self.objects["Socket"])
+		if self.data["COOLDOWN"] >= self.WAIT*0.5:
+			self.data["HAND"] = None
 
-		if self.data["COOLDOWN"] == -self.WAIT or self.dict["Equiped"] == "DROP":
+		if self.data["COOLDOWN"] >= self.WAIT:
 			self.doPlayerAnim("STOP")
-			self.owning_player.active_weapon = None
 			self.data["COOLDOWN"] = 0
-			self.data["ENABLE"] = False
 			self.active_state = self.ST_Idle
+
+	## STATES ##
+	def ST_Idle(self):
+		pass
+
+	def ST_Active(self):
+		self.doPlayerAnim("LOOP")
 
 
 

@@ -1,21 +1,22 @@
 ####
-# bge_game-3.0_template: Full python game structure for the Blender Game Engine
-# Copyright (C) 2018  DaedalusMDW @github.com (Daedalus_MDW @blenderartists.org)
+# bge_game3_core: Full python game structure for the Blender Game Engine
+# Copyright (C) 2019  DaedalusMDW @github.com (Daedalus_MDW @blenderartists.org)
+# https://github.com/DaedalusMDW/bge_game3_core
 #
-# This file is part of bge_game-3.0_template.
+# This file is part of bge_game3_core.
 #
-#    bge_game-3.0_template is free software: you can redistribute it and/or modify
+#    bge_game3_core is free software: you can redistribute it and/or modify
 #    it under the terms of the GNU General Public License as published by
 #    the Free Software Foundation, either version 3 of the License, or
 #    (at your option) any later version.
 #
-#    bge_game-3.0_template is distributed in the hope that it will be useful,
+#    bge_game3_core is distributed in the hope that it will be useful,
 #    but WITHOUT ANY WARRANTY; without even the implied warranty of
 #    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 #    GNU General Public License for more details.
 #
 #    You should have received a copy of the GNU General Public License
-#    along with bge_game-3.0_template.  If not, see <http://www.gnu.org/licenses/>.
+#    along with bge_game3_core.  If not, see <http://www.gnu.org/licenses/>.
 #
 ####
 
@@ -26,7 +27,7 @@ from bge import logic
 
 from mathutils import Vector
 
-from . import keymap, base, settings, config, COREBLENDS
+from . import keymap, base, settings, config, world, COREBLENDS
 
 
 def START(cont):
@@ -46,17 +47,18 @@ def START(cont):
 	logic.LibLoad(libblend, "Scene", load_actions=True, verbose=False, load_scripts=True)
 
 	logic.HUDCLASS = SceneManager()
+	#logic.HUDCLASS.doBlackOut(True, que=True)
 
 
 def RUN(cont):
-	if logic.HUDCLASS != None and logic.PLAYERCLASS != None:
-		try:
-			logic.HUDCLASS.RUN()
-		except Exception as ex:
-			logic.HUDCLASS.setControl(None, None)
-			logic.HUDCLASS = None
-			print("FATAL RUNTIME ERROR:", cont.owner.name)
-			print("\t", ex)
+	if logic.HUDCLASS != None:
+		#try:
+		logic.HUDCLASS.RUN()
+		#except Exception as ex:
+		#	logic.HUDCLASS.setControl(None, None)
+		#	logic.HUDCLASS = None
+		#	print("FATAL RUNTIME ERROR:", cont.owner.name)
+		#	print("\t", ex)
 
 
 def SetLayout(plr=None, layout=None):
@@ -706,6 +708,7 @@ class SceneManager:
 				if que == True:
 					self.blackobj = "QUE"
 				else:
+					print("HUD: LoadScreen")
 					self.blackobj = base.SC_HUD.addObject("HUD.Black", base.SC_HUD.active_camera, 0)
 					self.blackobj.applyMovement((0,0,-4), False)
 
@@ -732,7 +735,7 @@ class SceneManager:
 			self.active_layout = None
 
 		if self.control == None:
-			self.active_state = None
+			self.active_state = self.ST_HUD
 			return
 
 		plr = self.control
@@ -752,9 +755,9 @@ class SceneManager:
 		self.active_state = self.ST_HUD
 
 	def ST_HUD(self):
-		self.doBlackOut(False)
 
 		if self.active_layout != None:
+			self.doBlackOut(False)
 			self.active_layout.RUN(self.control)
 
 		if keymap.SYSTEM["ESCAPE"].tap() == True:
@@ -770,13 +773,13 @@ class SceneManager:
 			self.doBlackOut()
 			self.MENU.destroy()
 			self.active_state = None
-			base.settings.openWorldBlend("KEYMAP")
+			world.openBlend("KEYMAP")
 
 		if status == "Launcher":
 			self.doBlackOut()
 			self.MENU.destroy()
 			self.active_state = None
-			base.settings.openWorldBlend("LAUNCHER")
+			world.openBlend("LAUNCHER")
 
 		if status == "Resume" or keymap.SYSTEM["ESCAPE"].tap() == True:
 			self.doSceneResume()
@@ -866,8 +869,8 @@ class MenuPause:
 		click = None
 
 		X, Y = keymap.MOUSELOOK.axis(ui=True)
-		X = X*64
-		Y = Y*36
+		X *= 64
+		Y *= 36
 
 		for JOYID in keymap.events.JOYBUTTONS:
 			AXREF = keymap.events.JOYBUTTONS[JOYID]["Axis"]

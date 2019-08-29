@@ -1,21 +1,22 @@
 ####
-# bge_game-3.0_template: Full python game structure for the Blender Game Engine
-# Copyright (C) 2018  DaedalusMDW @github.com (Daedalus_MDW @blenderartists.org)
+# bge_game3_core: Full python game structure for the Blender Game Engine
+# Copyright (C) 2019  DaedalusMDW @github.com (Daedalus_MDW @blenderartists.org)
+# https://github.com/DaedalusMDW/bge_game3_core
 #
-# This file is part of bge_game-3.0_template.
+# This file is part of bge_game3_core.
 #
-#    bge_game-3.0_template is free software: you can redistribute it and/or modify
+#    bge_game3_core is free software: you can redistribute it and/or modify
 #    it under the terms of the GNU General Public License as published by
 #    the Free Software Foundation, either version 3 of the License, or
 #    (at your option) any later version.
 #
-#    bge_game-3.0_template is distributed in the hope that it will be useful,
+#    bge_game3_core is distributed in the hope that it will be useful,
 #    but WITHOUT ANY WARRANTY; without even the implied warranty of
 #    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 #    GNU General Public License for more details.
 #
 #    You should have received a copy of the GNU General Public License
-#    along with bge_game-3.0_template.  If not, see <http://www.gnu.org/licenses/>.
+#    along with bge_game3_core.  If not, see <http://www.gnu.org/licenses/>.
 #
 ####
 
@@ -44,11 +45,9 @@ class CoreAttachment(base.CoreObject):
 		owner = logic.getCurrentController().owner
 
 		owner["Class"] = self
-
+		owner["DICT"] = owner.get("DICT", {"Object":owner.name, "Data":None})
 		owner["RAYCAST"] = owner.get("RAYCAST", None)
 		owner["RAYNAME"] = self.NAME
-
-		owner["DICT"]["Equiped"] = owner["DICT"].get("Equiped", None)
 
 		self.objects = {"Root":owner}
 		self.box = None
@@ -64,8 +63,10 @@ class CoreAttachment(base.CoreObject):
 		self.data = self.defaultData()
 
 		self.data["HUD"] = {"Color":(1,1,1,1), "Stat":100, "Text":""}
-		self.data["ENABLE"] = None #self.ENABLE
+		self.data["ENABLE"] = None
 		self.data["COOLDOWN"] = 0
+
+		self.dict["Equiped"] = self.dict.get("Equiped", None)
 
 		self.box_scale = self.createVector(fill=self.SCALE)
 		self.gfx_scale = self.createVector(fill=self.SCALE)
@@ -76,7 +77,7 @@ class CoreAttachment(base.CoreObject):
 		self.doLoad()
 		self.ST_Startup()
 
-		if owner["DICT"]["Equiped"] not in [None, False, "DROP"]:
+		if self.dict["Equiped"] not in [None, False, "DROP"]:
 			self.equipItem(owner["RAYCAST"], load=True)
 		else:
 			self.dropItem(load=True)
@@ -88,7 +89,7 @@ class CoreAttachment(base.CoreObject):
 		self.active_state = self.ST_Box
 		self.active_post = []
 
-	def saveWorldPos(self):
+	def saveWorldPos(self, obj=None):
 		obj = self.box
 		if self.box == None:
 			obj = self.objects["Root"]
@@ -189,6 +190,8 @@ class CoreAttachment(base.CoreObject):
 		if cls.cls_dict.get(slot, None) == self:
 			del cls.cls_dict[slot]
 
+		self.gravity = cls.gravity.copy()
+
 	def attachToSocket(self, obj=None, socket=None):
 		if socket == None:
 			return
@@ -244,18 +247,16 @@ class CoreAttachment(base.CoreObject):
 				self.stateSwitch(True, run=True, force=True)
 			else:
 				self.data["ENABLE"] = False
+
 		elif self.data["ENABLE"] == True and load == False:
 			self.stateSwitch(True, run=True, force=True)
 
 	def dropItem(self, pos=None, load=False):
-		cls = self.owning_player
 		owner = self.objects["Root"]
 
 		if load == False:
 			self.dict["Equiped"] = "DROP"
 			self.ST_Stop()
-
-			self.gravity = cls.gravity.copy()
 
 		self.buildBox()
 
@@ -336,19 +337,24 @@ class CoreAttachment(base.CoreObject):
 			state = False
 
 		if force == False:
-			if self.box != None or self.data["COOLDOWN"] != 0 or self.data["ENABLE"] == state:
+			if self.data["COOLDOWN"] != 0:
 				return False
+			if self.data["ENABLE"] == state:
+				return True
 
-		if state == True:
-			self.active_state = self.ST_Enable
-		else:
-			self.active_state = self.ST_Stop
 		self.data["ENABLE"] = state
 
-		if run == True:
-			self.active_state()
+		if self.box != None:
+			return False
 
-		return True
+		if state == True:
+			newstate = self.ST_Enable
+		else:
+			newstate = self.ST_Stop
+
+		self.active_state = newstate
+
+		return False
 
 	def PR_Modifiers(self):
 		if self.owning_player == None:
@@ -367,8 +373,6 @@ class CoreAttachment(base.CoreObject):
 		if self.checkClicked(self.box) == True:
 			self.equipItem(self.box["RAYCAST"])
 
-		#self.clearRayProps()
-
 	## STATE TRIGGER ##
 	def ST_Enable(self):
 		self.active_state = self.ST_Active
@@ -384,12 +388,6 @@ class CoreAttachment(base.CoreObject):
 		pass
 
 	def RUN(self):
-		#if self.owning_player != None and self.box == None:
-		#	if self.owning_player.objects["Root"] == None:
-		#		return
-		#if self.box != None:
-		#	self.ST_Box()
-		#	return
 		self.runPre()
 		self.runStates()
 		self.runPost()
