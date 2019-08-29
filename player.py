@@ -173,7 +173,7 @@ class CorePlayer(base.CoreAdvanced):
 	def defaultStates(self):
 		self.active_pre = [self.PR_LastVelocity]
 		self.active_state = self.ST_Walking
-		self.active_post = [self.PS_Recharge, self.PS_GroundTrack, self.PS_SetVisible]
+		self.active_post = [self.PS_Recharge, self.PS_SetVisible, self.PS_GroundTrack]
 
 	def resetGroundRay(self):
 		self.groundhit = None
@@ -967,7 +967,7 @@ class CorePlayer(base.CoreAdvanced):
 		owner = self.objects["Root"]
 		self.groundchk = False
 
-		if self.groundhit == None or self.jump_state not in ["NONE", "CROUCH", "JUMP", "HANGING"]:
+		if self.groundhit == None or self.jump_state not in ["NONE", "CROUCH", "JUMP"]:
 			drag = self.AIR_DRAG
 			dragX = owner.localLinearVelocity[0]*drag[0] #0.67
 			dragY = owner.localLinearVelocity[1]*drag[1] #0.67

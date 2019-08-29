@@ -463,12 +463,13 @@ class CoreViewport(base.CoreObject):
 		vpos = vertex.worldPosition.copy()
 		lpos = parent.worldOrientation*self.position
 
-		slowV = vpos.lerp(tpos+lpos, fac)
+		slowV = vpos.lerp(tpos, fac)
 
 		if vertex.parent != None:
-			vertex.localPosition -= (vertex.localPosition-self.position)*fac
+			#vertex.localPosition -= (vertex.localPosition-self.position)*fac
+			vertex.localPosition = self.position
 		else:
-			vertex.worldPosition = slowV
+			vertex.worldPosition = slowV+lpos
 
 		rpos = rotate.localPosition
 
